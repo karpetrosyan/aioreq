@@ -1,10 +1,24 @@
+import re
 import asyncio
 
+from dns import resolver
+from functools import partial
+
+resolver = resolver.Resolver()
+resolver.nameservers = ['8.8.8.8']
+
+url_splitter = re.compile(r'(?P<host>https?//.*?)(?P<path>.*)')
+ 
+
+def resolve_domain(hostname):
+    resolved_data = resolver.resolve(hostname)
+    for ip in resolved_data:
+        return (ip.address, resolved_data.port)
+    
 class HttpClientProtocol(asyncio.Protocol):
 
-    def __init__(self, message, on_con_lost):
-        self.message = message
-        self.on_con_lost = on_con_lost
+    def __init__(self):
+        ...
 
     def connection_made(self, transport):
         return 
@@ -20,72 +34,60 @@ class HttpClientProtocol(asyncio.Protocol):
 
     def connection_lost(self, exc):
         print('The server closed the connection')
-        self.on_con_lost.set_result(True)
 
 
 class Request:
 
     @classmethod
-    async def create(cls, host, headers):
+    async def create(cls, method, host, headers):
         self         = cls()
         self.host    = host
         self.headers = {}
-        self.status  = None
+        self.method  = method
 
 
+    def __str__(self):
+        return (
+                f'{self.method} '
+                )
 
-class Client(asyncio.Protocol):
+class Client:
+
+    def __init__(self):
+        self.connection_mapper = {}
+        self.headers = {}
+
+    async def get(self, url, *args):
+        print(url)
+        print(url_splitter.search(url))
+        request = await Request.create(
+                method = "GET",
+                host = url,
+                headers = self.headers
+                )
+        transport = await self.make_connection(url)
+         
+
+    async def make_connection(self, host):
+        transport = self.connection_mapper.get(host, None)
+        if not transport:
+            ip, port = resolve_domain(host)
+            ip = '192.168.0.185'
+            port = 8000
+            loop = asyncio.get_event_loop()
+            connection_coroutine = loop.create_connection(
+                    lambda: HttpClientProtocol(),
+                    host=ip,
+                    port=port
+                        )
+            transport, protocol = await asyncio.wait_for(connection_coroutine, timeout=3)
+            self.connection_mapper[host] = transport
+        return transport
     
 
-    def __init__(self, host):
-        self.connected = False
-        self.headers = {}
-        self.host = host
-
-    async def get(self, *args):
-        request = Request.create()
-      
-    async def made_connection(self):
-        self.connected = True
-
     async def __aenter__(self):
-        if not self.connected:
-            await self.made_connection
         return self
 
     async def __aexit__(self, *args, **kwargs):
-        ...
-
-    def parse(self):
-        parsed_request =
-        
-
-
-async def main():
-    # Get a reference to the event loop as we plan to use
-    # low-level APIs.
-    loop = asyncio.get_running_loop()
-
-    on_con_lost = loop.create_future()
-    message = 'Hello World!'
-    
-
-    data = (
-            f"GET /user/me HTTP/1.1\r\n"
-            f"Host:192.168.0.185:8000\r\n\r\n"
-            )
-
-    transport, protocol = await loop.create_connection(
-        lambda: EchoClientProtocol(message, on_con_lost),
-        '192.168.0.185', 8000)
-
-    transport.write(data.encode())
-    # Wait until the protocol signals that the connection
-    # is lost and close the transport.
-    try:
-        await on_con_lost
-    finally:
-        transport.close()
-
-
-asyncio.run(main())
+        for host, transport in self.connection_mapper.items():
+            value.close()
