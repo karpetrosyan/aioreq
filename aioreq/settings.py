@@ -1,6 +1,9 @@
 import logging
 
-main_logger = logging.getLogger('aioreq')
+LOGGER_NAME = 'aioreq'
+
+
+main_logger = logging.getLogger(LOGGER_NAME)
 main_logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
 handler.setLevel(logging.DEBUG)

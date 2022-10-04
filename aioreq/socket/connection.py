@@ -1,20 +1,25 @@
 import re
+import logging
 import asyncio
 
+from ..parser.url_parser import UrlParser
+from ..settings import LOGGER_NAME
 from dns import resolver
 from functools import partial
 
 resolver = resolver.Resolver()
 resolver.nameservers = ['8.8.8.8']
 
-url_splitter = re.compile(r'(?P<host>https?//.*?)(?P<path>.*)')
- 
+log = logging.getLogger(LOGGER_NAME)
 
 def resolve_domain(hostname):
     resolved_data = resolver.resolve(hostname)
+
     for ip in resolved_data:
-        return (ip.address, resolved_data.port)
-    
+        result = (ip.address, resolved_data.port)
+        log.debug(f'Resolved {hostname=} got {result}')
+        return result
+
 class HttpClientProtocol(asyncio.Protocol):
 
     def __init__(self):
@@ -26,7 +31,6 @@ class HttpClientProtocol(asyncio.Protocol):
                 f"GET /user/me HTTP/1.1\r\n"
                 f"Host:192.168.0.185:8000\r\n\r\n"
                 )
-        # transport.write(b'GET / HTTP/1.1\r\nHost:192.168.0.185:8000\r\n\r\n')
         transport.write(data.encode())
 
     def data_received(self, data):
@@ -39,11 +43,12 @@ class HttpClientProtocol(asyncio.Protocol):
 class Request:
 
     @classmethod
-    async def create(cls, method, host, headers):
+    async def create(cls, method, host, headers, path):
         self         = cls()
         self.host    = host
         self.headers = {}
         self.method  = method
+        self.path    = path
 
 
     def __str__(self):
@@ -58,20 +63,20 @@ class Client:
         self.headers = {}
 
     async def get(self, url, *args):
-        print(url)
-        print(url_splitter.search(url))
+        splited_url = UrlParser.parse(url)
         request = await Request.create(
                 method = "GET",
-                host = url,
-                headers = self.headers
+                host = splited_url.get_url_without_path,
+                headers = self.headers,
+                path = splited_url.path
                 )
-        transport = await self.make_connection(url)
+        transport = await self.make_connection(splited_url)
          
 
-    async def make_connection(self, host):
-        transport = self.connection_mapper.get(host, None)
+    async def make_connection(self, splited_url):
+        transport = self.connection_mapper.get(splited_url.get_url_for_dns(), None)
         if not transport:
-            ip, port = resolve_domain(host)
+            ip, port = resolve_domain(splited_url.get_url_for_dns())
             ip = '192.168.0.185'
             port = 8000
             loop = asyncio.get_event_loop()
@@ -81,7 +86,7 @@ class Client:
                     port=port
                         )
             transport, protocol = await asyncio.wait_for(connection_coroutine, timeout=3)
-            self.connection_mapper[host] = transport
+            self.connection_mapper[splited_url.get_url_for_dns()] = transport
         return transport
     
 
@@ -90,4 +95,4 @@ class Client:
 
     async def __aexit__(self, *args, **kwargs):
         for host, transport in self.connection_mapper.items():
-            value.close()
+            transport.close()
