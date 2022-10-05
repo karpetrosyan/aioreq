@@ -3,6 +3,7 @@ import socket
 import logging
 import asyncio
 
+from .buffer import Buffer
 from ..protocol.messages import Request
 from ..protocol.messages import Response
 from ..parser.url_parser import UrlParser
@@ -34,18 +35,24 @@ def resolve_domain(hostname) -> tuple[str, int]:
 class HttpClientProtocol(asyncio.Protocol):
 
     def __init__(self):
-        self.buffer = ''
+        self.buffer = Buffer()
+        self.future = None
+
+    def verify_response(self):
+        self.future.set_result(True)
+
+    def check_buffer(self):
+        print(self.buffer)
+        self.verify_response()
 
     def connection_made(self, transport):
         log.debug(f"Connected to : {transport=}")
         self.transport = transport
-        self.future = None
 
     def data_received(self, data):
-        decoded_data = data.decode()
-        log.debug('Data received: {!r}'.format(decoded_data))
-        self.buffer += decoded_data
-        self.future.set_result(self.buffer)
+        log.debug('Data received: {!r}'.format(data))
+        loop = asyncio.get_event_loop()
+        loop.create_task(self.buffer.add_bytes(data))
 
     def connection_lost(self, exc):
         log.debug('The server closed the connection')

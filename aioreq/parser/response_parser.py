@@ -1,5 +1,7 @@
 import re
 
+from ..prorocol.messages import Response
+
 class ResponseParser:
     regex = re.compile(
         r'(?P<scheme_and_version>.*) (?P<status_code>\d{3}) (?P<status_message>.*)\r\n'
@@ -17,7 +19,14 @@ class ResponseParser:
         for line in unparsed_headers.split('\r\n')[:-1]:
             key, value = line.split(':')
             headers[key.strip()] = value.strip()
-        return None 
+
+        return Response(
+                scheme_and_version = scheme_and_version,
+                status = status,
+                status_message = status_message,
+                headers = headers,
+                body = body
+                )
 
 
 resp = (f"HTTP/1.1 200 OK\r\n"

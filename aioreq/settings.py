@@ -5,6 +5,8 @@ MAIN_LOGGER_LEVEL = logging.DEBUG
 STREAM_HANDLER_LEVEL = logging.DEBUG
 FORMAT = '%(levelname)s | %(message)s | %(asctime)s'
 
+BUFFER_SIZE = 4048
+
 main_logger = logging.getLogger(LOGGER_NAME)
 main_logger.setLevel(MAIN_LOGGER_LEVEL)
 
