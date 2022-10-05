@@ -3,9 +3,12 @@ import socket
 import logging
 import asyncio
 
+from ..protocol.messages import Request
+from ..protocol.messages import Response
 from ..parser.url_parser import UrlParser
 from ..settings import LOGGER_NAME
 from dns import resolver
+from dns.resolver import NXDOMAIN
 from functools import partial
 
 resolver = resolver.Resolver()
@@ -13,34 +16,19 @@ resolver.nameservers = ['8.8.8.8']
 
 log = logging.getLogger(LOGGER_NAME)
 
-def resolve_domain(hostname):
+def resolve_domain(hostname) -> tuple[str, int]:
     try:
         resolved_data = resolver.resolve(hostname)
-
         for ip in resolved_data:
             result = (ip.address, resolved_data.port)
             log.debug(f'Resolved {hostname=} got {result}')
-            return result
-    except:
-        return (socket.gethostbyname(hostname), 80)
-
-class Request:
-
-    @classmethod
-    async def create(cls, method, host, headers, path):
-        self         = cls()
-        self.host    = host
-        self.headers = {}
-        self.method  = method
-        self.path    = path
-        return self
-
-    def __str__(self):
-        return '\r\n'.join((
-                f'{self.method} {self.path} HTTP/1.1',
-                f'Host: {self.host}',
-                *(f"{key}:  {value}" for key, value in self.headers.items())
-                )) + '\r\n\r\n'
+    except NXDOMAIN as e:
+        log.debug(
+                f"Can't resolve {hostname=} via "
+                f"{resolver.nameservers=} trying localhost domains"
+                )
+        result = socket.gethostbyname(hostname), 80
+    return result
 
 
 class HttpClientProtocol(asyncio.Protocol):
@@ -51,20 +39,21 @@ class HttpClientProtocol(asyncio.Protocol):
     def connection_made(self, transport):
         log.debug(f"Connected to : {transport=}")
         self.transport = transport
+        self.future = None
 
     def data_received(self, data):
-        log.debug(f"received : {data=}")
-        deocded_data = data.decode()
+        decoded_data = data.decode()
         log.debug('Data received: {!r}'.format(decoded_data))
         self.buffer += decoded_data
+        self.future.set_result(self.buffer)
 
     def connection_lost(self, exc):
         log.debug('The server closed the connection')
 
-    def send_http_request(self, request: Request):
+    def send_http_request(self, request: Request, future):
+        self.future = future
         log.debug(f"Sending http request \n{str(request)}")
         self.transport.write(str(request).encode())
-        log.debug(f"data sent")
         return True
 
 class Client:
@@ -76,14 +65,17 @@ class Client:
     async def get(self, url, *args):
         splited_url = UrlParser.parse(url)
         transport, protocol = await self.make_connection(splited_url)
-        print(splited_url)
         request = await Request.create(
                 method = "GET",
                 host = splited_url.get_url_without_path(),
                 headers = self.headers,
                 path = splited_url.path
                 )
-        protocol.send_http_request(request)
+        loop = asyncio.get_event_loop()
+        future = loop.create_future()
+        protocol.send_http_request(request, future)
+        response = await future
+        return response
          
 
     async def make_connection(self, splited_url):
@@ -107,3 +99,4 @@ class Client:
     async def __aexit__(self, *args, **kwargs):
         for host, transport in self.connection_mapper.items():
             transport.close()
+            log.info(f"Transport closed {transport=}")
