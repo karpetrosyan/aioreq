@@ -10,6 +10,11 @@ class ResponseParser:
         r'(?P<body>[\d\D]*)\r\n\r\n'
         )
 
+    regex_content_length = re.compile(
+            r'[\s\S]*content-length\s*:\s*(?P<length>\d*)\r\n',
+            re.IGNORECASE
+            )
+
     @classmethod
     def parse(cls, response) -> Respone:
         match = cls.regex.search(response)
@@ -28,12 +33,11 @@ class ResponseParser:
                 body = body
                 )
 
+    @classmethod
+    def search_content_length(cls, text):
+        match = cls.regex_content_length.search(text)
+        if not match:
+            return False
+        content_length = match.group('length')
+        return int(content_length)
 
-resp = (f"HTTP/1.1 200 OK\r\n"
-        f'ASDasdf: dasf\r\n'
-        f'ASDasd: dasf\r\n'
-        f'ASDa: dasf\r\n'
-        f'ASD: sf\r\n'
-        f'\r\n'
-        f'this is body message\nasdfasd\nasdfasdf\r\n\r\n')
-match = (ResponseParser.parse(resp))
