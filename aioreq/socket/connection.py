@@ -7,6 +7,7 @@ from .buffer import Buffer
 from ..protocol.messages import Request
 from ..protocol.messages import Response
 from ..parser.url_parser import UrlParser
+from ..parser.response_parser import ResponseParser
 from ..settings import LOGGER_NAME
 from dns import resolver
 from dns.resolver import NXDOMAIN
@@ -37,13 +38,19 @@ class HttpClientProtocol(asyncio.Protocol):
     def __init__(self):
         self.buffer = Buffer()
         self.future = None
+        self.decoded_data = ''
 
     def verify_response(self):
         self.future.set_result(True)
 
-    def check_buffer(self):
-        print(self.buffer)
-        self.verify_response()
+    def check_buffer(self, future):
+        log.debug(self.buffer)
+        log.debug(future)
+        self.decoded_data += self.buffer.get_data()
+        length = ResponseParser.search_content_length(self.decoded_data)
+        if not length:
+            return False
+        
 
     def connection_made(self, transport):
         log.debug(f"Connected to : {transport=}")
@@ -52,7 +59,9 @@ class HttpClientProtocol(asyncio.Protocol):
     def data_received(self, data):
         log.debug('Data received: {!r}'.format(data))
         loop = asyncio.get_event_loop()
-        loop.create_task(self.buffer.add_bytes(data))
+        add_buffer_task = loop.create_task(self.buffer.add_bytes(data))
+        add_buffer_task.add_done_callback(self.check_buffer)
+        
 
     def connection_lost(self, exc):
         log.debug('The server closed the connection')
