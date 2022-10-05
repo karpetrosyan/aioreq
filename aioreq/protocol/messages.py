@@ -8,7 +8,7 @@ class Response:
             status_message : str,
             headers : dict,
             body : str):
-        self.scheme = scheme
+        self.scheme_and_version = scheme
         self.status = status
         self.status_message = status_message
         self.headers = headers
