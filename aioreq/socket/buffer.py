@@ -50,9 +50,7 @@ class Buffer:
         return self
 
 class HttpBuffer(Buffer):
-
-    def get_content_length(self):
-        ...
+    ...
 
         
         

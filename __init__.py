@@ -1,2 +1,2 @@
 from .aioreq import settings
-from .aioreq.socket import connection
+from .aioreq.protocol import http

@@ -1,7 +1,6 @@
 import re
 import logging
 
-from ..protocol.messages import Response
 from ..settings import LOGGER_NAME
 
 log = logging.getLogger(LOGGER_NAME)
@@ -26,7 +25,8 @@ class ResponseParser:
             )
 
     @classmethod
-    def parse(cls, response) -> Response:
+    def parse(cls, response) -> 'Response':
+        from ..protocol.http import Response
         match = cls.regex.search(response)
         scheme_and_version, status, status_message, unparsed_headers, body = match.groups()
         headers = {}
