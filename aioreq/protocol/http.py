@@ -11,6 +11,14 @@ from ..settings import DEFAULT_CONNECTION_TIMEOUT
 log = logging.getLogger(LOGGER_NAME)
 
 class Response:
+    """
+    Http response Class
+
+    Response class which is one of the first types that
+    user using this library can see, it's result for all
+    http requests methods like GET, PUT, PATCH, POST
+    """
+
 
     def __init__(
             self,
@@ -53,6 +61,13 @@ class Response:
                 ))
 
 class Request:
+    """
+    Http request Class
+
+    Request class contains all HTTP properties for requesting
+    as object attributes.
+    Also gives raw encoded data which used to send bytes via socket
+    """
 
     def __init__(
             self, 
@@ -105,6 +120,13 @@ class Request:
                 ))
 
 class Client:
+    """
+    Session like class Client
+
+    Client used to send requests with same headers or 
+    send requests using same connections which are stored in
+    the Client's connection pool 
+    """
 
     def __init__(self, headers = {}):
         """
