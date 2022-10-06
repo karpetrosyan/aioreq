@@ -60,6 +60,8 @@ class HttpClientProtocol(asyncio.Protocol):
         Response verifying called when response with specified self.expected_length
         got from the transport.
         It's should reset all response getting attributes and also set result for response waiting future
+
+        :returns: None
         """
 
         log.debug(f"Verify message {self.decoded_data=} | {self.expected_length=}")
