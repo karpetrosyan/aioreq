@@ -37,11 +37,11 @@ class Request:
         self.path    = path
         return self
 
-    def __str__(self) -> 'Request':
-        return '\r\n'.join((
+    def get_raw_request(self) -> str:
+        return ('\r\n'.join((
                 f'{self.method} {self.path} HTTP/1.1',
                 f'Host:   {self.host}',
                 *(f"{key}:  {value}" for key, value in self.headers.items())
-                )) + '\r\n\r\n'
+                )) + '\r\n\r\n').encode('utf-8')
 
 

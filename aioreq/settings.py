@@ -2,11 +2,13 @@ import logging
 
 LOGGER_NAME = 'aioreq'
 MAIN_LOGGER_LEVEL = logging.DEBUG
-MAIN_LOGGER_LEVEL = 100
+# MAIN_LOGGER_LEVEL = 100
 STREAM_HANDLER_LEVEL = logging.DEBUG
 FORMAT = '%(name)s | %(levelname)s | %(message)s | %(asctime)s'
 
 BUFFER_SIZE = 4048
+
+DEFAULT_CONNECTION_TIMEOUT = 5
 
 main_logger = logging.getLogger(LOGGER_NAME)
 main_logger.setLevel(MAIN_LOGGER_LEVEL)
