@@ -9,6 +9,7 @@ from ..protocol.messages import Response
 from ..parser.url_parser import UrlParser
 from ..parser.response_parser import ResponseParser
 from ..settings import LOGGER_NAME
+from ..settings import DEFAULT_CONNECTION_TIMEOUT
 from dns import resolver
 from dns.resolver import NXDOMAIN
 from functools import partial
@@ -22,8 +23,9 @@ def resolve_domain(hostname) -> tuple[str, int]:
     try:
         resolved_data = resolver.resolve(hostname)
         for ip in resolved_data:
-            result = (ip.address, resolved_data.port)
+            result = (ip.address, 80)
             log.debug(f'Resolved {hostname=} got {result}')
+            break
     except NXDOMAIN as e:
         log.debug(
                 f"Can't resolve {hostname=} via "
@@ -97,8 +99,8 @@ class HttpClientProtocol(asyncio.Protocol):
 
     def send_http_request(self, request: Request, future):
         self.future = future
-        log.debug(f"Sending http request \n{str(request)}")
-        self.transport.write(str(request).encode())
+        log.debug(f"Sending http request \n{request.get_raw_request()}")
+        self.transport.write(request.get_raw_request())
         return True
 
 class Client:
@@ -133,11 +135,14 @@ class Client:
                     host=ip,
                     port=port
                         )
-            transport, protocol = await asyncio.wait_for(connection_coroutine, timeout=3)
+            try:
+                transport, protocol = await asyncio.wait_for(connection_coroutine, timeout=DEFAULT_CONNECTION_TIMEOUT)
+            except asyncio.exceptions.TimeoutError as err:
+                raise Exception('Timeout Error') from err
+
             self.connection_mapper[splited_url.get_url_for_dns()] = transport
         return transport, protocol
     
-
     async def __aenter__(self):
         return self
 
