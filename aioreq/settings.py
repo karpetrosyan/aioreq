@@ -3,7 +3,7 @@ import logging
 LOGGER_NAME = 'aioreq'
 MAIN_LOGGER_LEVEL = logging.DEBUG
 STREAM_HANDLER_LEVEL = logging.DEBUG
-FORMAT = '%(levelname)s | %(message)s | %(asctime)s'
+FORMAT = '%(name)s | %(levelname)s | %(message)s | %(asctime)s'
 
 BUFFER_SIZE = 4048
 

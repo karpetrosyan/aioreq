@@ -25,9 +25,19 @@ class Buffer:
             await asyncio.sleep(0)
         return True
 
-    def get_bytes(self):
+    async def left_add_bytes(self, bytes):
+        bytes_count = len(bytes)
+        await self.buffer_freeing(bytes_count)
+        assert BUFFER_SIZE - self.current_point >= bytes_count 
+        log.debug(f"Shift [{bytes_count}:{self.current_point + bytes_count}] = [:{self.current_point}]")
+        self.data[bytes_count:self.current_point + bytes_count] = self.data[:self.current_point]
+        self += bytes_count
+        self.data[:bytes_count] = bytes
+        log.debug(f"{self.data[:10]=}m {self.current_point=}")
+
+    def get_data(self):
         decoded_data = self.data[:self.current_point].decode('utf-8')
-        self.data[:self.current_point] = 0
+        self.data[:self.current_point] = (0, ) * self.current_point
         self.current_point = 0
         return decoded_data
 
