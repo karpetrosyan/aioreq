@@ -9,6 +9,7 @@ FORMAT = '%(name)s | %(levelname)s | %(message)s | %(asctime)s'
 BUFFER_SIZE = 4048
 
 DEFAULT_CONNECTION_TIMEOUT = 4
+DEFAULT_DNS_SERVER = '8.8.8.8'
 
 main_logger = logging.getLogger(LOGGER_NAME)
 main_logger.setLevel(MAIN_LOGGER_LEVEL)
