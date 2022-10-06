@@ -3,12 +3,12 @@ class Response:
 
     def __init__(
             self,
-            scheme : str,
+            scheme_and_version : str,
             status : int,
             status_message : str,
             headers : dict,
             body : str):
-        self.scheme_and_version = scheme
+        self.scheme_and_version = scheme_and_version
         self.status = status
         self.status_message = status_message
         self.headers = headers

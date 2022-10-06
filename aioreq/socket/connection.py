@@ -39,18 +39,47 @@ class HttpClientProtocol(asyncio.Protocol):
         self.buffer = Buffer()
         self.future = None
         self.decoded_data = ''
+        self.message_pending = False
+        self.expected_length = None
 
     def verify_response(self):
-        self.future.set_result(True)
+        log.debug(f"Verify message {self.decoded_data=} | {self.expected_length=}")
+        self.future.set_result(self.decoded_data)
+        self.message_pending = False
+        self.expected_length = None
+        self.decoded_data = ''
 
     def check_buffer(self, future):
-        log.debug(self.buffer)
-        log.debug(future)
-        self.decoded_data += self.buffer.get_data()
-        length = ResponseParser.search_content_length(self.decoded_data)
-        if not length:
-            return False
-        
+        loop = asyncio.get_event_loop()
+        if not self.message_pending:
+            log.debug(self.buffer)
+            log.debug(future)
+            self.decoded_data += self.buffer.get_data()
+            length = ResponseParser.search_content_length(self.decoded_data)
+            self.expected_length = length
+            if not length:
+                log.debug(f"Length not found in {self.decoded_data=}")
+                return False
+            log.debug(f"Length found in {self.decoded_data=}")
+            self.message_pending = True
+            without_body_length = ResponseParser.get_without_body_length(self.decoded_data)
+            log.debug(f"From {self.decoded_data=} {without_body_length=}")
+            tail = self.decoded_data[without_body_length:]
+            log.debug(f"Got {tail=} from {self.decoded_data}")
+            left_add_bytes_task = loop.create_task(
+                    self.buffer.left_add_bytes(bytearray(
+                        tail, 'utf-8'
+                        ))
+                    )
+            left_add_bytes_task.add_done_callback(self.check_buffer)
+            self.decoded_data = self.decoded_data[:without_body_length]
+        else:
+            if self.buffer.current_point == self.expected_length:
+                body_data = self.buffer.get_data()
+                self.decoded_data +=  body_data
+                self.verify_response()
+
+
 
     def connection_made(self, transport):
         log.debug(f"Connected to : {transport=}")
@@ -90,8 +119,8 @@ class Client:
         loop = asyncio.get_event_loop()
         future = loop.create_future()
         protocol.send_http_request(request, future)
-        response = await future
-        return response
+        raw_response = await future
+        return ResponseParser.parse(raw_response)
          
 
     async def make_connection(self, splited_url):
