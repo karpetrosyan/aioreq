@@ -14,6 +14,18 @@ class Response:
         self.headers = headers
         self.body = body
 
+    def __repr__(self):
+        return '\n'.join((
+                f"Response(",
+                f"\tscheme_and_version='{self.scheme_and_version}'",
+                f"\tstatus = {self.status}",
+                f"\tstatus_message = '{self.status_message}'",
+                *(
+                    f"\t{key}: {value}" for key, value in self.headers.items()
+                    ),
+                ')'
+                ))
+
 class Request:
 
     @classmethod
