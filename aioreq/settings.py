@@ -2,7 +2,7 @@ import logging
 
 LOGGER_NAME = 'aioreq'
 MAIN_LOGGER_LEVEL = logging.INFO
-# MAIN_LOGGER_LEVEL = 100
+MAIN_LOGGER_LEVEL = 100
 STREAM_HANDLER_LEVEL = logging.DEBUG
 FORMAT = '%(name)s | %(levelname)s | %(message)s | %(asctime)s'
 
