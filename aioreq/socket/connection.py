@@ -10,6 +10,7 @@ from ..parser.url_parser import UrlParser
 from ..parser.response_parser import ResponseParser
 from ..settings import LOGGER_NAME
 from ..settings import DEFAULT_DNS_SERVER
+from ..errors.requests import AsyncRequestsError
 from dns import resolver
 from dns.resolver import NXDOMAIN
 from functools import partial
@@ -25,6 +26,8 @@ def resolve_domain(hostname) -> tuple[str, int]:
     Ip port resolving by making dns requests
 
     :param hostname: Domain name for example youtube.com
+    :returns: ip and port for that domain
+    :rtype: [str, int]
     """
 
     try:
@@ -65,7 +68,10 @@ class HttpClientProtocol(asyncio.Protocol):
         """
 
         log.debug(f"Verify message {self.decoded_data=} | {self.expected_length=}")
-        self.future.set_result(self.decoded_data)
+        try:
+            self.future.set_result(self.decoded_data)
+        except asyncio.exceptions.InvalidStateError as err:
+            log.exception(f"{self.future=} | Result : {self.future.result()}")
         self.message_pending = False
         self.expected_length = None
         self.decoded_data = ''
@@ -140,8 +146,13 @@ class HttpClientProtocol(asyncio.Protocol):
         :param exc: Exception which is connection closing reason
         :returns: None
         """
+        
+        if not self.future.done():
+            try:
+                self.future.set_result(exc)
+            except asyncio.exceptions.IvalidStateError as err:
+                log.exception(f"{self.future=} | {self.future.result=}")
 
-        self.future.set_result(exc)
 
     def send_http_request(self, request: 'Request', future):
         """
@@ -154,6 +165,10 @@ class HttpClientProtocol(asyncio.Protocol):
         verify_response methods
         :returns: None
         """
+       
+        if self.future is not None:
+            log.critical(f"Trying to make few async requests using same connection")
+            raise AsyncRequestsError(f"Trying to use async requests via the same connection using unsupported for that version")
 
         self.future = future
         log.debug(f"Sending http request \n{request.get_raw_request()}")
