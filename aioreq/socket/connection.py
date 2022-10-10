@@ -1,24 +1,23 @@
+import asyncio
+import logging
 import re
 import socket
-import logging
-import asyncio
+from functools import lru_cache, partial
 
-from functools import lru_cache
-from .buffer import Buffer
-from .buffer import HttpBuffer
-from ..parser.url_parser import UrlParser
-from ..parser.response_parser import ResponseParser
-from ..settings import LOGGER_NAME
-from ..settings import DEFAULT_DNS_SERVER
-from ..errors.requests import AsyncRequestsError
 from dns import resolver
 from dns.resolver import NXDOMAIN
-from functools import partial
+
+from ..errors.requests import AsyncRequestsError
+from ..parser.response_parser import ResponseParser
+from ..parser.url_parser import UrlParser
+from ..settings import DEFAULT_DNS_SERVER, LOGGER_NAME
+from .buffer import Buffer, HttpBuffer
 
 resolver = resolver.Resolver()
 resolver.nameservers = [DEFAULT_DNS_SERVER]
 
 log = logging.getLogger(LOGGER_NAME)
+
 
 @lru_cache
 def resolve_domain(hostname) -> tuple[str, int]:
@@ -127,6 +126,7 @@ class HttpClientProtocol(asyncio.Protocol):
         log.debug(f"Connected to : {transport=}")
         self.transport = transport
 
+
     def data_received(self, data):
         """
         asycnio.Protocol callback which calls whenever transport receive bytes
@@ -152,7 +152,6 @@ class HttpClientProtocol(asyncio.Protocol):
                 self.future.set_result(exc)
             except asyncio.exceptions.IvalidStateError as err:
                 log.exception(f"{self.future=} | {self.future.result=}")
-
 
     def send_http_request(self, request: 'Request', future):
         """
