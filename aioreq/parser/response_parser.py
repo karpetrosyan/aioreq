@@ -44,6 +44,7 @@ class ResponseParser:
         """
 
         from ..protocol.http import Response
+        print(response)
         match = cls.regex.search(response)
         scheme_and_version, status, status_message, unparsed_headers, body = match.groups()
         headers = {}
