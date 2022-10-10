@@ -38,6 +38,7 @@ class Buffer:
         self.data[self.current_point:self.current_point+data_len] = data
         self += data_len
         log.debug(f"Buffer pointer after adding new data {self.current_point=}")
+        log.debug(f"{self.data[:15]=}")
     
     async def buffer_freeing(self, bytes_count) -> None:
         """
@@ -68,7 +69,7 @@ class Buffer:
         self.data[:bytes_count] = bytes
         log.debug(f"{self.data[:10]=}m {self.current_point=}")
 
-    def get_data(self):
+    def get_data(self, bytes_count = None):
         """
         Getting data from the buffer
 
@@ -79,7 +80,10 @@ class Buffer:
         :rtype: str
         """
 
-        decoded_data = self.data[:self.current_point].decode('utf-8')
+        if not bytes_count:
+            bytes_count = self.current_point
+
+        decoded_data = self.data[:bytes_count].decode('utf-8')
         self.data[:self.current_point] = (0, ) * self.current_point
         self.current_point = 0
         return decoded_data

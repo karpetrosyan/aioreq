@@ -8,6 +8,7 @@ from dns import resolver
 from dns.resolver import NXDOMAIN
 
 from ..errors.requests import AsyncRequestsError
+from ..errors.response import ClosedConnectionWithoutResponse
 from ..parser.response_parser import ResponseParser
 from ..parser.url_parser import UrlParser
 from ..settings import DEFAULT_DNS_SERVER, LOGGER_NAME
@@ -56,6 +57,7 @@ class HttpClientProtocol(asyncio.Protocol):
         self.decoded_data = ''
         self.message_pending = False
         self.expected_length = None
+        self.buffer_callbacks = 0
 
     def verify_response(self):
         """
@@ -85,35 +87,40 @@ class HttpClientProtocol(asyncio.Protocol):
         :param future: future which called this method after finishing
         :returns: None
         """
+        if future:
+            self.buffer_callbacks -= 1
 
         loop = asyncio.get_event_loop()
         if not self.message_pending:
             log.debug(self.buffer)
-            log.debug(future)
             self.decoded_data += self.buffer.get_data()
             length = ResponseParser.search_content_length(self.decoded_data)
             self.expected_length = length
             if not length:
                 log.debug(f"Length not found in {self.decoded_data=}")
-                return
-            log.debug(f"Length found in {self.decoded_data=}")
-            self.message_pending = True
-            without_body_length = ResponseParser.get_without_body_length(self.decoded_data)
-            log.debug(f"From {self.decoded_data=} {without_body_length=}")
-            tail = self.decoded_data[without_body_length:]
-            log.debug(f"Got {tail=} from {self.decoded_data}")
-            left_add_bytes_task = loop.create_task(
-                    self.buffer.left_add_bytes(bytearray(
-                        tail, 'utf-8'
-                        ))
-                    )
-            left_add_bytes_task.add_done_callback(self.check_buffer)
-            self.decoded_data = self.decoded_data[:without_body_length]
+            else:
+                log.debug(f"Length found in {self.decoded_data=}")
+                self.message_pending = True
+                without_body_length = ResponseParser.get_without_body_length(self.decoded_data)
+                log.debug(f"From {self.decoded_data=} {without_body_length=}")
+                tail = self.decoded_data[without_body_length:]
+                log.debug(f"Got {tail=} from {self.decoded_data}")
+                left_add_bytes_task = loop.create_task(
+                        self.buffer.left_add_bytes(bytearray(
+                            tail, 'utf-8'
+                            ))
+                        )
+                left_add_bytes_task.add_done_callback(self.check_buffer)
+                self.buffer_callbacks += 1
+                self.decoded_data = self.decoded_data[:without_body_length]
         else:
-            if self.buffer.current_point == self.expected_length:
-                body_data = self.buffer.get_data()
+            if self.buffer.current_point >= self.expected_length:
+                body_data = self.buffer.get_data(self.expected_length)
                 self.decoded_data +=  body_data
-                self.verify_response()
+                return self.verify_response()
+        if (not self.buffer_callbacks) and self.transport.is_closing():
+            print(self.buffer_callbacks)
+            self.future.set_result(ClosedConnectionWithoutResponse()) 
 
     def connection_made(self, transport):
         """
@@ -138,6 +145,7 @@ class HttpClientProtocol(asyncio.Protocol):
         loop = asyncio.get_event_loop()
         add_buffer_task = loop.create_task(self.buffer.add_bytes(data))
         add_buffer_task.add_done_callback(self.check_buffer)
+        self.buffer_callbacks += 1
         
     def connection_lost(self, exc):
         """
@@ -146,12 +154,8 @@ class HttpClientProtocol(asyncio.Protocol):
         :param exc: Exception which is connection closing reason
         :returns: None
         """
-        
         if not self.future.done():
-            try:
-                self.future.set_result(exc)
-            except asyncio.exceptions.IvalidStateError as err:
-                log.exception(f"{self.future=} | {self.future.result=}")
+            log.debug(f"Connection lost {exc=}")
 
     def send_http_request(self, request: 'Request', future):
         """
@@ -164,7 +168,7 @@ class HttpClientProtocol(asyncio.Protocol):
         verify_response methods
         :returns: None
         """
-       
+         
         if self.future is not None:
             log.critical(f"Trying to make few async requests using same connection")
             raise AsyncRequestsError(f"Trying to use async requests via the same connection using unsupported for that version")
