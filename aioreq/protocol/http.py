@@ -108,7 +108,7 @@ class Request:
             f'Host:   {self.host}',
             *(f"{key}:  {value}" for key, value in self.headers.items()),
         )) + ('\r\n'
-              f'{self.body}'
+#              f'{self.body}'
               '\r\n\r\n')).encode('utf-8')
 
     def __repr__(self) -> str:
@@ -122,6 +122,7 @@ class Request:
             *(
                 f"\t\t{key}: {value}" for key, value in self.headers.items()
             ),
+            f"\tBody: {len(self.body)} length"
             ')'
         ))
 
@@ -171,9 +172,12 @@ class Client:
         future = loop.create_future()
         protocol.send_http_request(request, future)
         raw_response = await future
+
+        if isinstance(raw_response, Exception):
+            raise raw_response
         response = ResponseParser.parse(raw_response)
         response.request = request
-        return response
+        return response, transport
 
     async def post(self, url, headers=None) -> Response:
         """
