@@ -7,6 +7,14 @@ from collections import deque
 log = logging.getLogger('aioreq')
 
 class Queue:
+    """
+    Basic Queue class using collections.deque under the hood
+
+    Used to correct receiving messages from add_bytes and synchronizing them
+    using queue we always know that messages have correct order into the buffer
+
+    :param iterable: init value for deque
+    """
 
     def __init__(self, iterable = None):
 
@@ -15,13 +23,23 @@ class Queue:
         self._queue = deque(iterable)
 
     def append(self, value):
+        """
+        Implementing appendleft for queue
+        """
         self._queue.appendleft(value)
         return value
 
     def pop(self):
+        """
+        Default list like pop function
+        """
         return self._queue.pop()
 
     def get_last_id(self):
+        """
+        Get id from the queue, which contains tuple like (value, id),
+        where id is a unique number for buffer synchronizing implementation
+        """
         return self._queue[-1][1] if len(self._queue) > 0 else None
 
 class Buffer:
@@ -44,15 +62,29 @@ class Buffer:
         self.queue = Queue()
 
     def get_id(self):
+        """
+        Get the next value from unique numbers
+        """
         id = self.unique_id
         self.unique_id += 1
         return id
 
     def clear_id(self):
+        """
+        Calls whenever unique ids overflow
+        """
         self.unique_id = 0
 
-
     async def my_turn_to_add(self, unique_id, data_len, data):
+        """
+        Awaitable object checking if it is my turn to add into the buffer
+
+        :param unique_id: adding id, used to seperate adding tasks
+        :param data_len: len for bytes which should be added
+        :param data: bytearray data
+        :returns: None
+        """
+
         self.queue.append((data, unique_id))
         while self.queue.get_last_id() != unique_id or (not self.buffer_free(data_len)):
             await asyncio.sleep(0)
