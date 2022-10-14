@@ -99,6 +99,8 @@ class HttpClientProtocol(asyncio.Protocol):
         :returns: None
         """
 
+        log.debug(f"Working callback for adding {future.result()=}")
+
         loop = asyncio.get_event_loop()
         if not self.message_pending:
             self.decoded_data += self.buffer.get_data()
