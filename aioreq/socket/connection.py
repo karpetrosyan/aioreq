@@ -8,6 +8,7 @@ from dns import resolver
 from dns.resolver import NXDOMAIN
 
 from ..errors.requests import AsyncRequestsError
+from ..errors.requests import InvalidDomainName
 from ..errors.response import ClosedConnectionWithoutResponse
 from ..parser.response_parser import ResponseParser
 from ..parser.url_parser import UrlParser
@@ -34,18 +35,26 @@ def resolve_domain(hostname) -> tuple[str, int]:
         resolved_data = resolver.resolve(hostname)
         for ip in resolved_data:
             result = (ip.address, 80)
-            log.debug(f'Resolved {hostname=} got {result}')
             break
     except NXDOMAIN as e:
-        log.debug(
-                f"Can't resolve {hostname=} via "
-                f"{resolver.nameservers=} trying localhost domains"
-                )
-        result = socket.gethostbyname(hostname), 80
+        try:
+            result = socket.gethostbyname(hostname), 80
+            return result 
+        except:
+            ...
+        raise InvalidDomainName from e
     return result
 
 
 class HttpClientProtocol(asyncio.Protocol):
+    """
+    Default HTTP client connection implementation including keep alive connection
+    for HTTP/1.1
+    Used for sending asynchronus request via one socket, if many requests via the same socket
+    needed then use PiplineHttpClientProtocol
+    Pipeline works for HTTP/1.1
+    """
+
 
     def __init__(self):
         """
@@ -57,6 +66,13 @@ class HttpClientProtocol(asyncio.Protocol):
         self.decoded_data = ''
         self.message_pending = False
         self.expected_length = None
+        self.buffer_callbacks = 0
+
+    def clean_communication(self):
+        self.message_pending = False
+        self.expected_length = None
+        self.decoded_data = ''
+        self.future = None
         self.buffer_callbacks = 0
 
     def verify_response(self):
@@ -73,9 +89,7 @@ class HttpClientProtocol(asyncio.Protocol):
             self.future.set_result(self.decoded_data)
         except asyncio.exceptions.InvalidStateError as err:
             log.exception(f"{self.future=} | Result : {self.future.result()}")
-        self.message_pending = False
-        self.expected_length = None
-        self.decoded_data = ''
+        self.clean_communication()
 
     def check_buffer(self, future):
         """
@@ -92,19 +106,15 @@ class HttpClientProtocol(asyncio.Protocol):
 
         loop = asyncio.get_event_loop()
         if not self.message_pending:
-            log.debug(self.buffer)
             self.decoded_data += self.buffer.get_data()
             length = ResponseParser.search_content_length(self.decoded_data)
             self.expected_length = length
             if not length:
                 log.debug(f"Length not found in {self.decoded_data=}")
             else:
-                log.debug(f"Length found in {self.decoded_data=}")
                 self.message_pending = True
                 without_body_length = ResponseParser.get_without_body_length(self.decoded_data)
-                log.debug(f"From {self.decoded_data=} {without_body_length=}")
                 tail = self.decoded_data[without_body_length:]
-                log.debug(f"Got {tail=} from {self.decoded_data}")
                 left_add_bytes_task = loop.create_task(
                         self.buffer.left_add_bytes(bytearray(
                             tail, 'utf-8'
@@ -118,9 +128,12 @@ class HttpClientProtocol(asyncio.Protocol):
                 body_data = self.buffer.get_data(self.expected_length)
                 self.decoded_data +=  body_data
                 return self.verify_response()
+
         if (not self.buffer_callbacks) and self.transport.is_closing():
-            print(self.buffer_callbacks)
-            self.future.set_result(ClosedConnectionWithoutResponse()) 
+            # if not processing data and transport is closed then raise an exception
+            print(self.future)
+            self.future.set_result(ClosedConnectionWithoutResponse())
+            
 
     def connection_made(self, transport):
         """
@@ -130,7 +143,6 @@ class HttpClientProtocol(asyncio.Protocol):
         :returns: None
         """
         
-        log.debug(f"Connected to : {transport=}")
         self.transport = transport
 
 
@@ -141,7 +153,7 @@ class HttpClientProtocol(asyncio.Protocol):
         :param data: received bytes
         """
 
-        log.debug('Data received: {!r}'.format(data))
+        log.info('Data received: {!r}'.format(data))
         loop = asyncio.get_event_loop()
         add_buffer_task = loop.create_task(self.buffer.add_bytes(data))
         add_buffer_task.add_done_callback(self.check_buffer)
@@ -154,8 +166,7 @@ class HttpClientProtocol(asyncio.Protocol):
         :param exc: Exception which is connection closing reason
         :returns: None
         """
-        if not self.future.done():
-            log.debug(f"Connection lost {exc=}")
+
 
     def send_http_request(self, request: 'Request', future):
         """
@@ -168,13 +179,16 @@ class HttpClientProtocol(asyncio.Protocol):
         verify_response methods
         :returns: None
         """
-         
+        
+        raw_text = request.get_raw_request()
         if self.future is not None:
-            log.critical(f"Trying to make few async requests using same connection")
             raise AsyncRequestsError(f"Trying to use async requests via the same connection using unsupported for that version")
 
         self.future = future
-        log.debug(f"Sending http request \n{request.get_raw_request()}")
-        self.transport.write(request.get_raw_request())
-        log.debug(f"Sent")
+        log.info(f"Sending http request \n{raw_text}")
 
+        request.raw_request = raw_text 
+        self.transport.write(raw_text)
+
+class PiplineHttpClientProtocol(HttpClientProtocol):
+    ...
