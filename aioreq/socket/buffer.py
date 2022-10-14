@@ -1,4 +1,5 @@
 import logging
+import asyncio
 
 from ..settings import BUFFER_SIZE
 from collections import deque
@@ -19,6 +20,9 @@ class Queue:
 
     def pop(self):
         return self._queue.pop()
+
+    def get_last_id(self):
+        return self._queue[-1][1] if len(self._queue) > 0 else None
 
 class Buffer:
     """
@@ -48,8 +52,9 @@ class Buffer:
         self.unique_id = 0
 
 
-    async def my_turn_to_add(self, unique_id, data_len):
-        while self.queue[-1][1] != unique_id or (not await self.buffer_freeing(data_len)):
+    async def my_turn_to_add(self, unique_id, data_len, data):
+        self.queue.append((data, unique_id))
+        while self.queue.get_last_id() != unique_id or (not self.buffer_free(data_len)):
             await asyncio.sleep(0)
         self.queue.pop()
         return
@@ -65,12 +70,13 @@ class Buffer:
         unique_id = self.get_id()
 
         data_len = len(data)
-        await self.my_turn_to_add(unique_id, data_len)
+        await self.my_turn_to_add(unique_id, data_len, data)
         assert BUFFER_SIZE - self.current_point >= data_len
         self.data[self.current_point:self.current_point+data_len] = data
         self += data_len
+        return data
     
-    async def buffer_freeing(self, bytes_count) -> None:
+    def buffer_free(self, bytes_count) -> None:
         """
         Method which waits until bytes_count can be stroed in the buffer
 
@@ -78,8 +84,7 @@ class Buffer:
         :type bytes_count: int
         :returns: None
         """
-        while BUFFER_SIZE - self.current_point < bytes_count:
-            await asyncio.sleep(0)
+        return BUFFER_SIZE - self.current_point >= bytes_count
 
     async def left_add_bytes(self, bytes) -> None:
         """
@@ -89,13 +94,14 @@ class Buffer:
         :type bytes: bytearray
         :returns: None
         """
-
+        unique_id = self.get_id()
         bytes_count = len(bytes)
-        await self.buffer_freeing(bytes_count)
+        await self.my_turn_to_add(unique_id, bytes_count, bytes)
         assert BUFFER_SIZE - self.current_point >= bytes_count 
         self.data[bytes_count:self.current_point + bytes_count] = self.data[:self.current_point]
         self += bytes_count
         self.data[:bytes_count] = bytes
+        return bytes
 
     def get_data(self, bytes_count = None):
         """
