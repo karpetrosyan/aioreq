@@ -31,14 +31,10 @@ class Buffer:
         """
 
         data_len = len(data)
-        log.debug(f"Trying to add data with {data_len=}")
         await self.buffer_freeing(data_len)
         assert BUFFER_SIZE - self.current_point >= data_len
-        log.debug(f"Buffer pointer before adding new data {self.current_point=}")
         self.data[self.current_point:self.current_point+data_len] = data
         self += data_len
-        log.debug(f"Buffer pointer after adding new data {self.current_point=}")
-        log.debug(f"{self.data[:15]=}")
     
     async def buffer_freeing(self, bytes_count) -> None:
         """
@@ -63,11 +59,9 @@ class Buffer:
         bytes_count = len(bytes)
         await self.buffer_freeing(bytes_count)
         assert BUFFER_SIZE - self.current_point >= bytes_count 
-        log.debug(f"Shift [{bytes_count}:{self.current_point + bytes_count}] = [:{self.current_point}]")
         self.data[bytes_count:self.current_point + bytes_count] = self.data[:self.current_point]
         self += bytes_count
         self.data[:bytes_count] = bytes
-        log.debug(f"{self.data[:10]=}m {self.current_point=}")
 
     def get_data(self, bytes_count = None):
         """
@@ -87,6 +81,11 @@ class Buffer:
         self.data[:self.current_point] = (0, ) * self.current_point
         self.current_point = 0
         return decoded_data
+
+    def clean(self):
+        
+        self.data[:self.current_point] = (0,) * self.current_point
+        self.current_point = 0
 
     def __iadd__(self, bytes_count):
         """

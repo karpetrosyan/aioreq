@@ -62,7 +62,6 @@ class Url:
         :rtype: str
         """
 
-        log.debug(f"Getting dns url for {self=}")
         return f"{self.subdomain}.{self.domain}.{self.top_level_domain}"
 
     def __post_init__(self):

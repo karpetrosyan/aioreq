@@ -77,6 +77,7 @@ class Request:
             host,
             headers,
             path,
+            raw_request = None,
             body='',
             scheme_and_version='HTTP/1.1'
     ) -> None:
@@ -90,12 +91,14 @@ class Request:
         :scheme_and_version: HTTP scheme and version where HTTP is scheme 1.1 is a version
         :returns: None
         """
+
         self.host = host
         self.headers = headers
         self.method = method
         self.path = path
         self.body = body
         self.scheme_and_version = scheme_and_version
+        self.raw_request = raw_request
 
     def get_raw_request(self) -> bytes:
         """
@@ -107,9 +110,10 @@ class Request:
             f'{self.method} {self.path} {self.scheme_and_version}',
             f'Host:   {self.host}',
             *(f"{key}:  {value}" for key, value in self.headers.items()),
-        )) + ('\r\n'
+        )) + ('\r\n\r\n')
 #              f'{self.body}'
-              '\r\n\r\n')).encode('utf-8')
+#              '\r\n\r\n')
+                ).encode('utf-8')
 
     def __repr__(self) -> str:
         return '\n'.join((
@@ -144,7 +148,13 @@ class Client:
         """
 
         if headers is None:
-            headers = {}
+            headers = {
+                    'User-Agent' : 'Mozilla/5.0',
+                    'Accept'     : 'text/html',
+                    'Accept-Language': 'en-us',
+                    'Accept-Charser': 'ISO-8859-1,utf-8',
+                    'Connection' : 'keep-alive'
+                    }
         self.connection_mapper = {}
         self.headers = headers
 
@@ -211,7 +221,6 @@ class Client:
         transport, protocol = self.connection_mapper.get(splited_url.get_url_for_dns(), (None, None))
 
         if transport and transport.is_closing():
-            log.debug(f"Remake connection")
             transport, protocol = None, None
 
         if not transport:
@@ -228,6 +237,8 @@ class Client:
                 raise Exception('Timeout Error') from err
 
             self.connection_mapper[splited_url.get_url_for_dns()] = transport, protocol
+        else:
+            log.info("Using previous connection")
         return transport, protocol
 
     async def __aenter__(self):
