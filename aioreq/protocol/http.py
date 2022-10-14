@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import json as _json
 
 from ..parser.response_parser import ResponseParser
 from ..parser.url_parser import UrlParser
@@ -79,6 +80,7 @@ class Request:
             path,
             raw_request = None,
             body='',
+            json='',
             scheme_and_version='HTTP/1.1'
     ) -> None:
         """
@@ -97,8 +99,11 @@ class Request:
         self.method = method
         self.path = path
         self.body = body
+        self.json = json
         self.scheme_and_version = scheme_and_version
         self.raw_request = raw_request
+
+    def sum_arguments(): ...
 
     def get_raw_request(self) -> bytes:
         """
@@ -106,14 +111,26 @@ class Request:
 
         :returns: raw http request text type of bytearray
         """
-        return ('\r\n'.join((
+
+        if self.body:
+            self.path += '?' + self.body
+
+        if self.json:
+            self.headers['Content-Length'] = len(self.json)
+            self.headers['Content-Type'] = "application/json"
+
+        message = ('\r\n'.join((
             f'{self.method} {self.path} {self.scheme_and_version}',
             f'Host:   {self.host}',
             *(f"{key}:  {value}" for key, value in self.headers.items()),
-        )) + ('\r\n\r\n')
-#              f'{self.body}'
-#              '\r\n\r\n')
-                ).encode('utf-8')
+        )) + ('\r\n\r\n'))
+
+        if self.json:
+            message += ( 
+                  f"{self.json}")
+               
+
+        return message.encode('utf-8')
 
     def __repr__(self) -> str:
         return '\n'.join((
@@ -158,7 +175,7 @@ class Client:
         self.connection_mapper = {}
         self.headers = headers
 
-    async def get(self, url, body='', headers=None) -> Response:
+    async def get(self, url, body='', headers=None, json='') -> Response:
         """
         Simulates http GET method
 
@@ -172,11 +189,15 @@ class Client:
             headers = {}
         splited_url = UrlParser.parse(url)
         transport, protocol = await self.make_connection(splited_url)
+
+        json = _json.dumps(json)
         request = Request(
             method="GET",
             host=splited_url.get_url_without_path(),
             headers=self.headers | headers,
             path=splited_url.path,
+            json=json,
+            body=body
         )
         loop = asyncio.get_event_loop()
         future = loop.create_future()
