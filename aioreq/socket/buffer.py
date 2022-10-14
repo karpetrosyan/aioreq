@@ -1,8 +1,24 @@
 import logging
 
 from ..settings import BUFFER_SIZE
+from collections import deque
 
 log = logging.getLogger('aioreq')
+
+class Queue:
+
+    def __init__(self, iterable = None):
+
+        if iterable is None:
+            iterable = ()
+        self._queue = deque(iterable)
+
+    def append(self, value):
+        self._queue.appendleft(value)
+        return value
+
+    def pop(self):
+        return self._queue.pop()
 
 class Buffer:
     """
@@ -20,6 +36,23 @@ class Buffer:
 
         self.data = bytearray(BUFFER_SIZE)
         self.current_point = 0
+        self.unique_id = 0
+        self.queue = Queue()
+
+    def get_id(self):
+        id = self.unique_id
+        self.unique_id += 1
+        return id
+
+    def clear_id(self):
+        self.unique_id = 0
+
+
+    async def my_turn_to_add(self, unique_id, data_len):
+        while self.queue[-1][1] != unique_id or (not await self.buffer_freeing(data_len)):
+            await asyncio.sleep(0)
+        self.queue.pop()
+        return
 
     async def add_bytes(self, data: bytes):
         """
@@ -29,9 +62,10 @@ class Buffer:
         :type data: bytearray
         :returns: None
         """
+        unique_id = self.get_id()
 
         data_len = len(data)
-        await self.buffer_freeing(data_len)
+        await self.my_turn_to_add(unique_id, data_len)
         assert BUFFER_SIZE - self.current_point >= data_len
         self.data[self.current_point:self.current_point+data_len] = data
         self += data_len

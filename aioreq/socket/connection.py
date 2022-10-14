@@ -55,7 +55,6 @@ class HttpClientProtocol(asyncio.Protocol):
     Pipeline works for HTTP/1.1
     """
 
-
     def __init__(self):
         """
         Initalization method for HttpClientProtocol which implements low level socket programming
@@ -66,14 +65,12 @@ class HttpClientProtocol(asyncio.Protocol):
         self.decoded_data = ''
         self.message_pending = False
         self.expected_length = None
-        self.buffer_callbacks = 0
 
     def clean_communication(self):
         self.message_pending = False
         self.expected_length = None
         self.decoded_data = ''
         self.future = None
-        self.buffer_callbacks = 0
 
     def verify_response(self):
         """
@@ -101,8 +98,6 @@ class HttpClientProtocol(asyncio.Protocol):
         :param future: future which called this method after finishing
         :returns: None
         """
-        if future:
-            self.buffer_callbacks -= 1
 
         loop = asyncio.get_event_loop()
         if not self.message_pending:
@@ -121,18 +116,12 @@ class HttpClientProtocol(asyncio.Protocol):
                             ))
                         )
                 left_add_bytes_task.add_done_callback(self.check_buffer)
-                self.buffer_callbacks += 1
                 self.decoded_data = self.decoded_data[:without_body_length]
         else:
             if self.buffer.current_point >= self.expected_length:
                 body_data = self.buffer.get_data(self.expected_length)
                 self.decoded_data +=  body_data
                 return self.verify_response()
-
-        if (not self.buffer_callbacks) and self.transport.is_closing():
-            # if not processing data and transport is closed then raise an exception
-            print(self.future)
-            self.future.set_result(ClosedConnectionWithoutResponse())
             
 
     def connection_made(self, transport):
@@ -157,7 +146,6 @@ class HttpClientProtocol(asyncio.Protocol):
         loop = asyncio.get_event_loop()
         add_buffer_task = loop.create_task(self.buffer.add_bytes(data))
         add_buffer_task.add_done_callback(self.check_buffer)
-        self.buffer_callbacks += 1
         
     def connection_lost(self, exc):
         """
