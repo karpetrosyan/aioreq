@@ -136,6 +136,7 @@ class PendingMessage:
         self.body_receiving_strategy: BodyReceiveStrategies | None = None
         self.body_start: int | None = None
         self.content_length: int | None = None
+        self.bytes_should_receive: int = 0 
 
     def headers_done(self) -> bool:
         """
@@ -150,9 +151,29 @@ class PendingMessage:
             self.__headers_done = is_done
         return self.__headers_done
 
-    def parse_by_content_length(self) -> None:
-        ...
-    def parse_by_chunk(self) -> None: ...
+    def parse_by_content_length(self) -> None | int:
+        if len(self.text) >= self.body_start + self.content_length:
+            return self.body_start + self.content_length
+            
+    def parse_by_chunk(self) -> None | int:
+        
+        if self.bytes_should_receive:
+            if self.body_start + self.bytes_should_receive <= len(self.text):
+                self.body_start += self.bytes_should_receive
+                self.bytes_should_receive = 0
+        else:
+            end_match = ResponseParser.regex_end_chunks.search(self.text)
+            if end_match:
+                self.body_start += end_match.end - end_match.start
+                return self.body_start
+
+            match = ResponseParser.regex_find_chunk.serach(self.text)
+            if match is None:
+                return
+            size = int(match.group('content_size'))
+            self.bytes_should_receive += size
+
+
     def find_strategy(self) -> None:
         content_length = ResponseParser.search_content_length
         if content_lenth is not None:
@@ -161,7 +182,7 @@ class PendingMessage:
         else:
             self.body_receiving_strategy = BodyReceiveStrategies('chunked')
 
-    def add_data(self, text: str) -> bool:
+    def add_data(self, text: str) -> None | int:
         self.text += text
 
         if self.headers_done():
@@ -172,15 +193,14 @@ class PendingMessage:
             match self.body_receiving_strategy.value:
                 
                 case 'chunked':
-                    self.parse_by_content_length()
+                    parse_fnc = self.parse_by_content_length
                 case 'content_length':
-                    self.parse_by_chunk()
+                    parse_fnc = self.parse_by_chunk
                 case _:
                     assert False, "Strategy not found"
-            
-
-
-        
+            result = parse_fnc()
+            if result and isinstance(result, int):
+                return result
 
 
 class Response(BaseResponse):
