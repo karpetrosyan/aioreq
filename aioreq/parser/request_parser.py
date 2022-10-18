@@ -1,3 +1,4 @@
+import json as _json
 
 from abc import ABCMeta
 from abc import abstractmethod
@@ -40,7 +41,8 @@ class RequestParser(BaseRequestParser):
                 cls.sum_path_parameters(request.path_parameters)
 
         if request.json:
-            request.headers['Content-Length'] = len(request.json)
+            json_encoded = _json.dumps(request.json)
+            request.headers['Content-Length'] = len(json_encoded)
             request.headers['Content-Type'] = "application/json"
 
         message = ('\r\n'.join((
@@ -51,6 +53,6 @@ class RequestParser(BaseRequestParser):
 
         if request.json:
             message += (
-                f"{request.json}")
+                f"{json_encoded}")
 
         return message
