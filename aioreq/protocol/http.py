@@ -134,9 +134,24 @@ class PendingMessage:
         self.text = text
         self.__headers_done: bool = False
         self.body_receiving_strategy: BodyReceiveStrategies | None = None
-        self.body_start: int | None = None
         self.content_length: int | None = None
-        self.bytes_should_receive: int = 0 
+        self.bytes_should_receive_and_save: int = 0 
+        self.bytes_should_receive_and_ignore: int = 0
+        self.message_data : str = ''
+
+    def switch_data(self, length: int) -> None:
+        log.info(f"Switching data with length : {length}")
+        self.message_data += self.text[:length]
+        self.text = self.text[length:]
+
+    def message_verify(self) -> None:
+        msg = self.message_data
+        self.message_data = ''
+        return msg
+
+    def ignore_data(self, length: int) -> None:
+        log.info(f"Ignoring {repr(self.text[:length])}")
+        self.text = self.text[length:]
 
     def headers_done(self) -> bool:
         """
@@ -148,53 +163,54 @@ class PendingMessage:
             is_done = ResponseParser.headers_done(self.text)
             log.info(f"{is_done=}")
             if is_done:
-                self.body_start = ResponseParser.get_without_body_length(self.text)
+                without_body_len = ResponseParser.get_without_body_length(self.text)
+                self.switch_data(without_body_len)
             self.__headers_done = is_done
         return self.__headers_done
 
     def parse_by_content_length(self) -> None | int:
-        if len(self.text) >= self.body_start + self.content_length:
-            return self.body_start + self.content_length
+        if len(self.text) >= self.content_length:
+            self.switch_data(self.content_length)
+            return self.message_verify()
             
     def parse_by_chunk(self) -> None | int:
-        log.info(repr(f"tail = {self.text[self.body_start:]}"))
        
         while True:
-            log.info(f'Parsing by chunks')
-            if self.bytes_should_receive:
-                log.info(f"{self.bytes_should_receive=}")
-                if self.body_start + self.bytes_should_receive <= len(self.text):
-                    log.info(f"{self.text=}")
-                    log.info(f"received {self.bytes_should_receive} {self.text[self.body_start: self.body_start + self.bytes_should_receive]}")
-                    self.body_start += self.bytes_should_receive
-                    self.bytes_should_receive = 0
+            log.info(f'Parsing by chunks {repr(self.text)=}')
+
+            if self.bytes_should_receive_and_save:
+                if self.bytes_should_receive_and_save <= len(self.text):
+                    self.switch_data(self.bytes_should_receive_and_save)
+                    self.bytes_should_receive_and_save = 0
+                    self.bytes_should_receive_and_ignore = 2
+            elif self.bytes_should_receive_and_ignore:
+                if self.bytes_should_receive_and_ignore <= len(self.text):
+                    self.ignore_data(self.bytes_should_receive_and_ignore) 
+                    self.bytes_should_receive_and_ignore = 0
             else:
                 for pattern in ResponseParser.regex_end_chunks:
-                    end_match = pattern.search(self.text[self.body_start:])
+                    end_match = pattern.search(self.text)
                     if end_match:
-                        self.body_start += end_match.end() - end_match.start()
                         log.info(f"{end_match=}")
-                        return self.body_start
+                        return self.message_verify()
 
-                match = ResponseParser.regex_find_chunk.search(self.text[self.body_start:])
+                match = ResponseParser.regex_find_chunk.search(self.text)
                 log.info(f"{match=}")
                 if match is None:
                     return
                 size = int(match.group('content_size'))
-                self.bytes_should_receive += size + 2
-                self.body_start += match.end() - match.start()
-                continue
-            break
+                self.bytes_should_receive_and_save = size
+                log.info(f"{self.bytes_should_receive_and_save=}")
+                self.ignore_data(match.end() - match.start())
 
 
     def find_strategy(self) -> None:
-        content_length = ResponseParser.search_content_length(self.text)
+        content_length = ResponseParser.search_content_length(self.message_data)
         if content_length is not None:
             self.content_length = content_length
             self.body_receiving_strategy = BodyReceiveStrategies('content_length')
         else:
             self.body_receiving_strategy = BodyReceiveStrategies('chunked')
-        log.info(f"Strategy for {self.text=} is {self.body_receiving_strategy=}")
 
     def add_data(self, text: str) -> None | int:
         log.info(f"Got {text=}")
@@ -214,9 +230,8 @@ class PendingMessage:
                 case _:
                     assert False, "Strategy not found"
             result = parse_fnc()
-            if result and isinstance(result, int):
-                log.info(f"Got result {self.text[:result]}")
-                return self.text[:result]
+            if result is not None:
+                return result
 
 
 class Response(BaseResponse):
