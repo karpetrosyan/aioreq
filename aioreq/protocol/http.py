@@ -1,16 +1,25 @@
-import asyncio
 import logging
+import asyncio
 import json as _json
 
-from ..parser.response_parser import ResponseParser
+from abc import abstractmethod
 from ..parser.url_parser import UrlParser
 from ..parser.response_parser import ResponseParser
+from ..parser import request_parser
 from ..socket.connection import resolve_domain
 from ..socket.connection import HttpClientProtocol
 from ..settings import LOGGER_NAME
 from ..settings import DEFAULT_CONNECTION_TIMEOUT
+from ..socket.buffer import HttpBuffer
+from typing import Iterable
+from enum import Enum
 
 log = logging.getLogger(LOGGER_NAME)
+
+class BodyReceiveStrategies(Enum):
+    chunked = 'chunked'
+    content_length = 'content_length'
+
 
 class HttpProtocol:
     """
@@ -19,12 +28,21 @@ class HttpProtocol:
     """
 
     safe_methods = (
-            "GET",
-            "HEAD"
-            )
+        "GET",
+        "HEAD"
+    )
+
 
 class BaseRequest(HttpProtocol):
-    ...
+    """
+    Base Requets
+    """
+
+
+class BaseResponse(HttpProtocol):
+    """
+    Base Response
+    """
 
 class Request(BaseRequest):
     """
@@ -37,15 +55,16 @@ class Request(BaseRequest):
 
     def __init__(
             self,
-            method : str,
+            method: str,
             host: str,
-            headers: dict | None,
+            headers: dict,
             path: str,
-            raw_request: None | str = None,
-            body: str = '',
+            raw_request: None | bytes = None,
+            body: str | bytearray | bytes = '',
             json: str = '',
-            path_parameters = (),
-            scheme_and_version: str = 'HTTP/1.1'
+            path_parameters: Iterable[Iterable[str]] | None = None,
+            scheme_and_version: str = 'HTTP/1.1',
+            parser: request_parser.RequestParser | None = None
     ) -> None:
         """
         Request initialization method
@@ -54,9 +73,13 @@ class Request(BaseRequest):
         :param host: HTTP header host which contains host's domain
         :param headers: HTTP headers
         :param path: HTTP server endpoint path specified after top-level domain
-        :scheme_and_version: HTTP scheme and version where HTTP is scheme 1.1 is a version
+        :scheme_and_version: HTTP scheme and version
+        where HTTP is scheme 1.1 is a version
         :returns: None
         """
+
+        if path_parameters is None:
+            path_parameters = ()
 
         self.host = host
         self.headers = headers
@@ -67,8 +90,10 @@ class Request(BaseRequest):
         self.path_parameters = path_parameters
         self.scheme_and_version = scheme_and_version
         self.__raw_request = raw_request
-        self.parser = None
+        self.parser = parser
 
+        if self.parser is None:
+            self.parser = request_parser.RequestParser
 
     def get_raw_request(self) -> bytes:
         """
@@ -83,12 +108,14 @@ class Request(BaseRequest):
             self.parser = request_parser.RequestParser
 
         message = self.parser.parse(self)
-        return message.encode('utf-8')
+        enc_message = message.encode('utf-8')
+        self.__raw_request = enc_message
+        return enc_message
 
     def __repr__(self) -> str:
         return '\n'.join((
             f"Request(",
-            f"\tscheme_and_version='{self.scheme_and_version}'",
+            f"\tscheme_and_version=\'{self.scheme_and_version}\'",
             f"\thost= '{self.host}'",
             f"\tmethod= '{self.method}'",
             f"\tpath= '{self.path}'",
@@ -100,8 +127,61 @@ class Request(BaseRequest):
             ')'
         ))
 
-class BaseResponse(HttpProtocol):
-    ...
+class PendingMessage:
+
+    def __init__(self,
+                 text: str) -> None:
+        self.text = text
+        self.__headers_done
+        self.body_receiving_strategy: BodyReceiveStrategies | None = None
+        self.body_start: int | None = None
+        self.content_length: int | None = None
+
+    def headers_done(self) -> bool:
+        """
+        Check if text contains HTTP message data included full headers
+        or there is headers coming now
+        """
+
+        if not self.__headers_done:
+            is_done = ResponseParser.headers_done(self.text)
+            if is_done:
+                self.body_start = ResponseParser.get_without_body_length(self.text)
+            self.__headers_done = is_done
+        return self.__headers_done
+
+    def parse_by_content_length(self) -> None:
+        ...
+    def parse_by_chunk(self) -> None: ...
+    def find_strategy(self) -> None:
+        content_length = ResponseParser.search_content_length
+        if content_lenth is not None:
+            self.content_length = content_length
+            self.body_receiving_strategy = BodyReceiveStrategies('content_length')
+        else:
+            self.body_receiving_strategy = BodyReceiveStrategies('chunked')
+
+    def add_data(self, text: str) -> bool:
+        self.text += text
+
+        if self.headers_done():
+             
+            if not self.body_receiving_strategy:
+                self.find_strategy()
+
+            match self.body_receiving_strategy.value:
+                
+                case 'chunked':
+                    self.parse_by_content_length()
+                case 'content_length':
+                    self.parse_by_chunk()
+                case _:
+                    assert False, "Strategy not found"
+            
+
+
+        
+
 
 class Response(BaseResponse):
     """
@@ -119,14 +199,16 @@ class Response(BaseResponse):
             status_message: str,
             headers: dict,
             body: str,
-            request: Request = None):
+            request: Request | None = None):
         """
         Response initalization method
 
-        :param scheme_and_version: Version and scheme for http. For example HTTP/1.1
+        :param scheme_and_version: Version and scheme 
+        for http. For example HTTP/1.1
         :param status: response code returned with response
         :param status_message: message returned with response status code
-        :param headers: response headers for example, Connection : Keep-Alive if version lower than HTTP/1.1
+        :param headers: response headers for example, Connection : Keep-Alive
+        if version lower than HTTP/1.1
         :param body: response body
         :param request: request which response is self
         :returns: None
@@ -152,13 +234,140 @@ class Response(BaseResponse):
             ')'
         ))
 
-class Client:
+
+class BaseClient:
+
+    @abstractmethod
+    async def send_request(self,
+                           url: str,
+                           method: str,
+                           body: str | bytearray | bytes = '',
+                           path_parameters: Iterable[Iterable[str]] | None = None,
+                           headers: None | dict = None,
+                           json: str = '') -> Response:
+        raise NotImplementedError
+
+    async def get(self, url, body='', headers=None, json='', path_parameters=None) -> Response:
+        return await self.send_request(
+            url=url,
+            method="GET",
+            body=body,
+            headers=headers,
+            json=json,
+            path_parameters=path_parameters
+        )
+
+    async def post(self, url, body='', headers=None, json='', path_parameters=None) -> Response:
+        return await self.send_request(
+            url=url,
+            method="POST",
+            body=body,
+            headers=headers,
+            json=json,
+            path_parameters=path_parameters
+        )
+
+    async def options(self, url, body='', headers=None, json='', path_parameters=None) -> Response:
+        return await self.send_request(
+            url=url,
+            method="GET",
+            body=body,
+            headers=headers,
+            json=json,
+            path_parameters=path_parameters
+        )
+
+
+    async def head(self, url, body='', headers=None, json='', path_parameters=None) -> Response:
+        return await self.send_request(
+            url=url,
+            method="GET",
+            body=body,
+            headers=headers,
+            json=json,
+            path_parameters=path_parameters
+        )
+
+    async def put(self, url, body='', headers=None, json='', path_parameters=None) -> Response:
+        return await self.send_request(
+            url=url,
+            method="GET",
+            body=body,
+            headers=headers,
+            json=json,
+            path_parameters=path_parameters
+        )
+
+    async def delete(self, url, body='', headers=None, json='', path_parameters=None) -> Response:
+        return await self.send_request(
+            url=url,
+            method="GET",
+            body=body,
+            headers=headers,
+            json=json,
+            path_parameters=path_parameters
+        )
+
+    async def trace(self, url, body='', headers=None, json='', path_parameters=None) -> Response:
+        return await self.send_request(
+            url=url,
+            method="GET",
+            body=body,
+            headers=headers,
+            json=json,
+            path_parameters=path_parameters
+        )
+
+
+    async def connect(self, url, body='', headers=None, json='', path_parameters=None) -> Response:
+        return await self.send_request(
+            url=url,
+            method="GET",
+            body=body,
+            headers=headers,
+            json=json,
+            path_parameters=path_parameters
+        )
+
+    async def patch(self, url, body='', headers=None, json='', path_parameters=None) -> Response:
+        return await self.send_request(
+            url=url,
+            method="GET",
+            body=body,
+            headers=headers,
+            json=json,
+            path_parameters=path_parameters
+        )
+
+
+    async def link(self, url, body='', headers=None, json='', path_parameters=None) -> Response:
+        return await self.send_request(
+            url=url,
+            method="GET",
+            body=body,
+            headers=headers,
+            json=json,
+            path_parameters=path_parameters
+        )
+
+    async def unlink(self, url, body='', headers=None, json='', path_parameters=None) -> Response:
+        return await self.send_request(
+            url=url,
+            method="GET",
+            body=body,
+            headers=headers,
+            json=json,
+            path_parameters=path_parameters
+        )
+
+
+class Client(BaseClient):
     """
     Session like class Client
 
-    Client used to send requests with same headers or 
+    Client used to send requests with same headers or
     send requests using same connections which are stored in
-    the Client's connection pool 
+    the Client's connection pool
     """
 
     def __init__(self, headers=None):
@@ -170,29 +379,31 @@ class Client:
 
         if headers is None:
             headers = {
-                    'User-Agent' : 'Mozilla/5.0',
-                    'Accept'     : 'text/html',
-                    'Accept-Language': 'en-us',
-                    'Accept-Charser': 'ISO-8859-1,utf-8',
-                    'Connection' : 'keep-alive'
-                    }
+                'User-Agent': 'Mozilla/5.0',
+                'Accept': 'text/html',
+                'Accept-Language': 'en-us',
+                'Accept-Charser': 'ISO-8859-1,utf-8',
+                'Connection': 'keep-alive'
+            }
         self.connection_mapper = {}
         self.headers = headers
 
     async def send_request(self,
-                           url: str, 
-                           method: str, 
-                           body: str | bytearray | bytes = '', 
-                           path_parameters: tuple = (),
-                           headers: None | dict = None, 
-                           json: str | None = '') -> Response:
+                           url: str,
+                           method: str,
+                           body: str | bytearray | bytes = '',
+                           path_parameters: Iterable[Iterable[str]] | None = None,
+                           headers: None | dict = None,
+                           json: str = '') -> Response:
         """
-        Simulates http request 
+        Simulates http request
 
         :param url: Url where should be request send
         :param headers: Http headers which should be used in this GET request
         :param body: Http body part
-        :returns: Response object which represents returned by server response 
+        :param method: Http message mthod
+        :param path_parameters:
+        :returns: Response object which represents returned by server response
         """
 
         if headers is None:
@@ -206,7 +417,7 @@ class Client:
             host=splited_url.get_url_without_path(),
             headers=self.headers | headers,
             path=splited_url.path,
-            path_parameters = path_parameters,
+            path_parameters=path_parameters,
             json=json,
             body=body
         )
@@ -221,36 +432,18 @@ class Client:
         response.request = request
         return response
 
-
-
-    async def get(self, url, body='', headers=None, json='') -> Response:
-        return await self.send_request(
-                url=url,
-                method="GET",
-                body=body,
-                headers=headers,
-                json=json,
-                )
-
-    async def post(self, url, body='', headers=None, json='') -> Response:
-        return await self.send_request(
-                url=url,
-                method="POST",
-                body=body,
-                headers=headers,
-                json=json,
-                )
-
     async def make_connection(self, splited_url):
         """
         Getting connection from already opened connections, to perform Keep-Alive logic,
         if these connections exists or create the new one and save into connection pool
 
-        :param splited_url: Url object which contains all url parts (scheme, version, subdomain, domain, ...)
+        :param splited_url: Url object which contains all url parts
+        (scheme, version, subdomain, domain, ...)
         :returns: (transport, protocol) which are objects returned by loop.create_connection method
         """
 
-        transport, protocol = self.connection_mapper.get(splited_url.get_url_for_dns(), (None, None))
+        transport, protocol = self.connection_mapper.get(
+            splited_url.get_url_for_dns(), (None, None))
 
         if transport and transport.is_closing():
             transport, protocol = None, None
@@ -264,11 +457,13 @@ class Client:
                 port=port
             )
             try:
-                transport, protocol = await asyncio.wait_for(connection_coroutine, timeout=DEFAULT_CONNECTION_TIMEOUT)
+                transport, protocol = await asyncio.wait_for(connection_coroutine,
+                                                             timeout=DEFAULT_CONNECTION_TIMEOUT)
             except asyncio.exceptions.TimeoutError as err:
                 raise Exception('Timeout Error') from err
 
-            self.connection_mapper[splited_url.get_url_for_dns()] = transport, protocol
+            self.connection_mapper[splited_url.get_url_for_dns(
+            )] = transport, protocol
         else:
             log.info("Using previous connection")
         return transport, protocol

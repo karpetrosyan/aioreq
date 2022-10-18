@@ -1,24 +1,33 @@
-from ..protocol.http import Request
 
 from abc import ABCMeta
 from abc import abstractmethod
 
+from typing import Iterable
+
 class BaseRequestParser(ABCMeta):
-    
+    """
+    Change me
+    """
+
     @abstractmethod
-    def parse(cls, request: Request) -> str:
+    def parse(cls: type, 
+              request: 'Request') -> str:
         ...
 
 
 class RequestParser(BaseRequestParser):
-
+    """
+    For parsing Request object to raw data which can be sent
+    via socket
+    """
+    
     @classmethod
-    def sum_path_parameters(cls, parameters):
+    def sum_path_parameters(cls: type, 
+                            parameters: Iterable[Iterable[str]]):
         return "&".join([f"{key}={value}" for key, value in parameters])
-            
 
     @classmethod
-    def parse(cls, request: Request) -> str:
+    def parse(cls: type, request: 'Request') -> str:
         """
         Parsing object type of request to string representing HTTP message
 
@@ -27,7 +36,8 @@ class RequestParser(BaseRequestParser):
         """
 
         if request.path_parameters:
-            request.path += '?' + self.sum_path_parameters(request.path_parameters)
+            request.path += '?' + \
+                cls.sum_path_parameters(request.path_parameters)
 
         if request.json:
             request.headers['Content-Length'] = len(request.json)
@@ -40,10 +50,7 @@ class RequestParser(BaseRequestParser):
         )) + ('\r\n\r\n'))
 
         if request.json:
-            message += ( 
-                  f"{request.json}")
+            message += (
+                f"{request.json}")
 
         return message
-
-
-
