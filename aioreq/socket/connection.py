@@ -22,7 +22,7 @@ log = logging.getLogger(LOGGER_NAME)
 
 
 @lru_cache
-def resolve_domain(hostname) -> tuple[str, int]:
+def resolve_domain(hostname: str) -> tuple[str, int]:
     """
     Ip port resolving by making dns requests
 
@@ -39,7 +39,7 @@ def resolve_domain(hostname) -> tuple[str, int]:
     except NXDOMAIN as e:
         try:
             result = socket.gethostbyname(hostname), 80
-            return result 
+            return result
         except:
             ...
         raise InvalidDomainName from e
@@ -51,28 +51,32 @@ class HttpClientProtocol(asyncio.Protocol):
     Default HTTP client connection implementation including keep alive connection
     for HTTP/1.1
     Used for sending asynchronus request via one socket, if many requests via the same socket
-    needed then use PiplineHttpClientProtocol
+    needed, then use PiplineHttpClientProtocol
     Pipeline works for HTTP/1.1
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initalization method for HttpClientProtocol which implements low level socket programming
         """
 
-        self.buffer = HttpBuffer()
-        self.future = None
-        self.decoded_data = ''
+        self.buffer: HttpBuffer = HttpBuffer()
+        self.future: None | asyncio.Future = None
+        self.decoded_data: str = ''
+        self.message_pending: bool = False
+        self.expected_length: int | None = None
+
+    def clean_communication(self) -> None:
+        """
+        Cleaning communication variables to re-use the connection
+        """
+
         self.message_pending = False
         self.expected_length = None
-
-    def clean_communication(self):
-        self.message_pending = False
-        self.expected_length = None
         self.decoded_data = ''
         self.future = None
 
-    def verify_response(self):
+    def verify_response(self) -> None:
         """
         Response verifying called when response with specified self.expected_length
         got from the transport.
@@ -81,14 +85,15 @@ class HttpClientProtocol(asyncio.Protocol):
         :returns: None
         """
 
-        log.debug(f"Verify message {self.decoded_data=} | {self.expected_length=}")
+        log.debug(
+            f"Verify message {self.decoded_data=} | {self.expected_length=}")
         try:
             self.future.set_result(self.decoded_data)
         except asyncio.exceptions.InvalidStateError as err:
             log.exception(f"{self.future=} | Result : {self.future.result()}")
         self.clean_communication()
 
-    def check_buffer(self, future):
+    def check_buffer(self, future: asyncio.Future) -> None:
         """
         check_buffer calls whenever bytes added to the application buffer
         using add_bytes or left_add_bytes coroutines,
@@ -110,34 +115,33 @@ class HttpClientProtocol(asyncio.Protocol):
                 log.debug(f"Length not found in {self.decoded_data=}")
             else:
                 self.message_pending = True
-                without_body_length = ResponseParser.get_without_body_length(self.decoded_data)
+                without_body_length = ResponseParser.get_without_body_length(
+                    self.decoded_data)
                 tail = self.decoded_data[without_body_length:]
                 left_add_bytes_task = loop.create_task(
-                        self.buffer.left_add_bytes(bytearray(
-                            tail, 'utf-8'
-                            ))
-                        )
+                    self.buffer.left_add_bytes(bytearray(
+                        tail, 'utf-8'
+                    ))
+                )
                 left_add_bytes_task.add_done_callback(self.check_buffer)
                 self.decoded_data = self.decoded_data[:without_body_length]
         else:
             if self.buffer.current_point >= self.expected_length:
                 body_data = self.buffer.get_data(self.expected_length)
-                self.decoded_data +=  body_data
-                return self.verify_response()
-            
+                self.decoded_data += body_data
+                self.verify_response()
 
-    def connection_made(self, transport):
+    def connection_made(self, transport : asyncio.BaseTransport) -> None:
         """
         asyncio.Protocol callback which calls whenever conntection successfully made
 
         :param transport: transport object which gives us asyncio library
         :returns: None
         """
-        
+
         self.transport = transport
 
-
-    def data_received(self, data):
+    def data_received(self, data: bytes) -> None:
         """
         asycnio.Protocol callback which calls whenever transport receive bytes
 
@@ -148,8 +152,8 @@ class HttpClientProtocol(asyncio.Protocol):
         loop = asyncio.get_event_loop()
         add_buffer_task = loop.create_task(self.buffer.add_bytes(data))
         add_buffer_task.add_done_callback(self.check_buffer)
-        
-    def connection_lost(self, exc):
+
+    def connection_lost(self, exc: None | Exception) -> None:
         """
         asyncio.Protocol callback which calls whenever server closed the connection
 
@@ -157,8 +161,8 @@ class HttpClientProtocol(asyncio.Protocol):
         :returns: None
         """
 
-
-    def send_http_request(self, request: 'Request', future):
+    def send_http_request(self, request: 'Request',
+                          future : asyncio.Future) -> None:
         """
         writes request raw message type of bytearray into transport,
         low level http send function which simulates socket.sendall under the hood
@@ -169,16 +173,18 @@ class HttpClientProtocol(asyncio.Protocol):
         verify_response methods
         :returns: None
         """
-        
+
         raw_text = request.get_raw_request()
         if self.future is not None:
-            raise AsyncRequestsError(f"Trying to use async requests via the same connection using unsupported for that version")
+            raise AsyncRequestsError(
+                f"Trying to use async requests via the same connection using unsupported for that version")
 
         self.future = future
         log.info(f"Sending http request \n{raw_text}")
 
-        request.raw_request = raw_text 
+        request.raw_request = raw_text
         self.transport.write(raw_text)
+
 
 class PiplineHttpClientProtocol(HttpClientProtocol):
     ...
