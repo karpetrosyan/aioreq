@@ -61,6 +61,7 @@ class Url:
         :returns: joined domains with '.' char
         :rtype: str
         """
+        log.info(f"{self=}")
 
         return f"{self.subdomain}.{self.domain}.{self.top_level_domain}"
 
@@ -81,7 +82,7 @@ class UrlParser:
     # regex which getting parts from the url
     regex = re.compile(
             r'(?P<scheme>https?)://'
-            r'(?P<subdomain>www)\.'
+            r'((?P<subdomain>.*?)\.)?'
             r'(?P<domain>.*?)\.'
             r'(?P<top_level_domain>.*?)/'
             r'(?:(?P<path>.*)((?:\?'

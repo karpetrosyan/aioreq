@@ -34,8 +34,11 @@ class ResponseParser:
         r'\r\n'
             )
 
-    regex_find_chunk = "^(?P<content_size>\d+)\r\n"
-    regex_end_chunks = ('0\r\n\r\n', '\r\n\r\n')
+    regex_find_chunk = re.compile("^(?P<content_size>\d+)\r\n")
+    regex_end_chunks = (
+            re.compile('0\r\n\r\n'), 
+            re.compile('\r\n\r\n')
+                        )
 
     @classmethod
     def parse(cls, response: str) -> 'Response':
@@ -115,6 +118,6 @@ class ResponseParser:
 
         match = cls.regex_without_body_length.match(text)
         assert match.start() == 0, f"Got unexpected {match.start=}"
-        return match is None
+        return match is not None
         
 

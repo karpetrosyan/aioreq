@@ -61,24 +61,16 @@ class HttpClientProtocol(asyncio.Protocol):
         """
         from ..protocol.http import PendingMessage
 
-        self.buffer: HttpBuffer = HttpBuffer()
         self.future: None | asyncio.Future = None
-        self.decoded_data: str = ''
-        self.message_pending: bool = False
-        self.expected_length: int | None = None
         self.pending_message: PendingMessage = PendingMessage(text='') 
 
     def clean_communication(self) -> None:
         """
         Cleaning communication variables to re-use the connection
         """
-
-        self.message_pending = False
-        self.expected_length = None
-        self.decoded_data = ''
         self.future = None
 
-    def verify_response(self) -> None:
+    def verify_response(self, raw_data) -> None:
         """
         Response verifying called when response with specified self.expected_length
         got from the transport.
@@ -88,52 +80,12 @@ class HttpClientProtocol(asyncio.Protocol):
         """
 
         log.debug(
-            f"Verify message {self.decoded_data=} | {self.expected_length=}")
+            f"Verify message {raw_data=} | {raw_data=}")
         try:
-            self.future.set_result(self.decoded_data)
+            self.future.set_result(raw_data)
         except asyncio.exceptions.InvalidStateError as err:
             log.exception(f"{self.future=} | Result : {self.future.result()}")
         self.clean_communication()
-
-    def check_buffer(self, future: asyncio.Future) -> None:
-        """
-        check_buffer calls whenever bytes added to the application buffer
-        using add_bytes or left_add_bytes coroutines,
-        checking if message containser Content-Length then receive message with
-        the expected lenth otherwise use chunked messaging
-
-        :param future: future which called this method after finishing
-        :returns: None
-        """
-
-        decoded_added_data = future.result
-        self.pending_message.add_data(decoded_added_data)
-        log.debug(f"Working callback for adding {future.result()=}")
-
-        loop = asyncio.get_event_loop()
-        if not self.message_pending:
-            self.decoded_data += self.buffer.get_data()
-            length = ResponseParser.search_content_length(self.decoded_data)
-            self.expected_length = length
-            if not length:
-                log.debug(f"Length not found in {self.decoded_data=}")
-            else:
-                self.message_pending = True
-                without_body_length = ResponseParser.get_without_body_length(
-                    self.decoded_data)
-                tail = self.decoded_data[without_body_length:]
-                left_add_bytes_task = loop.create_task(
-                    self.buffer.left_add_bytes(bytearray(
-                        tail, 'utf-8'
-                    ))
-                )
-                left_add_bytes_task.add_done_callback(self.check_buffer)
-                self.decoded_data = self.decoded_data[:without_body_length]
-        else:
-            if self.buffer.current_point >= self.expected_length:
-                body_data = self.buffer.get_data(self.expected_length)
-                self.decoded_data += body_data
-                self.verify_response()
 
     def connection_made(self, transport : asyncio.BaseTransport) -> None:
         """
@@ -151,11 +103,11 @@ class HttpClientProtocol(asyncio.Protocol):
 
         :param data: received bytes
         """
+        decoded_data = data.decode()
+        resp = self.pending_message.add_data(decoded_data)
+        if resp is not None:
+            return self.verify_response(resp)
 
-        log.info('Data received: {!r}'.format(data))
-        loop = asyncio.get_event_loop()
-        add_buffer_task = loop.create_task(self.buffer.add_bytes(data))
-        add_buffer_task.add_done_callback(self.check_buffer)
 
     def connection_lost(self, exc: None | Exception) -> None:
         """
@@ -184,7 +136,6 @@ class HttpClientProtocol(asyncio.Protocol):
                 f"Trying to use async requests via the same connection using unsupported for that version")
 
         self.future = future
-        log.info(f"Sending http request \n{raw_text}")
 
         request.raw_request = raw_text
         self.transport.write(raw_text)
