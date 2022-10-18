@@ -34,6 +34,9 @@ class ResponseParser:
         r'\r\n'
             )
 
+    regex_find_chunk = "^(?P<content_size>\d+)\r\n"
+    regex_end_chunks = ('0\r\n\r\n', '\r\n\r\n')
+
     @classmethod
     def parse(cls, response: str) -> 'Response':
         """
