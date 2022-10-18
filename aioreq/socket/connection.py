@@ -59,12 +59,14 @@ class HttpClientProtocol(asyncio.Protocol):
         """
         Initalization method for HttpClientProtocol which implements low level socket programming
         """
+        from ..protocol.http import PendingMessage
 
         self.buffer: HttpBuffer = HttpBuffer()
         self.future: None | asyncio.Future = None
         self.decoded_data: str = ''
         self.message_pending: bool = False
         self.expected_length: int | None = None
+        self.pending_message: PendingMessage = PendingMessage(text='') 
 
     def clean_communication(self) -> None:
         """
@@ -104,6 +106,8 @@ class HttpClientProtocol(asyncio.Protocol):
         :returns: None
         """
 
+        decoded_added_data = future.result
+        self.pending_message.add_data(decoded_added_data)
         log.debug(f"Working callback for adding {future.result()=}")
 
         loop = asyncio.get_event_loop()

@@ -5,11 +5,16 @@ from ..settings import LOGGER_NAME
 
 log = logging.getLogger(LOGGER_NAME)
 
+class BaseResponseParser:
+    """
+    Change me
+    """
+    ...
+
 class ResponseParser:
     """
-    Class with classmethods which used to parse raw response becoming from TCP connection
+    Used to parse raw response becoming from TCP connection
     """
-    
     # Default regex to parse full response
     regex = re.compile(
         r'(?P<scheme_and_version>.*) (?P<status_code>\d{3}) (?P<status_message>.*)\r\n'
@@ -17,14 +22,12 @@ class ResponseParser:
         r'\r\n'
         r'(?P<body>[\d\D]*)'
         )
-
     # Regex to find content-length if exists
     regex_content_length = re.compile(
             r'[\s\S]*content-length\s*:\s*(?P<length>\d*)\r\n',
             re.IGNORECASE
             )
 
-    # Regex which gives all the data excluding body
     regex_without_body_length = re.compile(
         r'(?P<scheme_and_version>.*) (?P<status_code>\d{3}) (?P<status_message>.*)\r\n'
         r'(?P<headers>(?:.*:? .*\r\n)*)'
@@ -32,7 +35,7 @@ class ResponseParser:
             )
 
     @classmethod
-    def parse(cls, response) -> 'Response':
+    def parse(cls, response: str) -> 'Response':
         """
         The main method for this class which parse response
 
@@ -61,7 +64,7 @@ class ResponseParser:
                 )
 
     @classmethod
-    def search_content_length(cls, text):
+    def search_content_length(cls, text: str) -> int | None:
         """
         Search and returned content-length
 
@@ -71,7 +74,7 @@ class ResponseParser:
         :param text: text where content-length maybe exists
         :type text: str
         :returns: content_lenth | None
-        :rtype: int
+        :rtype: int or NoneType
         """
 
         match = cls.regex_content_length.search(text)
@@ -81,7 +84,7 @@ class ResponseParser:
         return int(content_length)
 
     @classmethod
-    def get_without_body_length(cls, text):
+    def get_without_body_length(cls, text: str) -> int:
         """
         Get body less response
 
@@ -98,5 +101,17 @@ class ResponseParser:
         assert match
         assert match.start() == 0, f"Got unexpected {match.start=}"
         return match.end() - match.start()
+
+    @classmethod
+    def headers_done(cls, text:str) -> bool:
+        """
+        Return true if text contains headers done text,
+        which means HTTP message representing in string which
+        contains an empty line
+        """
+
+        match = cls.regex_without_body_length.match(text)
+        assert match.start() == 0, f"Got unexpected {match.start=}"
+        return match is None
         
 

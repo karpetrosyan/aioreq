@@ -90,7 +90,7 @@ class UrlParser:
 
     
     @classmethod
-    def parse(cls, url) -> Url:
+    def parse(cls, url: str) -> Url:
         """
         The main function for this class, which parse url string
 
