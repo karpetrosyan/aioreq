@@ -36,8 +36,8 @@ class ResponseParser:
 
     regex_find_chunk = re.compile("^(?P<content_size>\d+)\r\n")
     regex_end_chunks = (
-            re.compile('0\r\n\r\n'), 
-            re.compile('\r\n\r\n')
+            re.compile('^0\r\n\r\n'), 
+            re.compile('^\r\n\r\n')
                         )
 
     @classmethod

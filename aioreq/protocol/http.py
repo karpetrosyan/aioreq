@@ -157,24 +157,34 @@ class PendingMessage:
             return self.body_start + self.content_length
             
     def parse_by_chunk(self) -> None | int:
-        
-        log.info('Parsing by chunks')
-        if self.bytes_should_receive:
-            if self.body_start + self.bytes_should_receive <= len(self.text):
-                self.body_start += self.bytes_should_receive
-                self.bytes_should_receive = 0
-        else:
-            for pattern in ResponseParser.regex_end_chunks:
-                end_match = pattern.search(self.text)
-                if end_match:
-                    self.body_start += end_match.end() - end_match.start()
-                    return self.body_start
+        log.info(repr(f"tail = {self.text[self.body_start:]}"))
+       
+        while True:
+            log.info(f'Parsing by chunks')
+            if self.bytes_should_receive:
+                log.info(f"{self.bytes_should_receive=}")
+                if self.body_start + self.bytes_should_receive <= len(self.text):
+                    log.info(f"{self.text=}")
+                    log.info(f"received {self.bytes_should_receive} {self.text[self.body_start: self.body_start + self.bytes_should_receive]}")
+                    self.body_start += self.bytes_should_receive
+                    self.bytes_should_receive = 0
+            else:
+                for pattern in ResponseParser.regex_end_chunks:
+                    end_match = pattern.search(self.text[self.body_start:])
+                    if end_match:
+                        self.body_start += end_match.end() - end_match.start()
+                        log.info(f"{end_match=}")
+                        return self.body_start
 
-            match = ResponseParser.regex_find_chunk.serach(self.text)
-            if match is None:
-                return
-            size = int(match.group('content_size'))
-            self.bytes_should_receive += size
+                match = ResponseParser.regex_find_chunk.search(self.text[self.body_start:])
+                log.info(f"{match=}")
+                if match is None:
+                    return
+                size = int(match.group('content_size'))
+                self.bytes_should_receive += size + 2
+                self.body_start += match.end() - match.start()
+                continue
+            break
 
 
     def find_strategy(self) -> None:
@@ -273,7 +283,7 @@ class BaseClient:
                            json: str = '') -> Response:
         raise NotImplementedError
 
-    async def get(self, url, body='', headers=None, json='', path_parameters=None) -> Response:
+    async def get(self, url, body='', headers=None, json="", path_parameters=None) -> Response:
         return await self.send_request(
             url=url,
             method="GET",
@@ -408,7 +418,7 @@ class Client(BaseClient):
                 'User-Agent': 'Mozilla/5.0',
                 'Accept': 'text/html',
                 'Accept-Language': 'en-us',
-                'Accept-Charser': 'ISO-8859-1,utf-8',
+                'Accept-Encoding': 'gzip, deflate',
                 'Connection': 'keep-alive'
             }
         self.connection_mapper = {}
@@ -437,7 +447,6 @@ class Client(BaseClient):
         splited_url = UrlParser.parse(url)
         transport, protocol = await self.make_connection(splited_url)
 
-        json = _json.dumps(json)
         request = Request(
             method=method,
             host=splited_url.get_url_without_path(),
