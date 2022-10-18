@@ -132,7 +132,7 @@ class PendingMessage:
     def __init__(self,
                  text: str) -> None:
         self.text = text
-        self.__headers_done
+        self.__headers_done: bool = False
         self.body_receiving_strategy: BodyReceiveStrategies | None = None
         self.body_start: int | None = None
         self.content_length: int | None = None
@@ -146,6 +146,7 @@ class PendingMessage:
 
         if not self.__headers_done:
             is_done = ResponseParser.headers_done(self.text)
+            log.info(f"{is_done=}")
             if is_done:
                 self.body_start = ResponseParser.get_without_body_length(self.text)
             self.__headers_done = is_done
@@ -157,15 +158,17 @@ class PendingMessage:
             
     def parse_by_chunk(self) -> None | int:
         
+        log.info('Parsing by chunks')
         if self.bytes_should_receive:
             if self.body_start + self.bytes_should_receive <= len(self.text):
                 self.body_start += self.bytes_should_receive
                 self.bytes_should_receive = 0
         else:
-            end_match = ResponseParser.regex_end_chunks.search(self.text)
-            if end_match:
-                self.body_start += end_match.end - end_match.start
-                return self.body_start
+            for pattern in ResponseParser.regex_end_chunks:
+                end_match = pattern.search(self.text)
+                if end_match:
+                    self.body_start += end_match.end() - end_match.start()
+                    return self.body_start
 
             match = ResponseParser.regex_find_chunk.serach(self.text)
             if match is None:
@@ -175,14 +178,16 @@ class PendingMessage:
 
 
     def find_strategy(self) -> None:
-        content_length = ResponseParser.search_content_length
-        if content_lenth is not None:
+        content_length = ResponseParser.search_content_length(self.text)
+        if content_length is not None:
             self.content_length = content_length
             self.body_receiving_strategy = BodyReceiveStrategies('content_length')
         else:
             self.body_receiving_strategy = BodyReceiveStrategies('chunked')
+        log.info(f"Strategy for {self.text=} is {self.body_receiving_strategy=}")
 
     def add_data(self, text: str) -> None | int:
+        log.info(f"Got {text=}")
         self.text += text
 
         if self.headers_done():
@@ -193,14 +198,15 @@ class PendingMessage:
             match self.body_receiving_strategy.value:
                 
                 case 'chunked':
-                    parse_fnc = self.parse_by_content_length
-                case 'content_length':
                     parse_fnc = self.parse_by_chunk
+                case 'content_length':
+                    parse_fnc = self.parse_by_content_length
                 case _:
                     assert False, "Strategy not found"
             result = parse_fnc()
             if result and isinstance(result, int):
-                return result
+                log.info(f"Got result {self.text[:result]}")
+                return self.text[:result]
 
 
 class Response(BaseResponse):
