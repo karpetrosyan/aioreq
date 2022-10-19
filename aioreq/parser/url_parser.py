@@ -70,8 +70,7 @@ class Url:
         Function which dataclasses calls after __init__ done
         """
 
-        self.path = self.path or ''
-        self.path = '/' + self.path
+        self.path = self.path or '/'
         self.fragment = self.fragment or ''
     
 class UrlParser:
@@ -84,10 +83,11 @@ class UrlParser:
             r'(?P<scheme>https?)://'
             r'((?P<subdomain>.*?)\.)?'
             r'(?P<domain>.*?)\.'
-            r'(?P<top_level_domain>.*?)/'
-            r'(?:(?P<path>.*)((?:\?'
-            r'(?P<variables>.*))'
-            r'(?:#(?P<fragment>.*))?)?)?')
+            r'(?P<top_level_domain>[^/#]*)'
+            r'(?:(?P<path>/.*)((?:\?'
+            r'(?P<variables>.*)?))?)?'
+            r'(?:#(?P<fragment>.*))?'
+            )
 
     
     @classmethod
