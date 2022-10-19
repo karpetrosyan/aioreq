@@ -17,8 +17,188 @@ from enum import Enum
 log = logging.getLogger(LOGGER_NAME)
 
 class BodyReceiveStrategies(Enum):
+    """
+    Enumeration which implements Strategy design pattern, used to
+    choose a way of parsing response
+    """
     chunked = 'chunked'
     content_length = 'content_length'
+
+    def parse_content_length(self, pending_message) -> None | str:
+        """
+        Parse incoming PendingMessage object which receiving data which body length
+        specified by Content-Length header.
+
+        RFC[2616] 14.13 Content-Length:
+            The Content-Lenght entity-header field indicates the size of the entity-body,
+            in decimal number of OCTETs, sent to the recipent or, in the case of the HEAD method,
+            the size of the entity-body that would have been sent had the request been a GET.
+
+        :param pending_message: PendingMessage instance representing message receiving
+        :return: None or the verified string which seems like an HTTP message 
+        """
+                                                                                
+
+        if len(pending_message.text) >= pending_message.content_length:
+            pending_message.switch_data(pending_message.content_length)
+            return pending_message.message_verify()
+
+    def parse_chunked(self, pending_message) -> None | str:
+        """
+        Parse incoming PendingMessage object which receiving data which body length
+        specified by Transfer-Encoding : chunked.
+
+        RFC[2616] 3.6.1 Chunked Transfer Coding:
+            The chunked encoding modifies the body of a message in order to transfer it as a series of
+            chunkd, each with its own size indicator, followed by an OPTIONAL trailer containing entity-header
+            fields. This allows dynamically produced content to be transferred along with the information
+            necessary for the recipient to verify that it has received the full message.
+
+        :param pending_message: PendingMessage instance representing message receiving
+        :return: None or the verified string which seems like an HTTP message 
+        """
+
+        while True:
+            log.info(f'Parsing by chunks {repr(pending_message.text)=}')
+
+            if pending_message.bytes_should_receive_and_save:
+                if pending_message.bytes_should_receive_and_save <= len(pending_message.text):
+                    pending_message.switch_data(pending_message.bytes_should_receive_and_save)
+                    pending_message.bytes_should_receive_and_save = 0
+                    pending_message.bytes_should_receive_and_ignore = 2
+            elif pending_message.bytes_should_receive_and_ignore:
+                if pending_message.bytes_should_receive_and_ignore <= len(pending_message.text):
+                    pending_message.ignore_data(pending_message.bytes_should_receive_and_ignore) 
+                    pending_message.bytes_should_receive_and_ignore = 0
+            else:
+                for pattern in ResponseParser.regex_end_chunks:
+                    end_match = pattern.search(pending_message.text)
+                    if end_match:
+                        log.info(f"{end_match=}")
+                        return pending_message.message_verify()
+
+                match = ResponseParser.regex_find_chunk.search(pending_message.text)
+                log.info(f"{match=}")
+                if match is None:
+                    return
+                size = int(match.group('content_size'))
+                pending_message.bytes_should_receive_and_save = size
+                log.info(f"{pending_message.bytes_should_receive_and_save=}")
+                pending_message.ignore_data(match.end() - match.start())
+
+    def parse(self, pending_message) -> str | None:
+
+        match self.value:
+            case 'content_length':
+                return self.parse_content_length(pending_message)
+            case 'chunked':
+                return self.parse_chunked(pending_message)
+
+class PendingMessage:
+    """
+    Implementing message receiving using BodyReceiveStrategies which support
+    receiving by content_length or chunked
+    """
+
+    def __init__(self,
+                 text: str) -> None:
+        self.text = text
+        self.__headers_done: bool = False
+        self.body_receiving_strategy: BodyReceiveStrategies | None = None
+        self.content_length: int | None = None
+        self.bytes_should_receive_and_save: int = 0 
+        self.bytes_should_receive_and_ignore: int = 0
+        self.message_data : str = ''
+
+    def switch_data(self, length: int) -> None:
+        """
+        Delete data from the self.text and add into self.message_data
+
+        :param length: Message length to delete from the self.text
+        :return: None
+        """
+
+        log.info(f"Switching data with length : {length}")
+        self.message_data += self.text[:length]
+        self.text = self.text[length:]
+
+    def message_verify(self) -> None:
+        """
+        If message seems like full, call this method to return and clean the
+        self.message_data
+
+        :returns: None
+        """
+
+        msg = self.message_data
+        self.message_data = ''
+        return msg
+
+    def ignore_data(self, length: int) -> None:
+        """
+        Just delete text from self.text by giving length
+
+        :param length: Length message which should be ignored (deleted)
+        :returns: None
+        """
+
+        log.info(f"Ignoring {repr(self.text[:length])}")
+        self.text = self.text[length:]
+
+    def headers_done(self) -> bool:
+        """
+        Check if text contains HTTP message data included full headers
+        or there is headers coming now
+        """
+
+        if not self.__headers_done:
+            is_done = ResponseParser.headers_done(self.text)
+            log.info(f"{is_done=}")
+            if is_done:
+                without_body_len = ResponseParser.get_without_body_length(self.text)
+                self.switch_data(without_body_len)
+            self.__headers_done = is_done
+        return self.__headers_done
+
+
+    def find_strategy(self) -> None:
+        """
+        Find and set strategy for getting message, it can be chunked receiving or
+        with content_length
+
+        :returns: None
+        """
+
+        content_length = ResponseParser.search_content_length(self.message_data)
+        if content_length is not None:
+            self.content_length = content_length
+            self.body_receiving_strategy = BodyReceiveStrategies.content_length
+        else:
+            self.body_receiving_strategy = BodyReceiveStrategies.chunked
+
+    def add_data(self, text: str) -> None | str:
+        """
+        Calls whenever new data required to be added
+    
+        :param text: Text to add
+        :ptype text: str
+
+        :returns: None if message not verified else verified message
+        """
+
+        log.info(f"Got {text=}")
+        self.text += text
+
+        if self.headers_done():
+             
+            if not self.body_receiving_strategy:
+                self.find_strategy()
+                
+            result = self.body_receiving_strategy.parse(self) 
+            if result is not None:
+                return result
+
+
 
 
 class HttpProtocol:
@@ -127,113 +307,6 @@ class Request(BaseRequest):
             ')'
         ))
 
-class PendingMessage:
-
-    def __init__(self,
-                 text: str) -> None:
-        self.text = text
-        self.__headers_done: bool = False
-        self.body_receiving_strategy: BodyReceiveStrategies | None = None
-        self.content_length: int | None = None
-        self.bytes_should_receive_and_save: int = 0 
-        self.bytes_should_receive_and_ignore: int = 0
-        self.message_data : str = ''
-
-    def switch_data(self, length: int) -> None:
-        log.info(f"Switching data with length : {length}")
-        self.message_data += self.text[:length]
-        self.text = self.text[length:]
-
-    def message_verify(self) -> None:
-        msg = self.message_data
-        self.message_data = ''
-        return msg
-
-    def ignore_data(self, length: int) -> None:
-        log.info(f"Ignoring {repr(self.text[:length])}")
-        self.text = self.text[length:]
-
-    def headers_done(self) -> bool:
-        """
-        Check if text contains HTTP message data included full headers
-        or there is headers coming now
-        """
-
-        if not self.__headers_done:
-            is_done = ResponseParser.headers_done(self.text)
-            log.info(f"{is_done=}")
-            if is_done:
-                without_body_len = ResponseParser.get_without_body_length(self.text)
-                self.switch_data(without_body_len)
-            self.__headers_done = is_done
-        return self.__headers_done
-
-    def parse_by_content_length(self) -> None | int:
-        if len(self.text) >= self.content_length:
-            self.switch_data(self.content_length)
-            return self.message_verify()
-            
-    def parse_by_chunk(self) -> None | int:
-       
-        while True:
-            log.info(f'Parsing by chunks {repr(self.text)=}')
-
-            if self.bytes_should_receive_and_save:
-                if self.bytes_should_receive_and_save <= len(self.text):
-                    self.switch_data(self.bytes_should_receive_and_save)
-                    self.bytes_should_receive_and_save = 0
-                    self.bytes_should_receive_and_ignore = 2
-            elif self.bytes_should_receive_and_ignore:
-                if self.bytes_should_receive_and_ignore <= len(self.text):
-                    self.ignore_data(self.bytes_should_receive_and_ignore) 
-                    self.bytes_should_receive_and_ignore = 0
-            else:
-                for pattern in ResponseParser.regex_end_chunks:
-                    end_match = pattern.search(self.text)
-                    if end_match:
-                        log.info(f"{end_match=}")
-                        return self.message_verify()
-
-                match = ResponseParser.regex_find_chunk.search(self.text)
-                log.info(f"{match=}")
-                if match is None:
-                    return
-                size = int(match.group('content_size'))
-                self.bytes_should_receive_and_save = size
-                log.info(f"{self.bytes_should_receive_and_save=}")
-                self.ignore_data(match.end() - match.start())
-
-
-    def find_strategy(self) -> None:
-        content_length = ResponseParser.search_content_length(self.message_data)
-        if content_length is not None:
-            self.content_length = content_length
-            self.body_receiving_strategy = BodyReceiveStrategies('content_length')
-        else:
-            self.body_receiving_strategy = BodyReceiveStrategies('chunked')
-
-    def add_data(self, text: str) -> None | int:
-        log.info(f"Got {text=}")
-        self.text += text
-
-        if self.headers_done():
-             
-            if not self.body_receiving_strategy:
-                self.find_strategy()
-
-            match self.body_receiving_strategy.value:
-                
-                case 'chunked':
-                    parse_fnc = self.parse_by_chunk
-                case 'content_length':
-                    parse_fnc = self.parse_by_content_length
-                case _:
-                    assert False, "Strategy not found"
-            result = parse_fnc()
-            if result is not None:
-                return result
-
-
 class Response(BaseResponse):
     """
     Http response Class
@@ -321,7 +394,7 @@ class BaseClient:
     async def options(self, url, body='', headers=None, json='', path_parameters=None) -> Response:
         return await self.send_request(
             url=url,
-            method="GET",
+            method="OPTIONS",
             body=body,
             headers=headers,
             json=json,
@@ -332,7 +405,7 @@ class BaseClient:
     async def head(self, url, body='', headers=None, json='', path_parameters=None) -> Response:
         return await self.send_request(
             url=url,
-            method="GET",
+            method="HEAD",
             body=body,
             headers=headers,
             json=json,
@@ -342,7 +415,7 @@ class BaseClient:
     async def put(self, url, body='', headers=None, json='', path_parameters=None) -> Response:
         return await self.send_request(
             url=url,
-            method="GET",
+            method="PUT",
             body=body,
             headers=headers,
             json=json,
@@ -352,7 +425,7 @@ class BaseClient:
     async def delete(self, url, body='', headers=None, json='', path_parameters=None) -> Response:
         return await self.send_request(
             url=url,
-            method="GET",
+            method="DELETE",
             body=body,
             headers=headers,
             json=json,
@@ -362,7 +435,7 @@ class BaseClient:
     async def trace(self, url, body='', headers=None, json='', path_parameters=None) -> Response:
         return await self.send_request(
             url=url,
-            method="GET",
+            method="TRACE",
             body=body,
             headers=headers,
             json=json,
@@ -373,7 +446,7 @@ class BaseClient:
     async def connect(self, url, body='', headers=None, json='', path_parameters=None) -> Response:
         return await self.send_request(
             url=url,
-            method="GET",
+            method="CONNECT",
             body=body,
             headers=headers,
             json=json,
@@ -383,7 +456,7 @@ class BaseClient:
     async def patch(self, url, body='', headers=None, json='', path_parameters=None) -> Response:
         return await self.send_request(
             url=url,
-            method="GET",
+            method="PATCH",
             body=body,
             headers=headers,
             json=json,
@@ -394,7 +467,7 @@ class BaseClient:
     async def link(self, url, body='', headers=None, json='', path_parameters=None) -> Response:
         return await self.send_request(
             url=url,
-            method="GET",
+            method="LINK",
             body=body,
             headers=headers,
             json=json,
@@ -404,7 +477,7 @@ class BaseClient:
     async def unlink(self, url, body='', headers=None, json='', path_parameters=None) -> Response:
         return await self.send_request(
             url=url,
-            method="GET",
+            method="UNLINK",
             body=body,
             headers=headers,
             json=json,
