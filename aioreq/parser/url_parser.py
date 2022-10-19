@@ -22,13 +22,13 @@ class Url:
     :param fragment: Url fragment comes after varaibles like  #test where test is the fragment
     """
 
-    scheme : str
-    subdomain : str
-    domain : str
-    top_level_domain : str
-    path : str
-    variables : str
-    fragment : str
+    scheme : str | None
+    subdomain : str | None
+    domain : str | None
+    top_level_domain : str | None
+    path : str | None
+    variables : str | None
+    fragment : str | None
 
     def get_url(self):
         """
@@ -38,10 +38,12 @@ class Url:
         :rtype: str
         """
 
-        url = f"{self.scheme}://{self.subdomain}.{self.domain}.{self.top_level_domain}"
+        subdomain = self.subdomain or ''
+
+        url = f"{self.scheme}://{subdomain}.{self.domain}.{self.top_level_domain}"
         url += self.path
         url += f'?{self.variables}' if self.variables else ''
-        url += self.fragment
+        url += self.fragment or ''
         return url
 
     def get_url_without_path(self):
@@ -71,7 +73,6 @@ class Url:
         """
 
         self.path = self.path or '/'
-        self.fragment = self.fragment or ''
     
 class UrlParser:
     """
@@ -81,11 +82,11 @@ class UrlParser:
     # regex which getting parts from the url
     regex = re.compile(
             r'(?P<scheme>https?)://'
-            r'((?P<subdomain>.*?)\.)?'
-            r'(?P<domain>.*?)\.'
+            r'((?P<subdomain>[^\.]*)\.)?'
+            r'(?P<domain>[^\.]*)\.'
             r'(?P<top_level_domain>[^/#]*)'
-            r'(?:(?P<path>/.*)((?:\?'
-            r'(?P<variables>.*)?))?)?'
+            r'(?:(?P<path>/[^#?]*)((?:\?'
+            r'(?P<variables>[^#]*)?))?)?'
             r'(?:#(?P<fragment>.*))?'
             )
 

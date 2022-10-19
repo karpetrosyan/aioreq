@@ -261,6 +261,12 @@ class Request(BaseRequest):
         if path_parameters is None:
             path_parameters = ()
 
+        if body and json:
+            raise ValueError(
+                "Body and Json attributes was"
+                "given but there is only one needed"
+            )
+
         self.host = host
         self.headers = headers
         self.method = method

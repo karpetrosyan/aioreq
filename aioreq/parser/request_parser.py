@@ -40,19 +40,23 @@ class RequestParser(BaseRequestParser):
             request.path += '?' + \
                 cls.sum_path_parameters(request.path_parameters)
 
+
+
         if request.json:
             json_encoded = _json.dumps(request.json)
             request.headers['Content-Length'] = len(json_encoded)
             request.headers['Content-Type'] = "application/json"
+        elif request.body:
+            request.headers['Content-Length'] = len(request.body) 
 
         message = ('\r\n'.join((
             f'{request.method} {request.path} {request.scheme_and_version}',
-            f'Host:   {request.host}',
+            f'Host:  {request.host}',
             *(f"{key}:  {value}" for key, value in request.headers.items()),
         )) + ('\r\n\r\n'))
 
         if request.json:
-            message += (
-                f"{json_encoded}")
+            message += json_encoded
+        message += request.body or ''
 
         return message
