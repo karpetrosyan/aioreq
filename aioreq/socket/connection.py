@@ -21,7 +21,7 @@ resolver.nameservers = [DEFAULT_DNS_SERVER]
 log = logging.getLogger(LOGGER_NAME)
 
 
-@lru_cache
+@lru_cache # cache already requested domains
 def resolve_domain(hostname: str) -> tuple[str, int]:
     """
     Ip port resolving by making dns requests

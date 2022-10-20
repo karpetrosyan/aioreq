@@ -6,7 +6,7 @@ from configparser import ConfigParser
 ini_file_path_posix = Path(__file__).parent / 'settings.ini'
 ini_file_path = str(ini_file_path_posix.absolute())
 
-
+print(ini_file_path)
 parser = ConfigParser()
 parser.read(ini_file_path)
 
