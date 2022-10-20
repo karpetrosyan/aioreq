@@ -2,6 +2,7 @@ import logging
 import asyncio
 import json as _json
 
+from abc import ABCMeta
 from abc import abstractmethod
 from ..parser.url_parser import UrlParser
 from ..parser.response_parser import ResponseParser
@@ -87,6 +88,13 @@ class BodyReceiveStrategies(Enum):
                 pending_message.ignore_data(match.end() - match.start())
 
     def parse(self, pending_message) -> str | None:
+        """
+        General interface to work with parsing strategies
+
+        :param pending_message: object which is working with message pending
+        :returns: Parsed and verifyed http response or NoneType object
+        :rtype: str or None
+        """
 
         match self.value:
             case 'content_length':
@@ -197,8 +205,6 @@ class PendingMessage:
             result = self.body_receiving_strategy.parse(self) 
             if result is not None:
                 return result
-
-
 
 
 class HttpProtocol:
@@ -352,6 +358,13 @@ class Response(BaseResponse):
         self.request = request
 
     def __eq__(self, value) -> bool:
+        """
+        Check if two Request objects have the same attributes or not
+
+        :param value: right side value of equal
+        :returns: True if values are equal
+        :rtype: bool
+        """
 
         if type(self) != type(value):
             return False
@@ -372,7 +385,7 @@ class Response(BaseResponse):
         ))
 
 
-class BaseClient:
+class BaseClient(metaclass=ABCMeta):
 
     @abstractmethod
     async def send_request(self,
@@ -409,7 +422,7 @@ class BaseClient:
             url=url,
             method="OPTIONS",
             body=body,
-            headers=headers,
+            headers=headers | self.header,
             json=json,
             path_parameters=path_parameters
         )
@@ -420,7 +433,7 @@ class BaseClient:
             url=url,
             method="HEAD",
             body=body,
-            headers=headers,
+            headers=headers | self.header,
             json=json,
             path_parameters=path_parameters
         )
@@ -430,7 +443,7 @@ class BaseClient:
             url=url,
             method="PUT",
             body=body,
-            headers=headers,
+            headers=headers | self.header,
             json=json,
             path_parameters=path_parameters
         )
@@ -440,7 +453,7 @@ class BaseClient:
             url=url,
             method="DELETE",
             body=body,
-            headers=headers,
+            headers=headers | self.header,
             json=json,
             path_parameters=path_parameters
         )
@@ -450,7 +463,7 @@ class BaseClient:
             url=url,
             method="TRACE",
             body=body,
-            headers=headers,
+            headers=headers | self.header,
             json=json,
             path_parameters=path_parameters
         )
@@ -461,7 +474,7 @@ class BaseClient:
             url=url,
             method="CONNECT",
             body=body,
-            headers=headers,
+            headers=headers | self.header,
             json=json,
             path_parameters=path_parameters
         )
@@ -471,7 +484,7 @@ class BaseClient:
             url=url,
             method="PATCH",
             body=body,
-            headers=headers,
+            headers=headers | self.header,
             json=json,
             path_parameters=path_parameters
         )
@@ -482,7 +495,7 @@ class BaseClient:
             url=url,
             method="LINK",
             body=body,
-            headers=headers,
+            headers=headers | self.header,
             json=json,
             path_parameters=path_parameters
         )
@@ -492,7 +505,7 @@ class BaseClient:
             url=url,
             method="UNLINK",
             body=body,
-            headers=headers,
+            headers=headers | self.header,
             json=json,
             path_parameters=path_parameters
         )

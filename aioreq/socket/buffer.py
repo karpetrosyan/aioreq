@@ -1,3 +1,7 @@
+"""
+Deprecated
+"""
+
 import logging
 import asyncio
 
