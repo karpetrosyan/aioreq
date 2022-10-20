@@ -5,6 +5,11 @@ from aioreq.protocol.http import Request
 
 
 class TestRequestParser:
+    """
+    Check if aioreq.parser.request_parser works fine,
+    do some parsing and compare with the expected results,
+    checking some exceptions
+    """
 
     @pytest.mark.parametrize(
             argnames=("request_obj", "expected_result"),
@@ -86,19 +91,28 @@ class TestRequestParser:
                         )
  
                     )
- 
-
                 ],
             )
 
     def test_parse(self,
                    request_obj: Request,
                    expected_result: str):
+        """
+        Check if request parsing works correctly
+
+        :param request_obj: The Request object representing http request
+        :param expected_result: String which is expected result for parsed request_obj
+        :returns: None
+        """
 
         parsed_data = RequestParser.parse(request_obj)
         assert parsed_data == expected_result
 
     def test_body_and_json_capability(self):
+        """
+        Check if exception is raising when body and json
+        existing for request
+        """
 
         with pytest.raises(Exception, match=r"Body and Json") as e:
             Request(

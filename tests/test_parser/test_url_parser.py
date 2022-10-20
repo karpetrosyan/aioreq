@@ -37,6 +37,9 @@ class TestUrlParser:
             variables: str | None,
             fragment: str | None
             ):
+        """
+        Check if UrlParser parses raw url text correctly
+        """
         
         url_object = UrlParser.parse(url)
 
