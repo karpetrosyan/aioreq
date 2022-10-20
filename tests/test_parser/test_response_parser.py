@@ -126,7 +126,3 @@ class TestResponseParser:
         result = ResponseParser.search_content_length(response_raw)
         assert result == expected_result
         
-
-        
-
-
