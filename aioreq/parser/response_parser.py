@@ -18,7 +18,7 @@ class ResponseParser:
     # Default regex to parse full response
     regex = re.compile(
         r'(?P<scheme_and_version>.*) (?P<status_code>\d{3}) (?P<status_message>.*)\r\n'
-        r'(?P<headers>(?:.*:? .*\r\n)*)'
+        r'(?P<headers>(?:[^:]*: *.*?\r\n)*)'
         r'\r\n'
         r'(?P<body>[\d\D]*)'
         )
@@ -60,6 +60,9 @@ class ResponseParser:
         for line in unparsed_headers.split('\r\n')[:-1]:
             key, value = line.split(':', 1)
             headers[key.strip()] = value.strip()
+
+        if status:
+            status = int(status)
 
         return Response(
                 scheme_and_version = scheme_and_version,

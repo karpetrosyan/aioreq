@@ -40,8 +40,6 @@ class RequestParser(BaseRequestParser):
             request.path += '?' + \
                 cls.sum_path_parameters(request.path_parameters)
 
-
-
         if request.json:
             json_encoded = _json.dumps(request.json)
             request.headers['Content-Length'] = len(json_encoded)

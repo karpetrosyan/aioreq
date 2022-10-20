@@ -298,6 +298,7 @@ class Request(BaseRequest):
         self.__raw_request = enc_message
         return enc_message
 
+
     def __repr__(self) -> str:
         return '\n'.join((
             f"Request(",
@@ -349,6 +350,12 @@ class Response(BaseResponse):
         self.headers = headers
         self.body = body
         self.request = request
+
+    def __eq__(self, value) -> bool:
+
+        if type(self) != type(value):
+            return False
+        return self.__dict__ == value.__dict__
 
     def __repr__(self):
         return '\n'.join((
