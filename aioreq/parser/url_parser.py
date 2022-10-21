@@ -24,9 +24,9 @@ class Url:
 
     scheme : str | None
     subdomain : str | None
-    domain : str | None
-    top_level_domain : str | None
-    path : str | None
+    domain : str
+    top_level_domain : str
+    path : str
     variables : str | None
     fragment : str | None
 

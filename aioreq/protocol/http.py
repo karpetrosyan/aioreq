@@ -41,10 +41,10 @@ class BodyReceiveStrategies(Enum):
         :return: None or the verified string which seems like an HTTP message 
         """
                                                                                 
-
         if len(pending_message.text) >= pending_message.content_length:
             pending_message.switch_data(pending_message.content_length)
             return pending_message.message_verify()
+        return None
 
     def parse_chunked(self, pending_message) -> None | str:
         """
@@ -83,7 +83,7 @@ class BodyReceiveStrategies(Enum):
                 match = ResponseParser.regex_find_chunk.search(pending_message.text)
                 log.info(f"{match=}")
                 if match is None:
-                    return
+                    return None
                 size = int(match.group('content_size'))
                 pending_message.bytes_should_receive_and_save = size
                 log.info(f"{pending_message.bytes_should_receive_and_save=}")
@@ -103,6 +103,7 @@ class BodyReceiveStrategies(Enum):
                 return self.parse_content_length(pending_message)
             case 'chunked':
                 return self.parse_chunked(pending_message)
+        return None
 
 class PendingMessage:
     """
@@ -132,7 +133,7 @@ class PendingMessage:
         self.message_data += self.text[:length]
         self.text = self.text[length:]
 
-    def message_verify(self) -> None:
+    def message_verify(self) -> str:
         """
         If message seems like full, call this method to return and clean the
         self.message_data
@@ -200,13 +201,14 @@ class PendingMessage:
         self.text += text
 
         if self.headers_done():
-             
+            
             if not self.body_receiving_strategy:
                 self.find_strategy()
                 
-            result = self.body_receiving_strategy.parse(self) 
+            result = self.body_receiving_strategy.parse(self) # type: ignore
             if result is not None:
                 return result
+        return None
 
 
 class HttpProtocol:
@@ -269,7 +271,7 @@ class Request(BaseRequest):
             path: str,
             raw_request: None | bytes = None,
             body: str | bytearray | bytes = '',
-            json: str = '',
+            json: dict | None = None,
             path_parameters: Iterable[Iterable[str]] | None = None,
             scheme_and_version: str = 'HTTP/1.1',
     ) -> None:
@@ -409,17 +411,17 @@ class BaseClient(metaclass=ABCMeta):
                            url: str,
                            method: str,
                            body: str | bytearray | bytes = '',
-                           path_parameters: Iterable[Iterable[str]] | None = None,
+                           path_parameters: Collection[Iterable[str]] | None = None,
                            headers: None | dict = None,
-                           json: str = '') -> Response:...
+                           json: dict | None = None) -> Response:...
     async def get(
             self, 
             url : str, 
             body : str | bytearray | bytes= '', 
             headers : None | dict[str, str] = None, 
             json: dict | None = None, 
-            path_parameters: None | Iterable[Collection[str, str]] = None, 
-            obj_headers = Iterable[Header]) -> Response: ...
+            path_parameters: None | Collection[tuple[str, str]] = None, 
+            obj_headers : None | Iterable[Header] = None) -> Response: ...
 
 
 class Client(BaseClient):
@@ -450,13 +452,13 @@ class Client(BaseClient):
         self.headers = headers
 
     async def get(
-             self, 
-             url : str, 
-             body : str | bytearray | bytes= '', 
-             headers : None | dict[str, str] = None, 
-             json: dict | None = None, 
-             path_parameters: None | Iterable[Collection[str, str]] = None, 
-             obj_headers = Iterable[Header]) -> Response:
+            self, 
+            url : str, 
+            body : str | bytearray | bytes= '', 
+            headers : None | dict[str, str] = None, 
+            json: dict | None = None, 
+            path_parameters: None | Collection[tuple[str, str]] = None, 
+            obj_headers : None | Iterable[Header] = None) -> Response:
         return await self.send_request(
             url=url,
             method="GET",
@@ -471,10 +473,11 @@ class Client(BaseClient):
                            url: str,
                            method: str,
                            body: str | bytearray | bytes = '',
-                           path_parameters: Iterable[Iterable[str]] | None = None,
+                           path_parameters: Collection[Iterable[str]] | None = None,
                            headers: None | dict[str, str] = None,
                            json: dict | None = None,
-                           obj_headers: Iterable[Header] = None) -> Response:
+                           obj_headers : None | Iterable[Header] = None) -> Response:
+
         """
         Simulates http request
 
