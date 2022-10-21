@@ -11,6 +11,7 @@ from enum import Enum
 def qvalue_validate(qvalue: int) -> bool:
     if 0 <= qvalue <= 1:
         return True
+    return False
 
 class ContentCoding(Enum):
     gzip = 'gzip'
@@ -24,7 +25,9 @@ class MimeType(Enum):
     html = 'application/html'
 
 class Header(ABC):
-   
+
+    key = 'NotImplemented'
+
     @property
     @abstractmethod
     def value(self) -> str:
@@ -43,21 +46,21 @@ class AcceptEncoding(Header):
     def __init__(
             self,
             codings: Collection[
-                Collection[ContentCoding, int]
-                | Collection[ContentCoding],
+                tuple[ContentCoding, int]
+                | tuple[ContentCoding],
                 ]):
         self._codings = {}
         for coding in codings:
             assert 0 < len(coding) < 3
             if len(coding) == 2:
-                coding, qvalue = coding
+                coding_type, qvalue = coding # type: ignore
             else:
-                coding ,= coding
+                coding_type = coding[0]
                 qvalue = 1
 
             if not qvalue_validate(qvalue):
                 raise ValueError("Invalid qvalue given -> {qvalue}. Expected int between 0, 1")
-            self. _codings[coding.value] = qvalue
+            self. _codings[coding_type.value] = qvalue
 
     @property
     def value(self):
@@ -82,11 +85,11 @@ class Accept(Header):
     def __init__(
             self,
             types = Collection[
-                Collection[
+                tuple[
                     MimeType,
                     int | None
                     ] |
-                Collection[
+                tuple[
                     MimeType
                     ]
                 ]

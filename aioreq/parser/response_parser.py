@@ -41,7 +41,7 @@ class ResponseParser:
                         )
 
     @classmethod
-    def parse(cls, response: str) -> 'Response':
+    def parse(cls, response: str) -> 'Response': # type: ignore
         """
         The main method for this class which parse response
 
@@ -54,15 +54,14 @@ class ResponseParser:
 
         from ..protocol.http import Response
         match = cls.regex.search(response)
-        scheme_and_version, status, status_message, unparsed_headers, body = match.groups()
+        scheme_and_version, status, status_message, unparsed_headers, body = match.groups() # type: ignore
         headers = {}
         log.debug(f"Got response {unparsed_headers=}")
         for line in unparsed_headers.split('\r\n')[:-1]:
             key, value = line.split(':', 1)
             headers[key.strip()] = value.strip()
 
-        if status:
-            status = int(status)
+        status = int(status)
 
         return Response(
                 scheme_and_version = scheme_and_version,
@@ -120,7 +119,7 @@ class ResponseParser:
         """
 
         match = cls.regex_without_body_length.match(text)
-        assert match.start() == 0, f"Got unexpected {match.start=}"
+        assert match.start() == 0, f"Got unexpected {match.start=}" # type: ignore
         return match is not None
         
 

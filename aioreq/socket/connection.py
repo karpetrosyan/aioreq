@@ -15,8 +15,8 @@ from ..parser.url_parser import UrlParser
 from ..settings import DEFAULT_DNS_SERVER, LOGGER_NAME
 from .buffer import Buffer, HttpBuffer
 
-resolver = resolver.Resolver()
-resolver.nameservers = [DEFAULT_DNS_SERVER]
+resolver = resolver.Resolver() # type: ignore
+resolver.nameservers = [DEFAULT_DNS_SERVER] # type: ignore
 
 log = logging.getLogger(LOGGER_NAME)
 
@@ -82,12 +82,12 @@ class HttpClientProtocol(asyncio.Protocol):
         log.debug(
             f"Verify message {raw_data=} | {raw_data=}")
         try:
-            self.future.set_result(raw_data)
+            self.future.set_result(raw_data) # type: ignore
         except asyncio.exceptions.InvalidStateError as err:
-            log.exception(f"{self.future=} | Result : {self.future.result()}")
+            log.exception(f"{self.future=} | Result : {self.future.result()}") # type: ignore
         self.clean_communication()
 
-    def connection_made(self, transport : asyncio.BaseTransport) -> None:
+    def connection_made(self, transport) -> None:
         """
         asyncio.Protocol callback which calls whenever conntection successfully made
 
@@ -117,7 +117,7 @@ class HttpClientProtocol(asyncio.Protocol):
         :returns: None
         """
 
-    def send_http_request(self, request: 'Request',
+    def send_http_request(self, request: 'Request', # type: ignore
                           future : asyncio.Future) -> None:
         """
         writes request raw message type of bytearray into transport,
@@ -139,7 +139,6 @@ class HttpClientProtocol(asyncio.Protocol):
 
         request.raw_request = raw_text
         self.transport.write(raw_text)
-
 
 class PiplineHttpClientProtocol(HttpClientProtocol):
     ...

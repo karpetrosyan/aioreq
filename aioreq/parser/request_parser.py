@@ -12,7 +12,7 @@ class BaseRequestParser(ABCMeta):
 
     @abstractmethod
     def parse(cls: type, 
-              request: 'Request') -> str:
+              request: 'Request') -> str: # type: ignore
         ...
 
 
@@ -28,7 +28,7 @@ class RequestParser(BaseRequestParser):
         return "&".join([f"{key}={value}" for key, value in parameters])
 
     @classmethod
-    def parse(cls: type, request: 'Request') -> str:
+    def parse(cls, request: 'Request') -> str: # type: ignore 
         """
         Parsing object type of request to string representing HTTP message
 
@@ -41,10 +41,11 @@ class RequestParser(BaseRequestParser):
                 cls.sum_path_parameters(request.path_parameters)
 
         if request.json:
-            json_encoded = _json.dumps(request.json)
-            request.headers['Content-Length'] = len(json_encoded)
+            request.body = _json.dumps(request.json)
+            request.json = ''
             request.headers['Content-Type'] = "application/json"
-        elif request.body:
+
+        if request.body:
             request.headers['Content-Length'] = len(request.body) 
 
         message = ('\r\n'.join((
@@ -53,8 +54,6 @@ class RequestParser(BaseRequestParser):
             *(f"{key}:  {value}" for key, value in request.headers.items()),
         )) + ('\r\n\r\n'))
 
-        if request.json:
-            message += json_encoded
         message += request.body or ''
 
         return message
