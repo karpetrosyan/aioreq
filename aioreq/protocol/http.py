@@ -4,6 +4,7 @@ import json as _json
 
 from abc import ABCMeta
 from abc import abstractmethod
+from collections.abc import Collection
 from ..parser.url_parser import UrlParser
 from ..parser.response_parser import ResponseParser
 from ..parser import request_parser
@@ -12,6 +13,7 @@ from ..socket.connection import HttpClientProtocol
 from ..settings import LOGGER_NAME
 from ..settings import DEFAULT_CONNECTION_TIMEOUT
 from ..socket.buffer import HttpBuffer
+from ..protocol.headers import Header
 from typing import Iterable
 from enum import Enum
 
@@ -219,10 +221,30 @@ class HttpProtocol:
     )
 
 
+class ImportedParser:
+
+    def __init__(self, value):
+        self.module = value
+
+    def __set_name__(self, owner, name):
+        self.name = name
+
+    def __get__(self, obj, objtype=None):
+        if self.module is None:
+            self.__set__(obj, request_parser.RequestParser)
+        return self.module
+
+    def __set__(self, obj, value):
+        self.module = value
+
+
 class BaseRequest(HttpProtocol):
     """
     Base Requets
     """
+
+    parser = ImportedParser(None)
+    
 
 
 class BaseResponse(HttpProtocol):
@@ -250,7 +272,6 @@ class Request(BaseRequest):
             json: str = '',
             path_parameters: Iterable[Iterable[str]] | None = None,
             scheme_and_version: str = 'HTTP/1.1',
-            parser: request_parser.RequestParser | None = None
     ) -> None:
         """
         Request initialization method
@@ -282,10 +303,6 @@ class Request(BaseRequest):
         self.path_parameters = path_parameters
         self.scheme_and_version = scheme_and_version
         self.__raw_request = raw_request
-        self.parser = parser
-
-        if self.parser is None:
-            self.parser = request_parser.RequestParser
 
     def get_raw_request(self) -> bytes:
         """
@@ -295,15 +312,15 @@ class Request(BaseRequest):
         if self.__raw_request:
             return self.__raw_request
 
-        if self.parser is None:
-            from ..parser import request_parser
-            self.parser = request_parser.RequestParser
+        self.parser = request_parser.RequestParser
 
         message = self.parser.parse(self)
         enc_message = message.encode('utf-8')
         self.__raw_request = enc_message
         return enc_message
 
+    def add_header(self, header: Header) -> None:
+        self.headers[header.key] = header.value
 
     def __repr__(self) -> str:
         return '\n'.join((
@@ -394,121 +411,15 @@ class BaseClient(metaclass=ABCMeta):
                            body: str | bytearray | bytes = '',
                            path_parameters: Iterable[Iterable[str]] | None = None,
                            headers: None | dict = None,
-                           json: str = '') -> Response:
-        raise NotImplementedError
-
-    async def get(self, url, body='', headers=None, json="", path_parameters=None) -> Response:
-        return await self.send_request(
-            url=url,
-            method="GET",
-            body=body,
-            headers=headers,
-            json=json,
-            path_parameters=path_parameters
-        )
-
-    async def post(self, url, body='', headers=None, json='', path_parameters=None) -> Response:
-        return await self.send_request(
-            url=url,
-            method="POST",
-            body=body,
-            headers=headers,
-            json=json,
-            path_parameters=path_parameters
-        )
-
-    async def options(self, url, body='', headers=None, json='', path_parameters=None) -> Response:
-        return await self.send_request(
-            url=url,
-            method="OPTIONS",
-            body=body,
-            headers=headers | self.header,
-            json=json,
-            path_parameters=path_parameters
-        )
-
-
-    async def head(self, url, body='', headers=None, json='', path_parameters=None) -> Response:
-        return await self.send_request(
-            url=url,
-            method="HEAD",
-            body=body,
-            headers=headers | self.header,
-            json=json,
-            path_parameters=path_parameters
-        )
-
-    async def put(self, url, body='', headers=None, json='', path_parameters=None) -> Response:
-        return await self.send_request(
-            url=url,
-            method="PUT",
-            body=body,
-            headers=headers | self.header,
-            json=json,
-            path_parameters=path_parameters
-        )
-
-    async def delete(self, url, body='', headers=None, json='', path_parameters=None) -> Response:
-        return await self.send_request(
-            url=url,
-            method="DELETE",
-            body=body,
-            headers=headers | self.header,
-            json=json,
-            path_parameters=path_parameters
-        )
-
-    async def trace(self, url, body='', headers=None, json='', path_parameters=None) -> Response:
-        return await self.send_request(
-            url=url,
-            method="TRACE",
-            body=body,
-            headers=headers | self.header,
-            json=json,
-            path_parameters=path_parameters
-        )
-
-
-    async def connect(self, url, body='', headers=None, json='', path_parameters=None) -> Response:
-        return await self.send_request(
-            url=url,
-            method="CONNECT",
-            body=body,
-            headers=headers | self.header,
-            json=json,
-            path_parameters=path_parameters
-        )
-
-    async def patch(self, url, body='', headers=None, json='', path_parameters=None) -> Response:
-        return await self.send_request(
-            url=url,
-            method="PATCH",
-            body=body,
-            headers=headers | self.header,
-            json=json,
-            path_parameters=path_parameters
-        )
-
-
-    async def link(self, url, body='', headers=None, json='', path_parameters=None) -> Response:
-        return await self.send_request(
-            url=url,
-            method="LINK",
-            body=body,
-            headers=headers | self.header,
-            json=json,
-            path_parameters=path_parameters
-        )
-
-    async def unlink(self, url, body='', headers=None, json='', path_parameters=None) -> Response:
-        return await self.send_request(
-            url=url,
-            method="UNLINK",
-            body=body,
-            headers=headers | self.header,
-            json=json,
-            path_parameters=path_parameters
-        )
+                           json: str = '') -> Response:...
+    async def get(
+            self, 
+            url : str, 
+            body : str | bytearray | bytes= '', 
+            headers : None | dict[str, str] = None, 
+            json: dict | None = None, 
+            path_parameters: None | Iterable[Collection[str, str]] = None, 
+            obj_headers = Iterable[Header]) -> Response: ...
 
 
 class Client(BaseClient):
@@ -538,13 +449,32 @@ class Client(BaseClient):
         self.connection_mapper = {}
         self.headers = headers
 
+    async def get(
+             self, 
+             url : str, 
+             body : str | bytearray | bytes= '', 
+             headers : None | dict[str, str] = None, 
+             json: dict | None = None, 
+             path_parameters: None | Iterable[Collection[str, str]] = None, 
+             obj_headers = Iterable[Header]) -> Response:
+        return await self.send_request(
+            url=url,
+            method="GET",
+            body=body,
+            headers=headers,
+            json=json,
+            path_parameters=path_parameters,
+            obj_headers=obj_headers
+        )
+
     async def send_request(self,
                            url: str,
                            method: str,
                            body: str | bytearray | bytes = '',
                            path_parameters: Iterable[Iterable[str]] | None = None,
-                           headers: None | dict = None,
-                           json: str = '') -> Response:
+                           headers: None | dict[str, str] = None,
+                           json: dict | None = None,
+                           obj_headers: Iterable[Header] = None) -> Response:
         """
         Simulates http request
 
