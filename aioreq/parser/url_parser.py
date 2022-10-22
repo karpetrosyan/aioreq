@@ -66,7 +66,6 @@ class Url:
         :returns: joined domains with '.' char
         :rtype: str
         """
-        log.info(f"{self=}")
 
         if self.subdomain:
             return f"{self.subdomain}.{self.domain}.{self.top_level_domain}"

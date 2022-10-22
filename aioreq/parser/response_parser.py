@@ -34,7 +34,7 @@ class ResponseParser:
         r'\r\n'
             )
 
-    regex_find_chunk = re.compile("^(?P<content_size>\d+)\r\n")
+    regex_find_chunk = re.compile("^(?P<content_size>[0-9abcdefABCDEF]+)\r\n")
     regex_end_chunks = (
             re.compile('^0\r\n\r\n'), 
             re.compile('^\r\n\r\n')
@@ -56,7 +56,6 @@ class ResponseParser:
         match = cls.regex.search(response)
         scheme_and_version, status, status_message, unparsed_headers, body = match.groups() # type: ignore
         headers = {}
-        log.debug(f"Got response {unparsed_headers=}")
         for line in unparsed_headers.split('\r\n')[:-1]:
             key, value = line.split(':', 1)
             headers[key.strip()] = value.strip()

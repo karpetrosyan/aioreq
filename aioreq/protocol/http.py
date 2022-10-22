@@ -66,14 +66,18 @@ class BodyReceiveStrategies(Enum):
         :return: None or the verified string which seems like an HTTP message 
         """
 
+        input()
         while True:
-            log.info(f'Parsing by chunks {repr(pending_message.text)=}')
-
+            log.debug(f"Should receive {pending_message.bytes_should_receive_and_save}")
+            log.debug(f"Should ignore {pending_message.bytes_should_receive_and_ignore}")
+            log.debug(f"Text len {len(pending_message.text)=}")
             if pending_message.bytes_should_receive_and_save:
                 if pending_message.bytes_should_receive_and_save <= len(pending_message.text):
                     pending_message.switch_data(pending_message.bytes_should_receive_and_save)
                     pending_message.bytes_should_receive_and_save = 0
                     pending_message.bytes_should_receive_and_ignore = 2
+                else:
+                    return
             elif pending_message.bytes_should_receive_and_ignore:
                 if pending_message.bytes_should_receive_and_ignore <= len(pending_message.text):
                     pending_message.ignore_data(pending_message.bytes_should_receive_and_ignore) 
@@ -82,16 +86,15 @@ class BodyReceiveStrategies(Enum):
                 for pattern in ResponseParser.regex_end_chunks:
                     end_match = pattern.search(pending_message.text)
                     if end_match:
-                        log.info(f"{end_match=}")
                         return pending_message.message_verify()
 
                 match = ResponseParser.regex_find_chunk.search(pending_message.text)
-                log.info(f"{match=}")
                 if match is None:
+                    log.debug(f"Cant find any chunk size")
                     return None
-                size = int(match.group('content_size'))
+                size = int(match.group('content_size'), 16)
+                log.debug(f"Chunk size is.. {size=}")
                 pending_message.bytes_should_receive_and_save = size
-                log.info(f"{pending_message.bytes_should_receive_and_save=}")
                 pending_message.ignore_data(match.end() - match.start())
 
     def parse(self, pending_message) -> str | None:
@@ -134,7 +137,6 @@ class PendingMessage:
         :return: None
         """
 
-        log.info(f"Switching data with length : {length}")
         self.message_data += self.text[:length]
         self.text = self.text[length:]
 
@@ -158,7 +160,6 @@ class PendingMessage:
         :returns: None
         """
 
-        log.info(f"Ignoring {repr(self.text[:length])}")
         self.text = self.text[length:]
 
     def headers_done(self) -> bool:
@@ -169,7 +170,7 @@ class PendingMessage:
 
         if not self.__headers_done:
             is_done = ResponseParser.headers_done(self.text)
-            log.info(f"{is_done=}")
+            log.debug(f"Headers done {is_done=}")
             if is_done:
                 without_body_len = ResponseParser.get_without_body_length(self.text)
                 self.switch_data(without_body_len)
@@ -192,7 +193,7 @@ class PendingMessage:
         else:
             self.body_receiving_strategy = BodyReceiveStrategies.chunked
 
-    def add_data(self, text: str) -> None | str:
+    def add_data(self, text: str, data_len: int) -> None | str:
         """
         Calls whenever new data required to be added
     
@@ -202,7 +203,6 @@ class PendingMessage:
         :returns: None if message not verified else verified message
         """
 
-        log.info(f"Got {text=}")
         self.text += text
 
         if self.headers_done():
@@ -542,7 +542,6 @@ class Client(BaseClient):
             ip, port = resolve_domain(splited_url.get_url_for_dns())
             loop = asyncio.get_event_loop()
 
-            print(port, splited_url.scheme)
             connection_coroutine = loop.create_connection(
                 lambda: HttpClientProtocol(),
                 host=ip,
