@@ -29,7 +29,8 @@ def resolve_domain(hostname: str) -> tuple[str, int]:
     :returns: ip and port for that domain
     :rtype: [str, int]
     """
-
+    
+    log.debug(f"trying resolve {hostname=}")
     try:
         resolved_data = resolver.resolve(hostname)
         for ip in resolved_data:
@@ -102,6 +103,7 @@ class HttpClientProtocol(asyncio.Protocol):
 
         :param data: received bytes
         """
+        log.debug(f"Received {data=}")
         decoded_data = data.decode()
         resp = self.pending_message.add_data(decoded_data)
         if resp is not None:
@@ -137,7 +139,7 @@ class HttpClientProtocol(asyncio.Protocol):
         self.future = future
 
         request.raw_request = raw_text
-        log.error(f'Writing text: {raw_text}')
+        log.debug(f'Writing text: {raw_text}')
         self.transport.write(raw_text)
 
 class PiplineHttpClientProtocol(HttpClientProtocol):
