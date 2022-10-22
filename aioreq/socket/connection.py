@@ -20,7 +20,6 @@ resolver.nameservers = [DEFAULT_DNS_SERVER] # type: ignore
 
 log = logging.getLogger(LOGGER_NAME)
 
-
 @lru_cache # cache already requested domains
 def resolve_domain(hostname: str) -> tuple[str, int]:
     """
@@ -138,6 +137,7 @@ class HttpClientProtocol(asyncio.Protocol):
         self.future = future
 
         request.raw_request = raw_text
+        log.error(f'Writing text: {raw_text}')
         self.transport.write(raw_text)
 
 class PiplineHttpClientProtocol(HttpClientProtocol):
