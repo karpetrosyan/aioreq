@@ -1,5 +1,7 @@
+import ssl
 import logging
 import asyncio
+import certifi
 import json as _json
 
 from abc import ABCMeta
@@ -18,6 +20,9 @@ from typing import Iterable
 from enum import Enum
 
 log = logging.getLogger(LOGGER_NAME)
+
+context = ssl.SSLContext(ssl.PROTOCOL_TLS)
+context.load_verify_locations(certifi.where())
 
 class BodyReceiveStrategies(Enum):
     """
@@ -273,6 +278,8 @@ class Request(BaseRequest):
             body: str | bytearray | bytes = '',
             json: dict | None = None,
             path_parameters: Iterable[Iterable[str]] | None = None,
+            scheme: str = 'HTTP',
+            version: str = '1.1',
             scheme_and_version: str = 'HTTP/1.1',
     ) -> None:
         """
@@ -303,6 +310,8 @@ class Request(BaseRequest):
         self.body = body
         self.json = json
         self.path_parameters = path_parameters
+        self.scheme = scheme
+        self.version = version
         self.scheme_and_version = scheme_and_version
         self.__raw_request = raw_request
 
@@ -440,16 +449,14 @@ class Client(BaseClient):
         :param headers: HTTP headers that should be sent with each request in this session
         """
 
-        if headers is None:
-            headers = {
-                'User-Agent': 'Mozilla/5.0',
-                'Accept': 'text/html',
-                'Accept-Language': 'en-us',
-                'Accept-Encoding': 'gzip, deflate',
-                'Connection': 'keep-alive'
-            }
         self.connection_mapper = {}
-        self.headers = headers
+        
+        _headers = {}
+
+        if headers:
+            self.headers = headers | _headers
+        else:
+            self.headers = _headers
 
     async def get(
             self, 
@@ -501,7 +508,8 @@ class Client(BaseClient):
             path=splited_url.path,
             path_parameters=path_parameters,
             json=json,
-            body=body
+            body=body,
+            scheme='HTTP' if url.startswith('https') else 'HTTP'
         )
         loop = asyncio.get_event_loop()
         future = loop.create_future()
@@ -533,10 +541,13 @@ class Client(BaseClient):
         if not transport:
             ip, port = resolve_domain(splited_url.get_url_for_dns())
             loop = asyncio.get_event_loop()
+
+            print(port, splited_url.scheme)
             connection_coroutine = loop.create_connection(
                 lambda: HttpClientProtocol(),
                 host=ip,
-                port=port
+                port=port if splited_url.scheme == 'http' else 443,
+                ssl=context if splited_url.scheme == 'https' else None,
             )
             try:
                 transport, protocol = await asyncio.wait_for(connection_coroutine,

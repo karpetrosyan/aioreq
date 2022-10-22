@@ -38,9 +38,10 @@ class Url:
         :rtype: str
         """
 
-        subdomain = self.subdomain or ''
-
-        url = f"{self.scheme}://{subdomain}.{self.domain}.{self.top_level_domain}"
+        if self.subdomain:
+            url = f"{self.scheme}://{subdomain}.{self.domain}.{self.top_level_domain}"
+        else:
+            url = f"{self.scheme}://{self.domain}.{self.top_level_domain}"
         url += self.path
         url += f'?{self.variables}' if self.variables else ''
         url += self.fragment or ''
@@ -53,8 +54,10 @@ class Url:
         :returns: pathless url
         :rtype: str
         """
-
-        return f"{self.scheme}://{self.subdomain}.{self.domain}.{self.top_level_domain}"
+        
+        if self.subdomain:
+            return f"{self.scheme}://{self.subdomain}.{self.domain}.{self.top_level_domain}"
+        return f"{self.scheme}://{self.domain}.{self.top_level_domain}"
 
     def get_url_for_dns(self):
         """
@@ -65,7 +68,9 @@ class Url:
         """
         log.info(f"{self=}")
 
-        return f"{self.subdomain}.{self.domain}.{self.top_level_domain}"
+        if self.subdomain:
+            return f"{self.subdomain}.{self.domain}.{self.top_level_domain}"
+        return f"{self.domain}.{self.top_level_domain}"
 
     def __post_init__(self):
         """

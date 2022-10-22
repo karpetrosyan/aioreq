@@ -6,7 +6,6 @@ from configparser import ConfigParser
 ini_file_path_posix = Path(__file__).parent / 'settings.ini'
 ini_file_path = str(ini_file_path_posix.absolute())
 
-print(ini_file_path)
 parser = ConfigParser()
 parser.read(ini_file_path)
 
@@ -54,8 +53,8 @@ if any(
     raise ValueError('Setting.ini contains invalid value '
                      f'for one of the logger levels ({MAIN_LOGGER_LEVEL} or {STREAM_HANDLER_LEVEL})')
 
-MAIN_LOGGER_LEVEL = log_level_mapper.get(MAIN_LOGGER_LEVEL)
-STREAM_HANDLER_LEVEL = log_level_mapper.get(STREAM_HANDLER_LEVEL)
+MAIN_LOGGER_LEVEL = log_level_mapper.get(MAIN_LOGGER_LEVEL) # type: ignore
+STREAM_HANDLER_LEVEL = log_level_mapper.get(STREAM_HANDLER_LEVEL) # type: ignore
 
 FORMAT = parser.get('Logging', 'stream_handler_format')
 
