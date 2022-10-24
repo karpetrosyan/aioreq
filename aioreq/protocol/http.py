@@ -302,8 +302,8 @@ class Request(BaseRequest):
         :returns: None
         """
 
-        if '://' not in host:
-            raise ValueError("Invalid host scheme")
+#        if '://' not in host:                          # deprecated
+#            raise ValueError("Invalid host scheme")
 
         if path_parameters is None:
             path_parameters = ()
@@ -481,7 +481,8 @@ class Client(BaseClient):
             json: dict | None = None, 
             path_parameters: None | Collection[tuple[str, str]] = None, 
             obj_headers : None | Iterable[Header] = None,
-            timeout: int = 0) -> Response:
+            timeout: int = 0,
+            redirect: int = 3) -> Response:
         return await self.send_request(
             url=url,
             method="GET",
@@ -490,7 +491,8 @@ class Client(BaseClient):
             json=json,
             path_parameters=path_parameters,
             obj_headers=obj_headers,
-            timeout=timeout
+            timeout=timeout,
+            redirect=redirect
         )
 
     async def send_request(self,
@@ -501,7 +503,8 @@ class Client(BaseClient):
                            headers: None | dict[str, str] = None,
                            json: dict | None = None,
                            obj_headers : None | Iterable[Header] = None,
-                           timeout: int = 0) -> Response:
+                           timeout: int = 0,
+                           redirect: int = 3) -> Response:
 
         """
         Simulates http request
@@ -546,6 +549,20 @@ class Client(BaseClient):
             raise raw_response
         response = ResponseParser.parse(raw_response)
         response.request = request
+        if (response.status // 100) == 3 and redirect > 0: 
+
+            return await self.send_request(
+                            url=response.headers['Location'],
+                            method="GET",
+                            body=body,
+                            headers=headers,
+                            json=json,
+                            path_parameters=path_parameters,
+                            obj_headers=obj_headers,
+                            timeout=timeout,
+                            redirect=redirect-1)
+                        
+
         return response
 
     async def make_connection(self, splited_url):

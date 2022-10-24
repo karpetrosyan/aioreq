@@ -61,7 +61,7 @@ FORMAT = parser.get('Logging', 'stream_handler_format')
 for key, value in log_format_mapper.items():
     FORMAT = FORMAT.replace(key, value)
 
-BUFFER_SIZE = 4048 #deprecated #deprecated #deprecated
+BUFFER_SIZE = 4048 #deprecated
 
 DEFAULT_CONNECTION_TIMEOUT = parser.getint('Connection', 'default_connection_timeout')
 DEFAULT_DNS_SERVER = parser['Connection']['default_dns_server']
