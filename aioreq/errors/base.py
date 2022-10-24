@@ -1,3 +1,3 @@
 
-class AioreqError(BaseException):
+class AioreqError(Exception):
     ...

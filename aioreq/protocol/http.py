@@ -482,8 +482,9 @@ class Client(BaseClient):
             path_parameters: None | Collection[tuple[str, str]] = None, 
             obj_headers : None | Iterable[Header] = None,
             timeout: int = 0,
-            redirect: int = 3) -> Response:
-        return await self.send_request(
+            redirect: int = 3,
+            retry: int = 3) -> Response:
+        return await self.request_retry_wrapper(
             url=url,
             method="GET",
             body=body,
@@ -492,7 +493,8 @@ class Client(BaseClient):
             path_parameters=path_parameters,
             obj_headers=obj_headers,
             timeout=timeout,
-            redirect=redirect
+            redirect=redirect+1,
+            retry=retry+1
         )
 
     async def send_request(self,
@@ -503,8 +505,7 @@ class Client(BaseClient):
                            headers: None | dict[str, str] = None,
                            json: dict | None = None,
                            obj_headers : None | Iterable[Header] = None,
-                           timeout: int = 0,
-                           redirect: int = 3) -> Response:
+                           timeout: int = 0) -> Response:
 
         """
         Simulates http request
@@ -520,8 +521,10 @@ class Client(BaseClient):
         if headers is None:
             headers = {}
         splited_url = UrlParser.parse(url)
-        transport, protocol = await self.make_connection(splited_url)
-
+        try:
+            transport, protocol = await self.make_connection(splited_url)
+        except ConnectionTimeoutError as e:
+            ...
         request = Request(
             method=method,
             host=splited_url.get_url_without_path(),
@@ -549,21 +552,36 @@ class Client(BaseClient):
             raise raw_response
         response = ResponseParser.parse(raw_response)
         response.request = request
-        if (response.status // 100) == 3 and redirect > 0: 
-
-            return await self.send_request(
-                            url=response.headers['Location'],
-                            method="GET",
-                            body=body,
-                            headers=headers,
-                            json=json,
-                            path_parameters=path_parameters,
-                            obj_headers=obj_headers,
-                            timeout=timeout,
-                            redirect=redirect-1)
-                        
 
         return response
+
+    async def request_redirect_wrapper(self, *args, redirect, **kwargs):
+        redirect = max(1, redirect)
+
+        while redirect != 0:
+            redirect -= 1
+            result = await self.send_request(*args, **kwargs)
+
+            if (result.status // 100) == 3:
+                kwargs['url'] = result.headers['Location']
+                if redirect < 1:
+                    return result
+            else:
+                return result
+            log.info('Redirecting reuqest')
+                    
+    async def request_retry_wrapper(self, *args, retry, **kwargs):
+        retry = max(1, retry)
+
+        while retry != 0:
+            retry -= 1
+            try:
+                result = await self.request_redirect_wrapper(*args, **kwargs)
+                return result
+            except BaseException as e:
+                if retry < 1:
+                    raise e
+            log.info('Retrying request')
 
     async def make_connection(self, splited_url):
         """
