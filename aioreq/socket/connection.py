@@ -104,9 +104,10 @@ class HttpClientProtocol(asyncio.Protocol):
         :param data: received bytes
         """
         log.debug(f"Received {data=}")
-        decoded_data = data.decode()
-        resp = self.pending_message.add_data(decoded_data)
+        resp = self.pending_message.add_data(data)
         if resp is not None:
+            if self.future.done():
+                log.critical(f"Got result but future is done, {self.future.result()=}")
             return self.verify_response(resp)
 
 

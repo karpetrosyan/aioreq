@@ -1,7 +1,10 @@
 from .base import AioreqError
 
-class AsyncRequestsError(Exception):
+class AsyncRequestsError(AioreqError):
     ...
 
-class InvalidDomainName(Exception):
+class InvalidDomainName(AioreqError):
+    ...
+
+class TimeoutError(AioreqError):
     ...
