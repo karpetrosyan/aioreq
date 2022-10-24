@@ -538,7 +538,7 @@ class Client(BaseClient):
                                                              cache_connections=self.cache_connections
                                                              )
         except ConnectionTimeoutError as e:
-            ...
+            raise
         request = Request(
             method=method,
             host=splited_url.get_url_without_path(),
