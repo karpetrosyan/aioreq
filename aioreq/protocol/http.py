@@ -16,6 +16,7 @@ from ..settings import LOGGER_NAME
 from ..settings import DEFAULT_CONNECTION_TIMEOUT
 from ..socket.buffer import HttpBuffer
 from ..protocol.headers import Header
+from ..errors.requests import RequestTimeoutError
 from typing import Iterable
 from enum import Enum
 
@@ -523,8 +524,8 @@ class Client(BaseClient):
         else:
             try:
                 raw_response = await asyncio.wait_for(future, timeout=timeout)
-            except BaseException as e:
-                raise e
+            except asyncio.exceptions.TimeoutError as e:
+                raise RequestTimeoutError("Request timeout error")
 
         if isinstance(raw_response, Exception):
             raise raw_response
