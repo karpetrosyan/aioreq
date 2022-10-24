@@ -17,6 +17,7 @@ from ..settings import DEFAULT_CONNECTION_TIMEOUT
 from ..socket.buffer import HttpBuffer
 from ..protocol.headers import Header
 from ..errors.requests import RequestTimeoutError
+from ..errors.requests import ConnectionTimeoutError
 from typing import Iterable
 from enum import Enum
 
@@ -68,9 +69,12 @@ class BodyReceiveStrategies(Enum):
         """
 
         while True:
-            log.debug(f"Should receive {pending_message.bytes_should_receive_and_save}")
-            log.debug(f"Should ignore {pending_message.bytes_should_receive_and_ignore}")
-            log.debug(f"Text len {len(pending_message.text)=}")
+            log.debug(
+                        (
+                            f"Receive: {pending_message.bytes_should_receive_and_save} | Ignore: "
+                            f"{pending_message.bytes_should_receive_and_ignore} | Text Len: {len(pending_message.text)}"
+                        )
+                    )
             if pending_message.bytes_should_receive_and_save:
                 if pending_message.bytes_should_receive_and_save <= len(pending_message.text):
                     pending_message.switch_data(pending_message.bytes_should_receive_and_save)
@@ -82,6 +86,9 @@ class BodyReceiveStrategies(Enum):
                 if pending_message.bytes_should_receive_and_ignore <= len(pending_message.text):
                     pending_message.ignore_data(pending_message.bytes_should_receive_and_ignore) 
                     pending_message.bytes_should_receive_and_ignore = 0
+                else:
+                    return
+
             else:
                 for pattern in ResponseParser.regex_end_chunks:
                     end_match = pattern.search(pending_message.text)
@@ -295,6 +302,9 @@ class Request(BaseRequest):
         :returns: None
         """
 
+        if '://' not in host:
+            raise ValueError("Invalid host scheme")
+
         if path_parameters is None:
             path_parameters = ()
 
@@ -398,6 +408,9 @@ class Response(BaseResponse):
         if type(self) != type(value):
             return False
         return self.__dict__ == value.__dict__
+
+    def __str__(self) -> str:
+        return f"Response({self.status}, {self.status_message})"
 
     def __repr__(self):
         return '\n'.join((
@@ -526,6 +539,8 @@ class Client(BaseClient):
                 raw_response = await asyncio.wait_for(future, timeout=timeout)
             except asyncio.exceptions.TimeoutError as e:
                 raise RequestTimeoutError("Request timeout error")
+            except BaseException as e:
+                raise e
 
         if isinstance(raw_response, Exception):
             raise raw_response
@@ -563,7 +578,7 @@ class Client(BaseClient):
                 transport, protocol = await asyncio.wait_for(connection_coroutine,
                                                              timeout=DEFAULT_CONNECTION_TIMEOUT)
             except asyncio.exceptions.TimeoutError as err:
-                raise Exception('Timeout Error') from err
+                raise ConnectionTimeoutError('Socket connection timeout error specified in settings.ini') from err
 
             self.connection_mapper[splited_url.get_url_for_dns(
             )] = transport, protocol

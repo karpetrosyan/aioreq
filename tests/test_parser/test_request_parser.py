@@ -17,7 +17,7 @@ class TestRequestParser:
                 (
                     Request(
                         method="GET",
-                        host="youtube.com",
+                        host="http://youtube.com",
                         path='/',
                         headers={},
                         ),
@@ -30,7 +30,7 @@ class TestRequestParser:
                 (
                     Request(
                         method="POST",
-                        host="chxko.am",
+                        host="http://chxko.am",
                         path='/chxkopath',
                         headers={
                             'testheader' : "testvalue",
@@ -49,7 +49,7 @@ class TestRequestParser:
                 (
                     Request(
                         method="HEAD",
-                        host="chxko.am",
+                        host="http://chxko.am",
                         path='/chxkopath',
                         headers={
                             'testheader' : "testvalue",
@@ -71,7 +71,7 @@ class TestRequestParser:
                 (
                     Request(
                         method="LINK",
-                        host="chxko.am",
+                        host="http://chxko.am",
                         path='/chxkopath',
                         headers={
                             'testheader' : "testvalue",
@@ -84,8 +84,8 @@ class TestRequestParser:
                         "Host:  chxko.am\r\n"
                         "testheader:  testvalue\r\n"
                         "testchxko:  chxko\r\n"
-                        "Content-Length:  34\r\n"
                         "Content-Type:  application/json\r\n"
+                        "Content-Length:  34\r\n"
                         "\r\n"
                         '"{\'this is a test body data\': 20}"'
                         )
@@ -117,7 +117,7 @@ class TestRequestParser:
         with pytest.raises(Exception, match=r"Body and Json") as e:
             Request(
                 method="HEAD",
-                host="chxko.am",
+                host="http://chxko.am",
                 path='/chxkopath',
                 headers={
                     'testheader' : "testvalue",

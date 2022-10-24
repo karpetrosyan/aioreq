@@ -10,6 +10,7 @@ from dns.resolver import NXDOMAIN
 from ..errors.requests import AsyncRequestsError
 from ..errors.requests import InvalidDomainName
 from ..errors.response import ClosedConnectionWithoutResponse
+from ..errors.response import InvalidResponseData
 from ..parser.response_parser import ResponseParser
 from ..parser.url_parser import UrlParser
 from ..settings import DEFAULT_DNS_SERVER, LOGGER_NAME
@@ -80,11 +81,11 @@ class HttpClientProtocol(asyncio.Protocol):
         """
 
         log.debug(
-            f"Verify message {raw_data=} | {raw_data=}")
+            f"Verify message {raw_data=}")
         try:
             self.future.set_result(raw_data) # type: ignore
         except asyncio.exceptions.InvalidStateError as err:
-            log.exception(f"{self.future=} | Result : {self.future.result()}") # type: ignore
+            ...
         self.clean_communication()
 
     def connection_made(self, transport) -> None:
@@ -103,12 +104,16 @@ class HttpClientProtocol(asyncio.Protocol):
 
         :param data: received bytes
         """
-        log.debug(f"Received {data=}")
-        resp = self.pending_message.add_data(data)
-        if resp is not None:
-            if self.future.done():
-                log.critical(f"Got result but future is done, {self.future.result()=}")
-            return self.verify_response(resp)
+        log.debug(f"Received [{len(data)}] bytes")
+        try:
+            resp = self.pending_message.add_data(data)
+        except UnicodeDecodeError as e:
+            if not self.future.done():
+                self.future.set_exception(InvalidResponseData('Can\'t understand server response')) 
+            return
+        else:
+            if resp is not None:
+                return self.verify_response(resp)
 
 
     def connection_lost(self, exc: None | Exception) -> None:
