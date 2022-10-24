@@ -5,7 +5,8 @@ setup(
         version='0.0.1',
         description="Async requests lib",
         install_requires = [
-            'dnspython'
+            'dnspython',
+            'certifi'
             ],
         packages = find_packages(),
         include_package_data=True,
