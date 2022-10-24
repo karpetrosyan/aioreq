@@ -85,7 +85,7 @@ class HttpClientProtocol(asyncio.Protocol):
         try:
             self.future.set_result(raw_data) # type: ignore
         except asyncio.exceptions.InvalidStateError as err:
-            ...
+            log.critical(f"Unpexpected error raised")
         self.clean_communication()
 
     def connection_made(self, transport) -> None:
@@ -110,6 +110,7 @@ class HttpClientProtocol(asyncio.Protocol):
         except UnicodeDecodeError as e:
             if not self.future.done():
                 self.future.set_exception(InvalidResponseData('Can\'t understand server response')) 
+            self.transport.close()
             return
         else:
             if resp is not None:
