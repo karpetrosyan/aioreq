@@ -6,18 +6,24 @@ import json as _json
 
 from abc import ABCMeta
 from abc import abstractmethod
+
 from collections.abc import Collection
+from ..protocol.headers import Header
+
 from ..parser.url_parser import UrlParser
 from ..parser.response_parser import ResponseParser
 from ..parser import request_parser
+
 from ..socket.connection import resolve_domain
 from ..socket.connection import HttpClientProtocol
+from ..socket.buffer import HttpBuffer
+
 from ..settings import LOGGER_NAME
 from ..settings import DEFAULT_CONNECTION_TIMEOUT
-from ..socket.buffer import HttpBuffer
-from ..protocol.headers import Header
+
 from ..errors.requests import RequestTimeoutError
 from ..errors.requests import ConnectionTimeoutError
+
 from typing import Iterable
 from enum import Enum
 
@@ -457,7 +463,9 @@ class Client(BaseClient):
     the Client's connection pool
     """
 
-    def __init__(self, headers=None):
+    def __init__(self,
+                 headers=None,
+                 cache_connections=False):
         """
         Initalization method for Client, session like object
 
@@ -472,6 +480,8 @@ class Client(BaseClient):
             self.headers = headers | _headers
         else:
             self.headers = _headers
+
+        self.cache_connections = cache_connections
 
     async def get(
             self, 
@@ -522,7 +532,10 @@ class Client(BaseClient):
             headers = {}
         splited_url = UrlParser.parse(url)
         try:
-            transport, protocol = await self.make_connection(splited_url)
+            transport, protocol = await self.make_connection(
+                                                             splited_url,
+                                                             cache_connections=self.cache_connections
+                                                             )
         except ConnectionTimeoutError as e:
             ...
         request = Request(
@@ -583,7 +596,7 @@ class Client(BaseClient):
                     raise e
             log.info('Retrying request')
 
-    async def make_connection(self, splited_url):
+    async def make_connection(self, splited_url, cache_connections):
         """
         Getting connection from already opened connections, to perform Keep-Alive logic,
         if these connections exists or create the new one and save into connection pool
@@ -592,11 +605,13 @@ class Client(BaseClient):
         (scheme, version, subdomain, domain, ...)
         :returns: (transport, protocol) which are objects returned by loop.create_connection method
         """
+        if cache_connections:
+            transport, protocol = self.connection_mapper.get(
+                splited_url.get_url_for_dns(), (None, None))
 
-        transport, protocol = self.connection_mapper.get(
-            splited_url.get_url_for_dns(), (None, None))
-
-        if transport and transport.is_closing():
+            if transport and transport.is_closing():
+                transport, protocol = None, None
+        else:
             transport, protocol = None, None
 
         if not transport:
