@@ -573,7 +573,7 @@ class Client(BaseClient):
                                        *args: tuple[Any],
                                        redirect: str,
                                        **kwargs: dict[str, Any]
-                                       ): -> Response
+                                       ) -> Response:
         """
         Wrapper for send_request method, also implements redirection if
         3xx status code received
