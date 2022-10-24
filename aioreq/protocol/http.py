@@ -25,6 +25,7 @@ from ..errors.requests import RequestTimeoutError
 from ..errors.requests import ConnectionTimeoutError
 
 from typing import Iterable
+from typing import Any
 from enum import Enum
 
 log = logging.getLogger(LOGGER_NAME)
@@ -568,8 +569,22 @@ class Client(BaseClient):
 
         return response
 
-    async def request_redirect_wrapper(self, *args, redirect, **kwargs):
-        redirect = max(1, redirect)
+    async def request_redirect_wrapper(self,
+                                       *args: tuple[Any],
+                                       redirect: str,
+                                       **kwargs: dict[str, Any]
+                                       ): -> Response
+        """
+        Wrapper for send_request method, also implements redirection if
+        3xx status code received
+
+        :param redirect: Maximum request sending counts
+        
+        :return: Response object
+        :rtype: Response
+        """
+
+        redirect = max(1, redirect) # minimum one request required
 
         while redirect != 0:
             redirect -= 1
@@ -583,8 +598,21 @@ class Client(BaseClient):
                 return result
             log.info('Redirecting reuqest')
                     
-    async def request_retry_wrapper(self, *args, retry, **kwargs):
-        retry = max(1, retry)
+    async def request_retry_wrapper(self,
+                                    *args: tuple[Any],
+                                    retry: int,
+                                    **kwargs: dict[str, Any]
+                                    ) -> Response:
+        """
+        Wrapper for request_redirect_wrapper method, also implements retrying
+        for the requests if they were failed
+
+        :param retry: Maximum request sending count
+        :return: Response object
+        :rtype: Response
+        """
+
+        retry = max(1, retry) # minimum one request required
 
         while retry != 0:
             retry -= 1
