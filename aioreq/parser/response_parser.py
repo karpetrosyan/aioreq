@@ -23,21 +23,25 @@ class ResponseParser:
         r'(?P<body>[\d\D]*)'
         )
     # Regex to find content-length if exists
+
+    regex_content = (r'[\s\S]*content-length\s*:\s*(?P<length>\d*)\r\n',
+                        re.IGNORECASE)
+
     regex_content_length = re.compile(
-            r'[\s\S]*content-length\s*:\s*(?P<length>\d*)\r\n',
-            re.IGNORECASE
+            regex_content[0],
+            regex_content[1]
             )
 
     regex_without_body_length = re.compile(
-        r'(?P<scheme_and_version>.*) (?P<status_code>\d{3}) (?P<status_message>.*)\r\n'
+        (r'(?P<scheme_and_version>.*) (?P<status_code>\d{3}) (?P<status_message>.*)\r\n'
         r'(?P<headers>(?:.*:? .*\r\n)*)'
-        r'\r\n'
+        r'\r\n').encode()
             )
 
-    regex_find_chunk = re.compile("^(?P<content_size>[0-9abcdefABCDEF]+)\r\n")
+    regex_find_chunk = re.compile("^(?P<content_size>[0-9abcdefABCDEF]+)\r\n".encode())
     regex_end_chunks = (
-            re.compile('^0\r\n\r\n'), 
-            re.compile('^\r\n\r\n')
+            re.compile('^0\r\n\r\n'.encode()), 
+            re.compile('^\r\n\r\n'.encode())
                         )
 
     @classmethod

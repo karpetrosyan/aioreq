@@ -66,7 +66,6 @@ class BodyReceiveStrategies(Enum):
         :return: None or the verified string which seems like an HTTP message 
         """
 
-        input()
         while True:
             log.debug(f"Should receive {pending_message.bytes_should_receive_and_save}")
             log.debug(f"Should ignore {pending_message.bytes_should_receive_and_ignore}")
@@ -121,7 +120,7 @@ class PendingMessage:
 
     def __init__(self,
                  text: str) -> None:
-        self.text = text
+        self.text = bytearray(text.encode())
         self.__headers_done: bool = False
         self.body_receiving_strategy: BodyReceiveStrategies | None = None
         self.content_length: int | None = None
@@ -137,7 +136,7 @@ class PendingMessage:
         :return: None
         """
 
-        self.message_data += self.text[:length]
+        self.message_data += self.text[:length].decode()
         self.text = self.text[length:]
 
     def message_verify(self) -> str:
@@ -193,7 +192,7 @@ class PendingMessage:
         else:
             self.body_receiving_strategy = BodyReceiveStrategies.chunked
 
-    def add_data(self, text: str, data_len: int) -> None | str:
+    def add_data(self, text: bytes) -> None | str:
         """
         Calls whenever new data required to be added
     
@@ -202,8 +201,9 @@ class PendingMessage:
 
         :returns: None if message not verified else verified message
         """
-
-        self.text += text
+    
+        for byte in text:
+            self.text.append(byte)
 
         if self.headers_done():
             
@@ -430,7 +430,8 @@ class BaseClient(metaclass=ABCMeta):
             headers : None | dict[str, str] = None, 
             json: dict | None = None, 
             path_parameters: None | Collection[tuple[str, str]] = None, 
-            obj_headers : None | Iterable[Header] = None) -> Response: ...
+            obj_headers : None | Iterable[Header] = None,
+            timeout: int = 0) -> Response: ...
 
 
 class Client(BaseClient):
@@ -465,7 +466,8 @@ class Client(BaseClient):
             headers : None | dict[str, str] = None, 
             json: dict | None = None, 
             path_parameters: None | Collection[tuple[str, str]] = None, 
-            obj_headers : None | Iterable[Header] = None) -> Response:
+            obj_headers : None | Iterable[Header] = None,
+            timeout: int = 0) -> Response:
         return await self.send_request(
             url=url,
             method="GET",
@@ -473,7 +475,8 @@ class Client(BaseClient):
             headers=headers,
             json=json,
             path_parameters=path_parameters,
-            obj_headers=obj_headers
+            obj_headers=obj_headers,
+            timeout=timeout
         )
 
     async def send_request(self,
@@ -483,7 +486,8 @@ class Client(BaseClient):
                            path_parameters: Collection[Iterable[str]] | None = None,
                            headers: None | dict[str, str] = None,
                            json: dict | None = None,
-                           obj_headers : None | Iterable[Header] = None) -> Response:
+                           obj_headers : None | Iterable[Header] = None,
+                           timeout: int = 0) -> Response:
 
         """
         Simulates http request
@@ -514,7 +518,13 @@ class Client(BaseClient):
         loop = asyncio.get_event_loop()
         future = loop.create_future()
         protocol.send_http_request(request, future)
-        raw_response = await future
+        if timeout == 0:
+            raw_response = await future
+        else:
+            try:
+                raw_response = await asyncio.wait_for(future, timeout=timeout)
+            except BaseException as e:
+                raise e
 
         if isinstance(raw_response, Exception):
             raise raw_response
