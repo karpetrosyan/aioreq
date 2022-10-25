@@ -80,12 +80,10 @@ class HttpClientProtocol(asyncio.Protocol):
         :returns: None
         """
 
-        log.debug(
-            f"Verify message {raw_data=}")
         try:
             self.future.set_result(raw_data) # type: ignore
         except asyncio.exceptions.InvalidStateError as err:
-            log.critical(f"Unpexpected error raised")
+            log.debug("Trying to set result for the future which is already done")
         self.clean_communication()
 
     def connection_made(self, transport) -> None:
@@ -104,7 +102,7 @@ class HttpClientProtocol(asyncio.Protocol):
 
         :param data: received bytes
         """
-        log.debug(f"Received [{len(data)}] bytes")
+#        log.debug(f"Received [{len(data)}] bytes")
         try:
             resp = self.pending_message.add_data(data)
         except UnicodeDecodeError as e:
@@ -140,6 +138,9 @@ class HttpClientProtocol(asyncio.Protocol):
 
         raw_text = request.get_raw_request()
         if self.future is not None:
+            log.critical(
+                    f"Async requests error was raised!"
+                    )
             raise AsyncRequestsError(
                 f"Trying to use async requests via the same connection using unsupported for that version")
 
