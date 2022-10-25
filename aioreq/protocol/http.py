@@ -146,7 +146,7 @@ class PendingMessage:
         self.content_length: int | None = None
         self.bytes_should_receive_and_save: int = 0 
         self.bytes_should_receive_and_ignore: int = 0
-        self.message_data : str = ''
+        self.message_data : bytearray = bytearray()
 
     def switch_data(self, length: int) -> None:
         """
@@ -156,7 +156,8 @@ class PendingMessage:
         :return: None
         """
 
-        self.message_data += self.text[:length].decode()
+        for byte in self.text[:length]:
+            self.message_data.append(byte)
         self.text = self.text[length:]
 
     def message_verify(self) -> bytes:
@@ -167,8 +168,8 @@ class PendingMessage:
         :returns: None
         """
 
-        msg = self.message_data.encode()
-        self.message_data = ''
+        msg = self.message_data
+        self.message_data = bytearray()
         return msg
 
     def ignore_data(self, length: int) -> None:

@@ -1,8 +1,11 @@
 import re
+import gzip
 import logging
+
 
 from ..settings import LOGGER_NAME
 from ..protocol.headers import TransferEncoding
+from ..protocol.encodings import Encodings
 
 log = logging.getLogger(LOGGER_NAME)
 
@@ -31,8 +34,8 @@ class ResponseParser:
                         re.IGNORECASE)
 
     regex_content_length = re.compile(
-            regex_content[0],
-            regex_content[1]
+                regex_content[0].encode(),
+                regex_content[1]
             )
 
     regex_without_body_length = re.compile(
@@ -67,7 +70,7 @@ class ResponseParser:
         scheme_and_version = scheme_and_version.decode()
         status = int(status)
         status_message = status_message.decode()
-
+        
         for line in unparsed_headers.split('\r\n')[:-1]:
             key, value = line.split(':', 1)
             headers[key.strip()] = value.strip()
@@ -79,12 +82,18 @@ class ResponseParser:
                 headers = headers,
                 body = body
                 )
-        transfer_encodings = response.headers.get('Transfer-Encoding', None)
+        transfer_encodings = response.headers.get('transfer-encoding', None)
         if transfer_encodings:
             list_of_encodings = TransferEncoding.parse(transfer_encodings)
             for encoding in list_of_encodings:
                 log.debug(f"Decompressing {encoding=}")
                 response.body = encoding.decompress(response.body)
+
+        content_encoding = response.headers.get('content-encoding', None)
+        if content_encoding:
+            decompressed_data = getattr(Encodings, content_encoding).decompress(response.body)
+            print(decompressed_data)
+            response.body = decompressed_data
         return response
 
     @classmethod
