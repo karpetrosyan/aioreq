@@ -100,7 +100,6 @@ class HttpClientProtocol(asyncio.Protocol):
         self.transport = transport
 
     def data_received(self, data: bytes) -> None:
-        print(data)
         """
         asycnio.Protocol callback which calls whenever transport receive bytes
 
