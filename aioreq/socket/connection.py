@@ -2,7 +2,9 @@ import asyncio
 import logging
 import re
 import socket
-from functools import lru_cache, partial
+
+from functools import lru_cache 
+from functools import partial
 
 from dns import resolver
 from dns.resolver import NXDOMAIN
@@ -11,6 +13,7 @@ from ..errors.requests import AsyncRequestsError
 from ..errors.requests import InvalidDomainName
 from ..errors.response import ClosedConnectionWithoutResponse
 from ..errors.response import InvalidResponseData
+
 from ..parser.response_parser import ResponseParser
 from ..parser.url_parser import UrlParser
 from ..settings import DEFAULT_DNS_SERVER, LOGGER_NAME
@@ -149,6 +152,3 @@ class HttpClientProtocol(asyncio.Protocol):
         request.raw_request = raw_text
         log.debug(f'Writing text: {raw_text}')
         self.transport.write(raw_text)
-
-class PiplineHttpClientProtocol(HttpClientProtocol):
-    ...
