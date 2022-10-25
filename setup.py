@@ -1,8 +1,9 @@
-from setuptools import setup, find_packages
+from setuptools import setup
+from setuptools find_packages
 
 setup(
         name="aioreq",
-        version='0.0.1',
+        version='0.0.2',
         description="Async requests lib",
         install_requires = [
             'dnspython',

@@ -7,6 +7,7 @@ from abc import ABCMeta
 from abc import abstractmethod
 from abc import ABC
 from enum import Enum
+from .encodings import Encodings 
 
 def qvalue_validate(qvalue: int) -> bool:
     if 0 <= qvalue <= 1:
@@ -24,14 +25,19 @@ class MimeType(Enum):
     json = 'application/json'
     html = 'application/html'
 
+class ServerHeader(ABC):
+
+    @classmethod
+    @abstractmethod
+    def parse(self, value: str) -> str: ...
+
 class Header(ABC):
 
     key = 'NotImplemented'
 
     @property
     @abstractmethod
-    def value(self) -> str:
-        ...
+    def value(self) -> str: ...
 
 class AcceptEncoding(Header):
     """
@@ -64,7 +70,7 @@ class AcceptEncoding(Header):
 
     @property
     def value(self):
-        text = f'Accept-Encoding: '
+        text = ' '
         for coding, qvalue in self._codings.items():
             text+=f"{coding}; q={qvalue}, "
         if self._codings:
@@ -107,10 +113,38 @@ class Accept(Header):
     
     @property
     def value(self) -> str:
-        text = f'{self.key}: '
+        text = ' '
         for type, qvalue in self.media_ranges.items():
             text+=f'{type.value}; q={qvalue}, '
         text = text[:-2]
         return text
+    
+class TransferEncoding(ServerHeader):
 
+    def __init__(self):
+        self.encodings = []
+        iternum = 0
 
+    @classmethod
+    def parse(cls, text: str):
+        self = cls() 
+        encodings = text.split(',')
+        for encoding in encodings:
+            if encoding != 'chunked':
+                self.encodings.append(Encodings[encoding.strip()])
+        self.encodings.reverse()
+        return self
+
+    def __iter__(self):
+        self.iternum = 0
+        return self
+
+    def __next__(self):
+        if self.iternum >= len(self.encodings):
+            raise StopIteration
+        encoding = self.encodings[iternum] 
+        self.iternum += 1
+        return encoding
+
+            
+        
