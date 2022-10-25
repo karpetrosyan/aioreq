@@ -2,6 +2,7 @@ import re
 import logging
 
 from ..settings import LOGGER_NAME
+from ..protocol.headers import TransferEncoding
 
 log = logging.getLogger(LOGGER_NAME)
 
@@ -17,10 +18,12 @@ class ResponseParser:
     """
     # Default regex to parse full response
     regex = re.compile(
-        r'(?P<scheme_and_version>.*) (?P<status_code>\d{3}) (?P<status_message>.*)\r\n'
-        r'(?P<headers>(?:[^:]*: *.*?\r\n)*)'
-        r'\r\n'
-        r'(?P<body>[\d\D]*)'
+            (
+                r'(?P<scheme_and_version>.*) (?P<status_code>\d{3}) (?P<status_message>.*)\r\n'
+                r'(?P<headers>(?:[^:]*: *.*?\r\n)*)'
+                r'\r\n'
+                r'(?P<body>[\d\D]*)'
+            ).encode()
         )
     # Regex to find content-length if exists
 
@@ -45,7 +48,7 @@ class ResponseParser:
                         )
 
     @classmethod
-    def parse(cls, response: str) -> 'Response': # type: ignore
+    def parse(cls, response: bytes) -> 'Response': # type: ignore
         """
         The main method for this class which parse response
 
@@ -60,19 +63,29 @@ class ResponseParser:
         match = cls.regex.search(response)
         scheme_and_version, status, status_message, unparsed_headers, body = match.groups() # type: ignore
         headers = {}
+        unparsed_headers = unparsed_headers.decode()
+        scheme_and_version = scheme_and_version.decode()
+        status = int(status)
+        status_message = status_message.decode()
+
         for line in unparsed_headers.split('\r\n')[:-1]:
             key, value = line.split(':', 1)
             headers[key.strip()] = value.strip()
 
-        status = int(status)
-
-        return Response(
+        response = Response(
                 scheme_and_version = scheme_and_version,
                 status = status,
                 status_message = status_message,
                 headers = headers,
                 body = body
                 )
+        transfer_encodings = response.headers.get('Transfer-Encoding', None)
+        if transfer_encodings:
+            list_of_encodings = TransferEncoding.parse(transfer_encodings)
+            for encoding in list_of_encodings:
+                log.debug(f"Decompressing {encoding=}")
+                response.body = encoding.decompress(response.body)
+        return response
 
     @classmethod
     def search_content_length(cls, text: str) -> int | None:

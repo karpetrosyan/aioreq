@@ -24,6 +24,11 @@ from ..settings import DEFAULT_CONNECTION_TIMEOUT
 from ..errors.requests import RequestTimeoutError
 from ..errors.requests import ConnectionTimeoutError
 
+from .headers import TransferEncoding
+from .headers import AcceptEncoding
+from .headers import ContentCoding 
+from .headers import Header
+
 from typing import Iterable
 from typing import Any
 from enum import Enum
@@ -111,7 +116,7 @@ class BodyReceiveStrategies(Enum):
                 pending_message.bytes_should_receive_and_save = size
                 pending_message.ignore_data(match.end() - match.start())
 
-    def parse(self, pending_message) -> str | None:
+    def parse(self, pending_message) -> bytes | None:
         """
         General interface to work with parsing strategies
 
@@ -154,7 +159,7 @@ class PendingMessage:
         self.message_data += self.text[:length].decode()
         self.text = self.text[length:]
 
-    def message_verify(self) -> str:
+    def message_verify(self) -> bytes:
         """
         If message seems like full, call this method to return and clean the
         self.message_data
@@ -162,7 +167,7 @@ class PendingMessage:
         :returns: None
         """
 
-        msg = self.message_data
+        msg = self.message_data.encode()
         self.message_data = ''
         return msg
 
@@ -454,6 +459,17 @@ class BaseClient(metaclass=ABCMeta):
             obj_headers : None | Iterable[Header] = None,
             timeout: int = 0) -> Response: ...
 
+    async def post(
+            self, 
+            url : str, 
+            body : str | bytearray | bytes= '', 
+            headers : None | dict[str, str] = None, 
+            json: dict | None = None, 
+            path_parameters: None | Collection[tuple[str, str]] = None, 
+            obj_headers : None | Iterable[Header] = None,
+            timeout: int = 0) -> Response: ...
+
+
 
 class Client(BaseClient):
     """
@@ -465,8 +481,9 @@ class Client(BaseClient):
     """
 
     def __init__(self,
-                 headers=None,
-                 cache_connections=False):
+                 headers : dict[str, str] | None =None,
+                 cache_connections: bool = False,
+                 headers_obj: Iterable[Header] | None = None):
         """
         Initalization method for Client, session like object
 
@@ -474,14 +491,26 @@ class Client(BaseClient):
         """
 
         self.connection_mapper = {}
-        
+      
+        if headers_obj is None:
+            headers_obj = [
+                    AcceptEncoding(
+                            (
+                                (ContentCoding.gzip, ),
+                            )         
+                                ),
+                    ]
         _headers = {}
+        
 
         if headers:
             self.headers = headers | _headers
         else:
             self.headers = _headers
 
+        for header in headers_obj:
+            self.headers[header.key] = header.value
+       
         self.cache_connections = cache_connections
 
     async def get(
@@ -507,6 +536,32 @@ class Client(BaseClient):
             redirect=redirect+1,
             retry=retry+1
         )
+
+    async def post(
+            self, 
+            url : str, 
+            body : str | bytearray | bytes= '', 
+            headers : None | dict[str, str] = None, 
+            json: dict | None = None, 
+            path_parameters: None | Collection[tuple[str, str]] = None, 
+            obj_headers : None | Iterable[Header] = None,
+            timeout: int = 0,
+            redirect: int = 3,
+            retry: int = 3) -> Response:
+        return await self.request_retry_wrapper(
+            url=url,
+            method="POST",
+            body=body,
+            headers=headers,
+            json=json,
+            path_parameters=path_parameters,
+            obj_headers=obj_headers,
+            timeout=timeout,
+            redirect=redirect+1,
+            retry=retry+1
+        )
+
+
 
     async def send_request(self,
                            url: str,

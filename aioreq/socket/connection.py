@@ -100,12 +100,12 @@ class HttpClientProtocol(asyncio.Protocol):
         self.transport = transport
 
     def data_received(self, data: bytes) -> None:
+        print(data)
         """
         asycnio.Protocol callback which calls whenever transport receive bytes
 
         :param data: received bytes
         """
-#        log.debug(f"Received [{len(data)}] bytes")
         try:
             resp = self.pending_message.add_data(data)
         except UnicodeDecodeError as e:
