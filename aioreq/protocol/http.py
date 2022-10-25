@@ -76,12 +76,12 @@ class BodyReceiveStrategies(Enum):
         """
 
         while True:
-            log.debug(
-                        (
-                            f"Receive: {pending_message.bytes_should_receive_and_save} | Ignore: "
-                            f"{pending_message.bytes_should_receive_and_ignore} | Text Len: {len(pending_message.text)}"
-                        )
-                    )
+ #           log.debug(
+  #                      (
+   #                         f"Receive: {pending_message.bytes_should_receive_and_save} | Ignore: "
+    #                        f"{pending_message.bytes_should_receive_and_ignore} | Text Len: {len(pending_message.text)}"
+     #                   )
+      #              )
             if pending_message.bytes_should_receive_and_save:
                 if pending_message.bytes_should_receive_and_save <= len(pending_message.text):
                     pending_message.switch_data(pending_message.bytes_should_receive_and_save)
@@ -537,6 +537,7 @@ class Client(BaseClient):
                                                              splited_url,
                                                              cache_connections=self.cache_connections
                                                              )
+            log.debug(f"Connection made! {transport=} {protocol=}")
         except ConnectionTimeoutError as e:
             raise
         request = Request(
@@ -547,7 +548,7 @@ class Client(BaseClient):
             path_parameters=path_parameters,
             json=json,
             body=body,
-            scheme='HTTP' if url.startswith('https') else 'HTTP'
+            scheme='HTTP'
         )
         loop = asyncio.get_event_loop()
         future = loop.create_future()
@@ -596,7 +597,7 @@ class Client(BaseClient):
                     return result
             else:
                 return result
-            log.info('Redirecting reuqest')
+            log.info(f'Redirecting reuqest with status code {result.status}')
                     
     async def request_retry_wrapper(self,
                                     *args: tuple[Any],
@@ -622,7 +623,7 @@ class Client(BaseClient):
             except BaseException as e:
                 if retry < 1:
                     raise e
-            log.info('Retrying request')
+                log.info(f'Retrying request cause of {e}')
 
     async def make_connection(self, splited_url, cache_connections):
         """
@@ -633,7 +634,9 @@ class Client(BaseClient):
         (scheme, version, subdomain, domain, ...)
         :returns: (transport, protocol) which are objects returned by loop.create_connection method
         """
+        log.info(f"{splited_url=} {cache_connections=}")
         if cache_connections:
+            log.debug(f"{self.connection_mapper} searching")
             transport, protocol = self.connection_mapper.get(
                 splited_url.get_url_for_dns(), (None, None))
 
@@ -660,6 +663,7 @@ class Client(BaseClient):
 
             self.connection_mapper[splited_url.get_url_for_dns(
             )] = transport, protocol
+            log.debug(self.connection_mapper)
         else:
             log.info("Using previous connection")
         return transport, protocol
