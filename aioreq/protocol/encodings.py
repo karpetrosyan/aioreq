@@ -30,6 +30,11 @@ class Encodings(Enum):
     def decompress(self, text: bytes) -> bytes:
         return self.value.decompress(text)
 
+    def __str__(self):
+        return str(
+                self.value.__name__
+                )
+
 
 
 

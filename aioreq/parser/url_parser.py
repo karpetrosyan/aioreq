@@ -89,6 +89,7 @@ class UrlParser:
             r'((?P<subdomain>[^\.]*)\.)?'
             r'(?P<domain>[^\.]*)\.'
             r'(?P<top_level_domain>[^/#]*)'
+            r'(?P<port>\d*)?'
             r'(?:(?P<path>/[^#?]*)((?:\?'
             r'(?P<variables>[^#]*)?))?)?'
             r'(?:#(?P<fragment>.*))?'

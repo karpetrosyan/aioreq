@@ -86,13 +86,13 @@ class ResponseParser:
         if transfer_encodings:
             list_of_encodings = TransferEncoding.parse(transfer_encodings)
             for encoding in list_of_encodings:
-                log.debug(f"Decompressing {encoding=}")
+                log.debug(f"Decompressing {encoding=} cause of Trnasfer-Encoding header")
                 response.body = encoding.decompress(response.body)
 
         content_encoding = response.headers.get('content-encoding', None)
         if content_encoding:
+            log.debug(f"Decompressing {encoding=} cause of Content-Encoding header")
             decompressed_data = getattr(Encodings, content_encoding).decompress(response.body)
-            print(decompressed_data)
             response.body = decompressed_data
         return response
 

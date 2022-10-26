@@ -14,13 +14,6 @@ def qvalue_validate(qvalue: int) -> bool:
         return True
     return False
 
-class ContentCoding(Enum):
-    gzip = 'gzip'
-    compress = 'compress'
-    deflate = 'deflate'
-    identity = 'identity'
-    all = '*'
-
 class MimeType(Enum):
     json = 'application/json'
     html = 'application/html'
@@ -52,8 +45,8 @@ class AcceptEncoding(Header):
     def __init__(
             self,
             codings: Collection[
-                tuple[ContentCoding, int]
-                | tuple[ContentCoding],
+                tuple[Encodings, int]
+                | tuple[Encodings],
                 ]):
         self._codings = {}
         for coding in codings:
@@ -66,13 +59,13 @@ class AcceptEncoding(Header):
 
             if not qvalue_validate(qvalue):
                 raise ValueError("Invalid qvalue given -> {qvalue}. Expected int between 0, 1")
-            self. _codings[coding_type.value] = qvalue
+            self._codings[coding_type] = qvalue
 
     @property
     def value(self):
         text = ' '
         for coding, qvalue in self._codings.items():
-            text+=f"{coding}; q={qvalue}, "
+            text+=f"{str(coding)}; q={qvalue}, "
         if self._codings:
             text = text[:-2]
         return text
