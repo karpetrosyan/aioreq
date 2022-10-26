@@ -697,7 +697,7 @@ class Client(BaseClient):
             log.debug(f"{self.connection_mapper} searching into mapped connections")
             transport, protocol = self.connection_mapper.get(
                 splited_url.get_url_for_dns(), (None, None))
-
+                
             if transport and transport.is_closing():
                 transport, protocol = None, None
         else:
