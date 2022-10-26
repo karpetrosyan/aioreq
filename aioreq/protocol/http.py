@@ -680,6 +680,7 @@ class Client(BaseClient):
             except BaseException as e:
                 if retry < 1:
                     raise e
+                raise e
                 log.info(f'Retrying request cause of {e}')
 
     async def make_connection(self, splited_url, cache_connections):
