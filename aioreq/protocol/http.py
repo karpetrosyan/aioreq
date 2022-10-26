@@ -26,8 +26,9 @@ from ..errors.requests import ConnectionTimeoutError
 
 from .headers import TransferEncoding
 from .headers import AcceptEncoding
-from .headers import ContentCoding 
 from .headers import Header
+
+from .encodings import Encodings
 
 from typing import Iterable
 from typing import Any
@@ -109,10 +110,10 @@ class BodyReceiveStrategies(Enum):
 
                 match = ResponseParser.regex_find_chunk.search(pending_message.text)
                 if match is None:
-                    log.debug(f"Cant find any chunk size")
+#                    log.debug(f"Cant find any chunk size")
                     return None
                 size = int(match.group('content_size'), 16)
-                log.debug(f"Chunk size is.. {size=}")
+#                log.debug(f"Chunk size is.. {size=}")
                 pending_message.bytes_should_receive_and_save = size
                 pending_message.ignore_data(match.end() - match.start())
 
@@ -497,7 +498,7 @@ class Client(BaseClient):
             headers_obj = [
                     AcceptEncoding(
                             (
-                                (ContentCoding.gzip, ),
+                                (Encodings.gzip, ),
                             )         
                                 ),
                     ]
@@ -505,7 +506,7 @@ class Client(BaseClient):
         
 
         if headers:
-            self.headers = headers | _headers
+            self.headers =  _headers | headers 
         else:
             self.headers = _headers
 
@@ -593,7 +594,7 @@ class Client(BaseClient):
                                                              splited_url,
                                                              cache_connections=self.cache_connections
                                                              )
-            log.debug(f"Connection made! {transport=} {protocol=}")
+#            log.debug(f"Connection made! {transport=} {protocol=}")
         except ConnectionTimeoutError as e:
             raise
         request = Request(
@@ -692,7 +693,7 @@ class Client(BaseClient):
         """
         log.info(f"{splited_url=} {cache_connections=}")
         if cache_connections:
-            log.debug(f"{self.connection_mapper} searching")
+            log.debug(f"{self.connection_mapper} searching into mapped connections")
             transport, protocol = self.connection_mapper.get(
                 splited_url.get_url_for_dns(), (None, None))
 
