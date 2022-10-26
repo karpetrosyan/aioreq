@@ -138,6 +138,3 @@ class TransferEncoding(ServerHeader):
         encoding = self.encodings[iternum] 
         self.iternum += 1
         return encoding
-
-            
-        

@@ -91,7 +91,7 @@ class ResponseParser:
 
         content_encoding = response.headers.get('content-encoding', None)
         if content_encoding:
-            log.debug(f"Decompressing {encoding=} cause of Content-Encoding header")
+            log.debug(f"Decompressing {content_encoding} cause of Content-Encoding header")
             decompressed_data = getattr(Encodings, content_encoding).decompress(response.body)
             response.body = decompressed_data
         return response

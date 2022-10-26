@@ -63,7 +63,7 @@ for key, value in log_format_mapper.items():
 
 BUFFER_SIZE = 4048 #deprecated
 
-DEFAULT_CONNECTION_TIMEOUT = parser.getint('Connection', 'default_connection_timeout')
+DEFAULT_CONNECTION_TIMEOUT = int(parser.getfloat ('Connection', 'default_connection_timeout'))
 DEFAULT_DNS_SERVER = parser['Connection']['default_dns_server']
 
 
