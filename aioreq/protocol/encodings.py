@@ -35,8 +35,3 @@ class Encodings(Enum):
                 self.value.__name__
                 )
 
-
-
-
-
-

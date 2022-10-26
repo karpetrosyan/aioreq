@@ -14,6 +14,7 @@ from ..parser.url_parser import UrlParser
 from ..parser.response_parser import ResponseParser
 from ..parser import request_parser
 
+
 from ..socket.connection import resolve_domain
 from ..socket.connection import HttpClientProtocol
 from ..socket.buffer import HttpBuffer
@@ -30,6 +31,7 @@ from .headers import Header
 
 from .encodings import Encodings
 
+from typing import Coroutine
 from typing import Iterable
 from typing import Any
 from enum import Enum
@@ -714,13 +716,12 @@ class Client(BaseClient):
                 ssl=context if splited_url.scheme == 'https' else None,
             )
             try:
-                transport, protocol = await asyncio.wait_for(connection_coroutine,
-                                                             timeout=DEFAULT_CONNECTION_TIMEOUT)
+                transport, protocol = await connection_coroutine
             except asyncio.exceptions.TimeoutError as err:
                 raise ConnectionTimeoutError('Socket connection timeout error specified in settings.ini') from err
 
             self.connection_mapper[splited_url.get_url_for_dns(
-            )] = transport, protocol
+                )] = transport, protocol
             log.debug(self.connection_mapper)
         else:
             log.info("Using previous connection")
@@ -744,3 +745,4 @@ class Client(BaseClient):
         for host, (transport, protocol) in self.connection_mapper.items():
             transport.close()
             log.info(f"Transport closed {transport=}")
+
