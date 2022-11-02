@@ -112,11 +112,11 @@ class Accept(Header):
         text = text[:-2]
         return text
     
-class TransferEncoding(ServerHeader):
+class ServerEncoding(ServerHeader):
 
     def __init__(self):
         self.encodings = []
-        iternum = 0
+        self.iternum = 0
 
     @classmethod
     def parse(cls, text: str):
@@ -135,6 +135,10 @@ class TransferEncoding(ServerHeader):
     def __next__(self):
         if self.iternum >= len(self.encodings):
             raise StopIteration
-        encoding = self.encodings[iternum] 
+        encoding = self.encodings[self.iternum] 
         self.iternum += 1
         return encoding
+
+class TransferEncoding(ServerEncoding): ...
+class ContentEncoding(ServerEncoding): ...
+
