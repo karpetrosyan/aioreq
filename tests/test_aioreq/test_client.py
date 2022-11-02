@@ -1,10 +1,17 @@
+import asyncio
 import pytest
 import aioreq
 
 
+@pytest.fixture(scope='session')
+async def session():
+    with aioreq.http.Client() as s:
+        yield s
 
-@pytest.mark.asyncio
-async def test_google_request():
-    assert 0
+async def test_moved_301(session):
+    url = 'http://google.com'
+    response = await session.get(url)
+    assert response.status_code == 301
+    
 
 

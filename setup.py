@@ -9,6 +9,13 @@ setup(
             'dnspython',
             'certifi'
             ],
+        extras_require={
+            'tests' : [
+                'pytest',
+                'pytest-asyncio'
+                ]
+            },
+
         packages = find_packages(),
         include_package_data=True,
         package_data={'aioreq':['*.ini']}

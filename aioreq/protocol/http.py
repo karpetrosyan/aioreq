@@ -746,3 +746,11 @@ class Client(BaseClient):
             transport.close()
             log.info(f"Transport closed {transport=}")
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args, **kwargs):
+        for host, (transport, protocol) in self.connection_mapper.items():
+            transport.close()
+            log.info(f"Transport closed {transport=}")
+
