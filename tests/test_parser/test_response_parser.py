@@ -44,8 +44,6 @@ class TestResponseParser:
                    expected_result: Response):
         
         result = ResponseParser.parse(response_raw)
-        print(repr(expected_result))
-        print(repr(result))
         assert result.__dict__ == expected_result.__dict__
     
     @pytest.mark.parametrize(

@@ -706,7 +706,10 @@ class Client(BaseClient):
             transport, protocol = None, None
 
         if not transport:
-            ip, port = resolve_domain(splited_url.get_url_for_dns())
+            if splited_url.domain == 'aioreq' and splited_url.top_level_domain == 'None':
+                ip, port = '127.0.0.1', 7575
+            else:
+                ip, port = resolve_domain(splited_url.get_url_for_dns())
             loop = asyncio.get_running_loop()
 
             connection_coroutine = loop.create_connection(
