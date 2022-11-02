@@ -27,9 +27,8 @@ def server():
             )
     pid = proc.pid
     time.sleep(5)
-    print(proc)
     yield SERVER_URL 
-    proc.kill()
+    subprocess.run(['kill', str(pid)])
 
 @pytest.fixture(scope='session')
 def get_gzip_url(server):
