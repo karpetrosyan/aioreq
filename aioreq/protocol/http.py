@@ -609,7 +609,7 @@ class Client(BaseClient):
             body=body,
             scheme='HTTP'
         )
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         future = loop.create_future()
         protocol.send_http_request(request, future)
         if timeout == 0:
@@ -707,7 +707,7 @@ class Client(BaseClient):
 
         if not transport:
             ip, port = resolve_domain(splited_url.get_url_for_dns())
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
 
             connection_coroutine = loop.create_connection(
                 lambda: HttpClientProtocol(),
