@@ -11,6 +11,9 @@ class Encoding(ABC):
     def decompress(cls, text: bytes) -> bytes:
         ...
 
+# Encodings
+# -------------
+
 class gzip(Encoding):
 
     @classmethod
@@ -21,7 +24,10 @@ class compress(Encoding):
 
     @classmethod
     def decompress(cls, text: bytes) -> bytes:
-        ...
+        raise NotImplementedError
+
+# Enum for encodings
+# -------------
 
 class Encodings(Enum):
     gzip = gzip
