@@ -709,14 +709,15 @@ class Client(BaseClient):
             if splited_url.domain == 'testulik':
                 ip, port = '127.0.0.1', 7575
             else:
-                ip, port = resolve_domain(splited_url.get_url_for_dns())
+                ip = resolve_domain(splited_url.get_url_for_dns())
+                port = 443 if splited_url.scheme == 'https' else 80
 
             loop = asyncio.get_running_loop()
 
             connection_coroutine = loop.create_connection(
                 lambda: HttpClientProtocol(),
                 host=ip,
-                port=port if splited_url.scheme == 'http' else 443,
+                port=port,
                 ssl=context if splited_url.scheme == 'https' else None,
             )
             try:

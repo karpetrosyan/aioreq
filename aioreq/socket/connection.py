@@ -6,9 +6,6 @@ import socket
 from functools import lru_cache 
 from functools import partial
 
-from dns import resolver
-from dns.resolver import NXDOMAIN
-
 from ..errors.requests import AsyncRequestsError
 from ..errors.requests import InvalidDomainName
 from ..errors.response import ClosedConnectionWithoutResponse
@@ -19,8 +16,6 @@ from ..parser.url_parser import UrlParser
 from ..settings import DEFAULT_DNS_SERVER, LOGGER_NAME
 from .buffer import Buffer, HttpBuffer
 
-resolver = resolver.Resolver() # type: ignore
-resolver.nameservers = [DEFAULT_DNS_SERVER] # type: ignore
 
 log = logging.getLogger(LOGGER_NAME)
 
@@ -35,19 +30,7 @@ def resolve_domain(hostname: str) -> tuple[str, int]:
     """
     
     log.debug(f"trying resolve {hostname=}")
-    try:
-        resolved_data = resolver.resolve(hostname)
-        for ip in resolved_data:
-            result = (ip.address, 80)
-            break
-    except NXDOMAIN as e:
-        try:
-            result = socket.gethostbyname(hostname), 80
-            return result
-        except:
-            ...
-        raise InvalidDomainName from e
-    return result
+    return socket.gethostbyname(hostname)
 
 
 class HttpClientProtocol(asyncio.Protocol):
