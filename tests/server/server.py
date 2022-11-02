@@ -7,7 +7,7 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 @app.get("/gzip")
 async def gzip():
-    return "somebigcontent" * 1000000
+    return "testgzip" * 100000
 
 @app.get('/ping')
 async def ping():

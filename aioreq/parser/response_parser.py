@@ -5,6 +5,7 @@ import logging
 
 from ..settings import LOGGER_NAME
 from ..protocol.headers import TransferEncoding
+from ..protocol.headers import ContentEncoding
 from ..protocol.encodings import Encodings
 
 log = logging.getLogger(LOGGER_NAME)
@@ -82,18 +83,20 @@ class ResponseParser:
                 headers = headers,
                 body = body
                 )
-        transfer_encodings = response.headers.get('transfer-encoding', None)
-        if transfer_encodings:
-            list_of_encodings = TransferEncoding.parse(transfer_encodings)
-            for encoding in list_of_encodings:
-                log.debug(f"Decompressing {encoding=} cause of Trnasfer-Encoding header")
-                response.body = encoding.decompress(response.body)
 
-        content_encoding = response.headers.get('content-encoding', None)
-        if content_encoding:
-            log.debug(f"Decompressing {content_encoding} cause of Content-Encoding header")
-            decompressed_data = getattr(Encodings, content_encoding).decompress(response.body)
-            response.body = decompressed_data
+        for parser, header in (
+                (TransferEncoding, 'transfer-encoding'),
+                (ContentEncoding, 'content-encoding')
+                ):
+            header_content = response.headers.get(header, None)
+            if header_content:
+                encodings = parser.parse(header_content)
+
+                for encoding in encodings:
+                    response.body = encoding.decompress(response.body)
+        
+        # ignore ""
+        response.body = response.body[1:-1]
         return response
 
     @classmethod

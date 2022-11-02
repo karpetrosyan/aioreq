@@ -29,11 +29,8 @@ async def test_https_request(one_time_session):
 
 @pytest.mark.asyncio
 async def test_gzip_request(one_time_session,
-                            server):
-    url = server
-    response = await one_time_session.get(server)
-    print(response)
-
-    
-
-
+                            get_gzip_url):
+    expected = ('testgzip' * 100000).encode()
+    response = await one_time_session.get(get_gzip_url)
+    assert 'content-encoding' in response.headers
+    assert len(response.body) == len(expected)
