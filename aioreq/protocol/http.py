@@ -10,6 +10,8 @@ from abc import abstractmethod
 from collections.abc import Collection
 from ..protocol.headers import Header
 
+from ..errors.requests import AsyncRequestsError
+
 from ..parser.url_parser import UrlParser
 from ..parser.response_parser import ResponseParser
 from ..parser import request_parser
@@ -692,8 +694,12 @@ class Client(BaseClient):
             transport, protocol = self.connection_mapper.get(
                 splited_url.get_url_for_dns(), (None, None))
                 
-            if transport and transport.is_closing():
-                transport, protocol = None, None
+            if transport:
+                if transport.is_closing():
+                    transport, protocol = None, None
+                else:
+                    raise AsyncRequestsError("Can't use persistent connections without pipelining")
+        
         else:
             transport, protocol = None, None
 
