@@ -14,7 +14,6 @@ from ..parser.url_parser import UrlParser
 from ..parser.response_parser import ResponseParser
 from ..parser import request_parser
 
-
 from ..socket.connection import resolve_domain
 from ..socket.connection import HttpClientProtocol
 from ..socket.buffer import HttpBuffer
@@ -84,12 +83,6 @@ class BodyReceiveStrategies(Enum):
         """
 
         while True:
- #           log.debug(
-  #                      (
-   #                         f"Receive: {pending_message.bytes_should_receive_and_save} | Ignore: "
-    #                        f"{pending_message.bytes_should_receive_and_ignore} | Text Len: {len(pending_message.text)}"
-     #                   )
-      #              )
             if pending_message.bytes_should_receive_and_save:
                 if pending_message.bytes_should_receive_and_save <= len(pending_message.text):
                     pending_message.switch_data(pending_message.bytes_should_receive_and_save)
@@ -112,10 +105,8 @@ class BodyReceiveStrategies(Enum):
 
                 match = ResponseParser.regex_find_chunk.search(pending_message.text)
                 if match is None:
-#                    log.debug(f"Cant find any chunk size")
                     return None
                 size = int(match.group('content_size'), 16)
-#                log.debug(f"Chunk size is.. {size=}")
                 pending_message.bytes_should_receive_and_save = size
                 pending_message.ignore_data(match.end() - match.start())
 
@@ -215,6 +206,7 @@ class PendingMessage:
             self.body_receiving_strategy = BodyReceiveStrategies.content_length
         else:
             self.body_receiving_strategy = BodyReceiveStrategies.chunked
+        log.debug(f"Strategy found: {self.body_receiving_strategy}")
 
     def add_data(self, text: bytes) -> None | str:
         """
