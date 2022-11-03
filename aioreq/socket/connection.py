@@ -16,11 +16,14 @@ from ..parser.url_parser import UrlParser
 from ..settings import DEFAULT_DNS_SERVER, LOGGER_NAME
 from .buffer import Buffer, HttpBuffer
 
+from concurrent.futures import ThreadPoolExecutor
 
 log = logging.getLogger(LOGGER_NAME)
 
-@lru_cache # cache already requested domains
-def resolve_domain(hostname: str) -> tuple[str, int]:
+executor = ThreadPoolExecutor(2)
+
+async def resolve_domain(hostname: str,
+                         memo = {}) -> tuple[str, int]:
     """
     Ip port resolving by making dns requests
 
@@ -28,9 +31,15 @@ def resolve_domain(hostname: str) -> tuple[str, int]:
     :returns: ip and port for that domain
     :rtype: [str, int]
     """
-    
+    if hostname in memo:
+        return memo[hostname]
+
     log.debug(f"trying resolve {hostname=}")
-    return socket.gethostbyname(hostname)
+    print('resolve')
+    loop = asyncio.get_event_loop()
+    host = await loop.run_in_executor(executor, lambda: socket.gethostbyname(hostname))
+    memo[hostname] = host
+    return host
 
 
 class HttpClientProtocol(asyncio.Protocol):

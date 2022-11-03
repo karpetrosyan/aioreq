@@ -707,7 +707,7 @@ class Client(BaseClient):
             if splited_url.domain == 'testulik':
                 ip, port = '127.0.0.1', 7575
             else:
-                ip = resolve_domain(splited_url.get_url_for_dns())
+                ip = await resolve_domain(splited_url.get_url_for_dns())
                 port = 443 if splited_url.scheme == 'https' else 80
 
             loop = asyncio.get_running_loop()
