@@ -6,6 +6,7 @@ import random
 import logging
 
 from ..settings import LOGGER_NAME
+from .buffer import Buffer
 from concurrent.futures import ThreadPoolExecutor
 
 log = logging.getLogger(LOGGER_NAME)
@@ -15,8 +16,10 @@ context.load_verify_locations(certifi.where())
 
 executor = ThreadPoolExecutor(2)
 
-async def resolve_domain(hostname: str,
-                         memo = {}) -> tuple[str, int]:
+async def resolve_domain(
+                         hostname: str,
+                         memo = {}
+                         )-> tuple[str, int]:
     """
     Ip port resolving by making dns requests
 
@@ -36,11 +39,10 @@ async def resolve_domain(hostname: str,
 class Transport:
 
     def __init__(self):
-        from ..protocol.http import PendingMessage
         self.reader: None | asyncio.StreamReader = None
         self.writer: None | asyncio.StreamWriter = None
         self.used: bool = False
-        self.message_manager: PendingMessage = PendingMessage(text='')
+        self.message_manager: Buffer = Buffer(text='')
    
     async def send_data(self, raw_data: bytes) -> None:
         self.writer.write(raw_data)
@@ -65,12 +67,14 @@ class Transport:
         self.writer = writer
 
     async def send_http_request(self, raw_data: bytes) -> bytes:
-        log.debug(f"sent")
+        if self.used:
+            raise AsyncRequestsError('Using transport which already in use')
+        self.used = True
         await self.send_data(raw_data)
         while True:
-#            await asyncio.sleep(random.randint(0, 3))
             resp = await self.receive_data()
             if resp is not None:
+                self.used = False
                 return resp
     
     def is_closing(self) -> bool:

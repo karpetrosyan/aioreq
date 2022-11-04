@@ -17,8 +17,8 @@ from ..parser.url_parser import UrlParser
 from ..parser.response_parser import ResponseParser
 from ..parser import request_parser
 
-from ..socket.connection import resolve_domain
-from ..socket.connection import Transport 
+from ..transports.connection import resolve_domain
+from ..transports.connection import Transport 
 
 from ..settings import LOGGER_NAME
 from ..settings import DEFAULT_CONNECTION_TIMEOUT
@@ -42,208 +42,6 @@ from enum import Enum
 from concurrent.futures import ProcessPoolExecutor
 
 log = logging.getLogger(LOGGER_NAME)
-
-executor = ProcessPoolExecutor(4)
-
-class BodyReceiveStrategies(Enum):
-    """
-    Enumeration which implements Strategy design pattern, used to
-    choose a way of parsing response
-    """
-    chunked = 'chunked'
-    content_length = 'content_length'
-
-    def parse_content_length(self, pending_message) -> None | str:
-        """
-        Parse incoming PendingMessage object which receiving data which body length
-        specified by Content-Length header.
-
-        RFC[2616] 14.13 Content-Length:
-            The Content-Lenght entity-header field indicates the size of the entity-body,
-            in decimal number of OCTETs, sent to the recipent or, in the case of the HEAD method,
-            the size of the entity-body that would have been sent had the request been a GET.
-
-        :param pending_message: PendingMessage instance representing message receiving
-        :return: None or the verified string which seems like an HTTP message 
-        """
-                                                                                
-        if len(pending_message.text) >= pending_message.content_length:
-            pending_message.switch_data(pending_message.content_length)
-            return pending_message.message_verify()
-        return None
-
-    @debug.timer
-    def parse_chunked(self, pending_message) -> None | str:
-        t1 = time.perf_counter()
-        """
-        Parse incoming PendingMessage object which receiving data which body length
-        specified by Transfer-Encoding : chunked.
-
-        RFC[2616] 3.6.1 Chunked Transfer Coding:
-            The chunked encoding modifies the body of a message in order to transfer it as a series of
-            chunkd, each with its own size indicator, followed by an OPTIONAL trailer containing entity-header
-            fields. This allows dynamically produced content to be transferred along with the information
-            necessary for the recipient to verify that it has received the full message.
-
-        :param pending_message: PendingMessage instance representing message receiving
-        :return: None or the verified string which seems like an HTTP message 
-        """
-
-        while True:
-            if pending_message.bytes_should_receive_and_save:
-                if pending_message.bytes_should_receive_and_save <= len(pending_message.text):
-                    pending_message.switch_data(pending_message.bytes_should_receive_and_save)
-                    pending_message.bytes_should_receive_and_save = 0
-                    pending_message.bytes_should_receive_and_ignore = 2
-                else:
-                    break
-            elif pending_message.bytes_should_receive_and_ignore:
-                if pending_message.bytes_should_receive_and_ignore <= len(pending_message.text):
-                    pending_message.ignore_data(pending_message.bytes_should_receive_and_ignore) 
-                    pending_message.bytes_should_receive_and_ignore = 0
-                else:
-                    break 
-
-            else:
-                for pattern in ResponseParser.regex_end_chunks:
-                    end_match = pattern.search(pending_message.text)
-                    if end_match:
-                        return pending_message.message_verify()
-
-                match = ResponseParser.regex_find_chunk.search(pending_message.text)
-                if match is None:
-                    break
-                size = int(match.group('content_size'), 16)
-                pending_message.bytes_should_receive_and_save = size
-                pending_message.ignore_data(match.end() - match.start())
-
-    def parse(self, pending_message) -> bytes | None:
-        """
-        General interface to work with parsing strategies
-
-        :param pending_message: object which is working with message pending
-        :returns: Parsed and verifyed http response or NoneType object
-        :rtype: str or None
-        """
-        loop = asyncio.get_running_loop()
-        match self.value:
-            case 'content_length':
-                return self.parse_content_length(pending_message)
-            case 'chunked':
-                #return await loop.run_in_executor(executor, self.parse_chunked, pending_message)
-                return self.parse_chunked(pending_message)
-        return None
-       
-
-class PendingMessage:
-    """
-    Implementing message receiving using BodyReceiveStrategies which support
-    receiving by content_length or chunked
-    """
-
-    def __init__(self,
-                 text: str) -> None:
-        self.text = bytearray(text.encode())
-        self.__headers_done: bool = False
-        self.body_receiving_strategy: BodyReceiveStrategies | None = None
-        self.content_length: int | None = None
-        self.bytes_should_receive_and_save: int = 0 
-        self.bytes_should_receive_and_ignore: int = 0
-        self.message_data : bytearray = bytearray()
-
-    def switch_data(self, length: int) -> None:
-        """
-        Delete data from the self.text and add into self.message_data
-
-        :param length: Message length to delete from the self.text
-        :return: None
-        """
-
-        for byte in self.text[:length]:
-            self.message_data.append(byte)
-        self.text = self.text[length:]
-
-    def message_verify(self) -> bytes:
-        """
-        If message seems like full, call this method to return and clean the
-        self.message_data
-
-        :returns: None
-        """
-
-        msg = self.message_data
-        self.message_data = bytearray()
-        return msg
-
-    def ignore_data(self, length: int) -> None:
-        """
-        Just delete text from self.text by giving length
-
-        :param length: Length message which should be ignored (deleted)
-        :returns: None
-        """
-
-        self.text = self.text[length:]
-
-    def headers_done(self) -> bool:
-        """
-        Check if text contains HTTP message data included full headers
-        or there is headers coming now
-        """
-
-        if not self.__headers_done:
-            is_done = ResponseParser.headers_done(self.text)
-            log.debug(f"Headers done {is_done=}")
-            if is_done:
-                without_body_len = ResponseParser.get_without_body_length(self.text)
-                self.switch_data(without_body_len)
-            self.__headers_done = is_done
-        return self.__headers_done
-
-    @debug.timer
-    def find_strategy(self) -> None:
-        """
-        Find and set strategy for getting message, it can be chunked receiving or
-        with content_length
-
-        :returns: None
-        """
-
-        content_length = ResponseParser.search_content_length(self.message_data)
-        if content_length is not None:
-            self.content_length = content_length
-            self.body_receiving_strategy = BodyReceiveStrategies.content_length
-        else:
-            self.body_receiving_strategy = BodyReceiveStrategies.chunked
-        log.debug(f"Strategy found: {self.body_receiving_strategy}")
-
-    @debug.timer
-    def fill_bytes(self, _bytes: bytes):
-        for byte in _bytes:
-            self.text.append(byte)
-
-    @debug.timer
-    def add_data(self, text: bytes) -> None | str:
-        """
-        Calls whenever new data required to be added
-    
-        :param text: Text to add
-        :ptype text: str
-
-        :returns: None if message not verified else verified message
-        """
-        self.fill_bytes(text)    
-
-        if self.headers_done():
-            
-            if not self.body_receiving_strategy:
-                self.find_strategy()
-            
-            result = self.body_receiving_strategy.parse(self) # type: ignore
-            if result is not None:
-                return result
-        return None
-
 
 class HttpProtocol:
     """
@@ -322,9 +120,6 @@ class Request(BaseRequest):
         where HTTP is scheme 1.1 is a version
         :returns: None
         """
-
-#        if '://' not in host:                          # deprecated
-#            raise ValueError("Invalid host scheme")
 
         if path_parameters is None:
             path_parameters = ()
@@ -490,14 +285,9 @@ class Client(BaseClient):
     """
 
     def __init__(self,
-                 headers : dict[str, str] | None =None,
-                 cache_connections: bool = False,
+                 headers : dict[str, str] | None = None,
+                 persistent_connections: bool = False,
                  headers_obj: Iterable[Header] | None = None):
-        """
-        Initalization method for Client, session like object
-
-        :param headers: HTTP headers that should be sent with each request in this session
-        """
 
         self.connection_mapper = {}
       
@@ -511,7 +301,6 @@ class Client(BaseClient):
                     ]
         _headers = {}
         
-
         if headers:
             self.headers =  _headers | headers 
         else:
@@ -520,12 +309,12 @@ class Client(BaseClient):
         for header in headers_obj:
             self.headers[header.key] = header.value
        
-        self.cache_connections = cache_connections
+        self.persistent_connections = persistent_connections
 
     async def get(
             self, 
             url : str, 
-            body : str | bytearray | bytes= '', 
+            body : str | bytearray | bytes = '', 
             headers : None | dict[str, str] = None, 
             json: dict | None = None, 
             path_parameters: None | Collection[tuple[str, str]] = None, 
@@ -570,8 +359,6 @@ class Client(BaseClient):
             retry=retry+1
         )
 
-
-
     async def send_request(self,
                            url: str,
                            method: str,
@@ -588,20 +375,16 @@ class Client(BaseClient):
         :param url: Url where should be request send
         :param headers: Http headers which should be used in this GET request
         :param body: Http body part
-        :param method: Http message mthod
+        :param method: Http message method
         :param path_parameters:
         :returns: Response object which represents returned by server response
         """
 
         if headers is None:
             headers = {}
+
         splited_url = UrlParser.parse(url)
-        try:
-            transport = await self.get_connection(
-                                                             splited_url,
-                                                             )
-        except ConnectionTimeoutError as e:
-            raise
+        transport = await self.get_connection( splited_url )
         request = Request(
             method=method,
             host=splited_url.get_url_without_path(),
@@ -612,7 +395,6 @@ class Client(BaseClient):
             body=body,
             scheme='HTTP'
         )
-        loop = asyncio.get_running_loop()
         coro = transport.send_http_request(request.get_raw_request())
         if timeout == 0:
             raw_response = await coro 
@@ -626,7 +408,6 @@ class Client(BaseClient):
 
         response = ResponseParser.parse(raw_response)
         response.request = request
-
         return response
 
     async def request_redirect_wrapper(self,
@@ -692,10 +473,10 @@ class Client(BaseClient):
 
         :param splited_url: Url object which contains all url parts
         (scheme, version, subdomain, domain, ...)
-        :returns: ''transport'
+        :returns: 'transport'
         """
-        log.info(f"{splited_url=} {self.cache_connections=}")
-        if self.cache_connections:
+
+        if self.persistent_connections:
             log.debug(f"{self.connection_mapper} searching into mapped connections")
             transport = self.connection_mapper.get(
                 splited_url.get_url_for_dns(), None)
@@ -703,8 +484,8 @@ class Client(BaseClient):
             if transport:
                 if transport.is_closing():
                     transport = None 
-                else:
-                    raise AsyncRequestsError("Can't use persistent connections without pipelining") # change me
+                elif transport.used:
+                    raise AsyncRequestsError("Can't use persistent connections without pipelining")
         
         else:
             transport = None
@@ -727,19 +508,18 @@ class Client(BaseClient):
             try:
                 await connection_coroutine
             except asyncio.exceptions.TimeoutError as err:
-                raise ConnectionTimeoutError('Socket connection timeout error specified in settings.ini') from err
+                raise ConnectionTimeoutError('Socket connection timeout') from err
 
-            if self.cache_connections:
+            if self.persistent_connections:
                 self.connection_mapper[splited_url.get_url_for_dns(
                     )] = transport 
         else:
-            log.info("Using previous connection")
+            log.info("Using already opened connection")
         return transport 
 
     async def __aenter__(self):
         """
-        Implements startpoint for Client
-        for keyword <with> supporting
+        Implements 'with', close transports after it        
 
         :returns: Client object
         """
@@ -747,20 +527,12 @@ class Client(BaseClient):
 
     async def __aexit__(self, *args, **kwargs):
         """
-        Closes session resources which are all transport
-        connections into connection pool
+        Close using recourses
+
+        :returns: None
         """
 
         for host, transport in self.connection_mapper.items():
             transport.writer.close()
             await transport.writer.wait_closed()
             log.info(f"Transport closed {transport=}")
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *args, **kwargs):
-        for host, transport in self.connection_mapper.items():
-            transport.close()
-            log.info(f"Transport closed {transport=}")
-
