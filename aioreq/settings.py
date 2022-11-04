@@ -49,7 +49,6 @@ if any(
         (STREAM_HANDLER_LEVEL not in log_level_mapper)
         )
     ):
-    print(type(MAIN_LOGGER_LEVEL), type(STREAM_HANDLER_LEVEL), repr(MAIN_LOGGER_LEVEL), repr('debug'))
     raise ValueError('Setting.ini contains invalid value '
                      f'for one of the logger levels ({MAIN_LOGGER_LEVEL} or {STREAM_HANDLER_LEVEL})')
 
@@ -61,7 +60,6 @@ FORMAT = parser.get('Logging', 'stream_handler_format')
 for key, value in log_format_mapper.items():
     FORMAT = FORMAT.replace(key, value)
 
-BUFFER_SIZE = 4048 #deprecated
 
 DEFAULT_CONNECTION_TIMEOUT = int(parser.getfloat ('Connection', 'default_connection_timeout'))
 DEFAULT_DNS_SERVER = parser['Connection']['default_dns_server']
