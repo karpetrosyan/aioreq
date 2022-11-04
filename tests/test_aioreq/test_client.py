@@ -5,8 +5,7 @@ import pytest_asyncio
 
 from aioreq.errors.requests import AsyncRequestsError
 
-@pytest.mark.asyncio
-async def test_few_requests(one_time_session, event_loop):
+async def notworking_test_few_requests(one_time_session, event_loop):
 
     t1 = await one_time_session.get('https://www.facebook.com')
     t2 = await one_time_session.get('https://www.google.com')

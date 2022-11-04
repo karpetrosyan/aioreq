@@ -18,8 +18,7 @@ from ..parser.response_parser import ResponseParser
 from ..parser import request_parser
 
 from ..socket.connection import resolve_domain
-from ..socket.newconnection import Transport 
-from ..socket.buffer import HttpBuffer
+from ..socket.connection import Transport 
 
 from ..settings import LOGGER_NAME
 from ..settings import DEFAULT_CONNECTION_TIMEOUT
