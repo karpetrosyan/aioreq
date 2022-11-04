@@ -31,7 +31,7 @@ class ResponseParser:
         )
     # Regex to find content-length if exists
 
-    regex_content = (r'[\s\S]*content-length\s*:\s*(?P<length>\d*)\r\n',
+    regex_content = (r'\r\nContent-length\s*:\s*(?P<length>\d*)\r\n',
                         re.IGNORECASE)
 
     regex_content_length = re.compile(
@@ -147,7 +147,8 @@ class ResponseParser:
         """
 
         match = cls.regex_without_body_length.match(text)
-        assert match.start() == 0, f"Got unexpected {match.start=}" # type: ignore
+        if match:
+            assert match.start() == 0, f"Got unexpected {match.start=}" # type: ignore
         return match is not None
         
 

@@ -18,7 +18,7 @@ from ..parser.response_parser import ResponseParser
 from ..parser import request_parser
 
 from ..socket.connection import resolve_domain
-from ..socket.connection import HttpClientProtocol
+from ..socket.newconnection import Transport 
 from ..socket.buffer import HttpBuffer
 
 from ..settings import LOGGER_NAME
@@ -40,10 +40,11 @@ from typing import Iterable
 from typing import Any
 from enum import Enum
 
+from concurrent.futures import ProcessPoolExecutor
+
 log = logging.getLogger(LOGGER_NAME)
 
-context = ssl.SSLContext(ssl.PROTOCOL_TLS)
-context.load_verify_locations(certifi.where())
+executor = ProcessPoolExecutor(4)
 
 class BodyReceiveStrategies(Enum):
     """
@@ -72,6 +73,7 @@ class BodyReceiveStrategies(Enum):
             return pending_message.message_verify()
         return None
 
+    @debug.timer
     def parse_chunked(self, pending_message) -> None | str:
         t1 = time.perf_counter()
         """
@@ -116,7 +118,6 @@ class BodyReceiveStrategies(Enum):
                 pending_message.bytes_should_receive_and_save = size
                 pending_message.ignore_data(match.end() - match.start())
 
-    @debug.timer
     def parse(self, pending_message) -> bytes | None:
         """
         General interface to work with parsing strategies
@@ -125,10 +126,12 @@ class BodyReceiveStrategies(Enum):
         :returns: Parsed and verifyed http response or NoneType object
         :rtype: str or None
         """
+        loop = asyncio.get_running_loop()
         match self.value:
             case 'content_length':
                 return self.parse_content_length(pending_message)
             case 'chunked':
+                #return await loop.run_in_executor(executor, self.parse_chunked, pending_message)
                 return self.parse_chunked(pending_message)
         return None
        
@@ -198,7 +201,7 @@ class PendingMessage:
             self.__headers_done = is_done
         return self.__headers_done
 
-
+    @debug.timer
     def find_strategy(self) -> None:
         """
         Find and set strategy for getting message, it can be chunked receiving or
@@ -236,7 +239,7 @@ class PendingMessage:
             
             if not self.body_receiving_strategy:
                 self.find_strategy()
-                
+            
             result = self.body_receiving_strategy.parse(self) # type: ignore
             if result is not None:
                 return result
@@ -595,11 +598,9 @@ class Client(BaseClient):
             headers = {}
         splited_url = UrlParser.parse(url)
         try:
-            transport, protocol = await self.make_connection(
+            transport = await self.get_connection(
                                                              splited_url,
-                                                             cache_connections=self.cache_connections
                                                              )
-#            log.debug(f"Connection made! {transport=} {protocol=}")
         except ConnectionTimeoutError as e:
             raise
         request = Request(
@@ -613,20 +614,17 @@ class Client(BaseClient):
             scheme='HTTP'
         )
         loop = asyncio.get_running_loop()
-        future = loop.create_future()
-        protocol.send_http_request(request, future)
+        coro = transport.send_http_request(request.get_raw_request())
         if timeout == 0:
-            raw_response = await future
+            raw_response = await coro 
         else:
             try:
-                raw_response = await asyncio.wait_for(future, timeout=timeout)
+                raw_response = await asyncio.wait_for(coro, timeout=timeout)
             except asyncio.exceptions.TimeoutError as e:
                 raise RequestTimeoutError("Request timeout error")
             except BaseException as e:
                 raise e
 
-        if isinstance(raw_response, Exception):
-            raise raw_response
         response = ResponseParser.parse(raw_response)
         response.request = request
 
@@ -688,29 +686,29 @@ class Client(BaseClient):
                 raise e
                 log.info(f'Retrying request cause of {e}')
 
-    async def make_connection(self, splited_url, cache_connections):
+    async def get_connection(self, splited_url):
         """
         Getting connection from already opened connections, to perform Keep-Alive logic,
         if these connections exists or create the new one and save into connection pool
 
         :param splited_url: Url object which contains all url parts
         (scheme, version, subdomain, domain, ...)
-        :returns: (transport, protocol) which are objects returned by loop.create_connection method
+        :returns: ''transport'
         """
-        log.info(f"{splited_url=} {cache_connections=}")
-        if cache_connections:
+        log.info(f"{splited_url=} {self.cache_connections=}")
+        if self.cache_connections:
             log.debug(f"{self.connection_mapper} searching into mapped connections")
-            transport, protocol = self.connection_mapper.get(
-                splited_url.get_url_for_dns(), (None, None))
+            transport = self.connection_mapper.get(
+                splited_url.get_url_for_dns(), None)
                 
             if transport:
                 if transport.is_closing():
-                    transport, protocol = None, None
+                    transport = None 
                 else:
-                    raise AsyncRequestsError("Can't use persistent connections without pipelining")
+                    raise AsyncRequestsError("Can't use persistent connections without pipelining") # change me
         
         else:
-            transport, protocol = None, None
+            transport = None
 
         if not transport:
             if splited_url.domain == 'testulik': # server for tests
@@ -721,23 +719,23 @@ class Client(BaseClient):
 
             loop = asyncio.get_running_loop()
 
-            connection_coroutine = loop.create_connection(
-                lambda: HttpClientProtocol(),
-                host=ip,
-                port=port,
-                ssl=context if splited_url.scheme == 'https' else None,
-            )
+            transport = Transport()
+            connection_coroutine = transport.make_connection(
+                    ip,
+                    port,
+                    ssl = splited_url.scheme == 'https'
+                    )
             try:
-                transport, protocol = await connection_coroutine
+                await connection_coroutine
             except asyncio.exceptions.TimeoutError as err:
                 raise ConnectionTimeoutError('Socket connection timeout error specified in settings.ini') from err
 
-            self.connection_mapper[splited_url.get_url_for_dns(
-                )] = transport, protocol
-            log.debug(self.connection_mapper)
+            if self.cache_connections:
+                self.connection_mapper[splited_url.get_url_for_dns(
+                    )] = transport 
         else:
             log.info("Using previous connection")
-        return transport, protocol
+        return transport 
 
     async def __aenter__(self):
         """
@@ -754,15 +752,16 @@ class Client(BaseClient):
         connections into connection pool
         """
 
-        for host, (transport, protocol) in self.connection_mapper.items():
-            transport.close()
+        for host, transport in self.connection_mapper.items():
+            transport.writer.close()
+            await transport.writer.wait_closed()
             log.info(f"Transport closed {transport=}")
 
     def __enter__(self):
         return self
 
     def __exit__(self, *args, **kwargs):
-        for host, (transport, protocol) in self.connection_mapper.items():
+        for host, transport in self.connection_mapper.items():
             transport.close()
             log.info(f"Transport closed {transport=}")
 
