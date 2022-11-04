@@ -1,4 +1,5 @@
 import ssl
+import time
 import logging
 import asyncio
 import certifi
@@ -31,6 +32,8 @@ from .headers import AcceptEncoding
 from .headers import Header
 
 from .encodings import Encodings
+
+from ..utils import debug
 
 from typing import Coroutine
 from typing import Iterable
@@ -70,6 +73,7 @@ class BodyReceiveStrategies(Enum):
         return None
 
     def parse_chunked(self, pending_message) -> None | str:
+        t1 = time.perf_counter()
         """
         Parse incoming PendingMessage object which receiving data which body length
         specified by Transfer-Encoding : chunked.
@@ -91,13 +95,13 @@ class BodyReceiveStrategies(Enum):
                     pending_message.bytes_should_receive_and_save = 0
                     pending_message.bytes_should_receive_and_ignore = 2
                 else:
-                    return
+                    break
             elif pending_message.bytes_should_receive_and_ignore:
                 if pending_message.bytes_should_receive_and_ignore <= len(pending_message.text):
                     pending_message.ignore_data(pending_message.bytes_should_receive_and_ignore) 
                     pending_message.bytes_should_receive_and_ignore = 0
                 else:
-                    return
+                    break 
 
             else:
                 for pattern in ResponseParser.regex_end_chunks:
@@ -107,11 +111,12 @@ class BodyReceiveStrategies(Enum):
 
                 match = ResponseParser.regex_find_chunk.search(pending_message.text)
                 if match is None:
-                    return None
+                    break
                 size = int(match.group('content_size'), 16)
                 pending_message.bytes_should_receive_and_save = size
                 pending_message.ignore_data(match.end() - match.start())
 
+    @debug.timer
     def parse(self, pending_message) -> bytes | None:
         """
         General interface to work with parsing strategies
@@ -120,13 +125,13 @@ class BodyReceiveStrategies(Enum):
         :returns: Parsed and verifyed http response or NoneType object
         :rtype: str or None
         """
-
         match self.value:
             case 'content_length':
                 return self.parse_content_length(pending_message)
             case 'chunked':
                 return self.parse_chunked(pending_message)
         return None
+       
 
 class PendingMessage:
     """
@@ -210,6 +215,12 @@ class PendingMessage:
             self.body_receiving_strategy = BodyReceiveStrategies.chunked
         log.debug(f"Strategy found: {self.body_receiving_strategy}")
 
+    @debug.timer
+    def fill_bytes(self, _bytes: bytes):
+        for byte in _bytes:
+            self.text.append(byte)
+
+    @debug.timer
     def add_data(self, text: bytes) -> None | str:
         """
         Calls whenever new data required to be added
@@ -219,9 +230,7 @@ class PendingMessage:
 
         :returns: None if message not verified else verified message
         """
-    
-        for byte in text:
-            self.text.append(byte)
+        self.fill_bytes(text)    
 
         if self.headers_done():
             
@@ -704,7 +713,7 @@ class Client(BaseClient):
             transport, protocol = None, None
 
         if not transport:
-            if splited_url.domain == 'testulik':
+            if splited_url.domain == 'testulik': # server for tests
                 ip, port = '127.0.0.1', 7575
             else:
                 ip = await resolve_domain(splited_url.get_url_for_dns())

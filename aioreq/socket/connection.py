@@ -32,12 +32,15 @@ async def resolve_domain(hostname: str,
     :rtype: [str, int]
     """
     if hostname in memo:
-        return memo[hostname]
+        result = memo[hostname]
+        if isinstance(result, asyncio.Future): # task pending
+            return await result
 
     log.debug(f"trying resolve {hostname=}")
-    print('resolve')
     loop = asyncio.get_event_loop()
-    host = await loop.run_in_executor(executor, lambda: socket.gethostbyname(hostname))
+    fut = loop.run_in_executor(executor, lambda: socket.gethostbyname(hostname))
+    memo[hostname] = fut 
+    host = await fut
     memo[hostname] = host
     return host
 
