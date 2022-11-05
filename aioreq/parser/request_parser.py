@@ -52,7 +52,9 @@ class RequestParser(BaseRequestParser):
             f'host:  {request.host.split("://", 1)[1]}',
             *(f"{key}:  {value}" for key, value in request.headers.items()),
         )) + ('\r\n\r\n'))
-
+        
+        if type(request.body) in (bytes, bytearray):
+            request.body = request.body.decode()
         message += request.body or ''
 
         return message
