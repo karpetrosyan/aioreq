@@ -62,7 +62,8 @@ class Transport:
         reader, writer = await asyncio.open_connection(
                                                         host = ip,
                                                         port = port,
-                                                        ssl = context if ssl else None)
+                                                        ssl = context if ssl else None
+                                                        )
         self.reader = reader
         self.writer = writer
 

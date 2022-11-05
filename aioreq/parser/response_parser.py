@@ -29,8 +29,7 @@ class ResponseParser:
                 r'(?P<body>[\d\D]*)'
             ).encode()
         )
-    # Regex to find content-length if exists
-
+    # Regex to find content-length header if exists
     regex_content = (r'\r\nContent-length\s*:\s*(?P<length>\d*)\r\n',
                         re.IGNORECASE)
 

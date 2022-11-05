@@ -43,9 +43,9 @@ from concurrent.futures import ProcessPoolExecutor
 
 log = logging.getLogger(LOGGER_NAME)
 
-class HttpProtocol:
+class HttpProtocol(metaclass=ABCMeta):
     """
-    Abstract class for all Http units representing HTTP/1.1 protocol
+    An abstract class for all Http units representing HTTP/1.1 protocol
     with the general attributes
     """
 
@@ -54,52 +54,60 @@ class HttpProtocol:
         "HEAD"
     )
 
-
-class ImportedParser:
-
-    def __init__(self, value):
-        self.module = value
-
-    def __set_name__(self, owner, name):
-        self.name = name
-
-    def __get__(self, obj, objtype=None):
-        if self.module is None:
-            self.__set__(obj, request_parser.RequestParser)
-        return self.module
-
-    def __set__(self, obj, value):
-        self.module = value
-
-
-class BaseRequest(HttpProtocol):
+class BaseRequest(HttpProtocol, metaclass=ABCMeta):
     """
-    Base Requets
+    An abstract Request class 
     """
 
-    parser = ImportedParser(None)
-    
+    @abstractmethod
+    def get_raw_request(self) -> bytes: ...
 
 
-class BaseResponse(HttpProtocol):
+class BaseResponse(HttpProtocol, metaclass=ABCMeta):
     """
-    Base Response
+    An abstract Response class
     """
 
 class Request(BaseRequest):
     """
-    Http request Class
+    An HTTP request abstraction 
 
-    Request class contains all HTTP properties for requesting
-    as object attributes.
-    Also gives raw encoded data which used to send bytes via socket
+    This is a low level Request abstraction class which used by Client by default,
+    but can be used directly.
+    By default used by 'aioreq.protocol.http.Client.send_request' 
+
+    :param method: HTTP method (GET, POST, PUT, PATCH),
+    see also RFC[2616] 5.1.1 Method
+    :type method: str
+    :param host: HTTP header host which contains host's domain,
+    see also RFC[2616] 14.23 Host
+    :type host: str
+    :param headers: HTTP headers paired by (key, value) where 'key'= header name
+    and 'value'= header value
+    :type headers: dict[str, str]
+    :param path: HTTP server endpoint path specified after top-level domain
+    :type path: str
+    :scheme_and_version: HTTP scheme and version
+
+    :Example:
+
+    >>> from aioreq.protocol.http import Request
+    >>> req = Request(
+    >>>              method='GET',
+    >>>              host='https://google.com',
+    >>>              path='/',
+    >>>              headers={})
+    >>> print(req)
+    "Request(GET, https://google/com)"
+
+    .. todo:: Remove version properties
     """
 
     def __init__(
             self,
             method: str,
             host: str,
-            headers: dict,
+            headers: dict['str', 'str'],
             path: str,
             raw_request: None | bytes = None,
             body: str | bytearray | bytes = '',
@@ -111,14 +119,6 @@ class Request(BaseRequest):
     ) -> None:
         """
         Request initialization method
-
-        :param method: HTTP method (GET, POST, PUT, PATCH)
-        :param host: HTTP header host which contains host's domain
-        :param headers: HTTP headers
-        :param path: HTTP server endpoint path specified after top-level domain
-        :scheme_and_version: HTTP scheme and version
-        where HTTP is scheme 1.1 is a version
-        :returns: None
         """
 
         if path_parameters is None:
@@ -141,6 +141,7 @@ class Request(BaseRequest):
         self.version = version
         self.scheme_and_version = scheme_and_version
         self.__raw_request = raw_request
+        self.parser = request_parser.RequestParser
 
     def get_raw_request(self) -> bytes:
         """
@@ -150,8 +151,6 @@ class Request(BaseRequest):
         if self.__raw_request:
             return self.__raw_request
 
-        self.parser = request_parser.RequestParser
-
         message = self.parser.parse(self)
         enc_message = message.encode('utf-8')
         self.__raw_request = enc_message
@@ -159,6 +158,9 @@ class Request(BaseRequest):
 
     def add_header(self, header: Header) -> None:
         self.headers[header.key] = header.value
+
+    def __str__(self) -> str:
+        return f"Request({self.method}, {self.host})"
 
     def __repr__(self) -> str:
         return '\n'.join((
@@ -177,11 +179,39 @@ class Request(BaseRequest):
 
 class Response(BaseResponse):
     """
-    Http response Class
+    An HTTP response asbtraction
 
-    Response class which is one of the first types that
-    user using this library can see, it's result for all
-    http requests methods like GET, PUT, PATCH, POST
+    This is a Response abstraction class used by 'aioreq.parser.response_parser.ResponseParser.parse'
+    by default to make response binary data more friendly and not reccommended to use directly.
+
+    :param scheme_and_version: Version and scheme 
+    :type scheme_and_version: str
+    :param status: response code returned with response,
+    see also RFC[2616] 6.1.1 Status Code and Reason Pharse
+    :type status: int
+    :param status_message: description for :status: in the status line
+    :type status_message: str
+    :param headers: HTTP headers sent by the server, see also RFC[2616] 6.2
+    Response Headers Fields
+    :type headers: dict[str, str]
+    :param body: response body
+    :type body: bytes
+    :param request: Request for this response 
+    :type request: Request
+
+    :Example:
+
+    >>> import aioreq
+    >>> from aioreq.protocol.http import Response
+    >>> 
+    >>> a = Response(scheme_and_version='HTTP/1.1',
+    >>>          status=200,
+    >>>          status_message='OK',
+    >>>          headers={},
+    >>>          body=b'Test message',
+    >>>          request=None)
+    >>> print(a)
+    "Response(200, OK)" 
     """
 
     def __init__(
@@ -190,21 +220,12 @@ class Response(BaseResponse):
             status: int,
             status_message: str,
             headers: dict,
-            body: str,
+            body: bytes,
             request: Request | None = None):
         """
         Response initalization method
-
-        :param scheme_and_version: Version and scheme 
-        for http. For example HTTP/1.1
-        :param status: response code returned with response
-        :param status_message: message returned with response status code
-        :param headers: response headers for example, Connection : Keep-Alive
-        if version lower than HTTP/1.1
-        :param body: response body
-        :param request: request which response is self
-        :returns: None
         """
+
         self.scheme_and_version = scheme_and_version
         self.status = status
         self.status_message = status_message
@@ -212,11 +233,12 @@ class Response(BaseResponse):
         self.body = body
         self.request = request
 
-    def __eq__(self, value) -> bool:
+    def __eq__(self, value: 'Response') -> bool:
         """
-        Check if two Request objects have the same attributes or not
+        Check if two Response objects have the same attributes or not
 
         :param value: right side value of equal
+        :type value: Response 
         :returns: True if values are equal
         :rtype: bool
         """
@@ -253,35 +275,22 @@ class BaseClient(metaclass=ABCMeta):
                            path_parameters: Collection[Iterable[str]] | None = None,
                            headers: None | dict = None,
                            json: dict | None = None) -> Response:...
-    async def get(
-            self, 
-            url : str, 
-            body : str | bytearray | bytes= '', 
-            headers : None | dict[str, str] = None, 
-            json: dict | None = None, 
-            path_parameters: None | Collection[tuple[str, str]] = None, 
-            obj_headers : None | Iterable[Header] = None,
-            timeout: int = 0) -> Response: ...
-
-    async def post(
-            self, 
-            url : str, 
-            body : str | bytearray | bytes= '', 
-            headers : None | dict[str, str] = None, 
-            json: dict | None = None, 
-            path_parameters: None | Collection[tuple[str, str]] = None, 
-            obj_headers : None | Iterable[Header] = None,
-            timeout: int = 0) -> Response: ...
-
-
 
 class Client(BaseClient):
     """
-    Session like class Client
+    A session like class Client used to make requests 
 
-    Client used to send requests with same headers or
-    send requests using same connections which are stored in
-    the Client's connection pool
+    This is a Client abstraction used to communicate with the
+    HTTP protocol, send requests, receive responses and so on
+
+    :param headers: HTTP protocol headers
+    :type headers: dict[str, str], None
+    :param persistent_connections: Persistent connections support for our client
+    see also RFC[2616] 8.1 Persistent Connections
+    :type persistent_connections: bool
+    :param headers_obj: Iterable object which contains
+    Header objects defined in 'aioreq.protocol.headers',
+    this is an easy way to use HTTP Headers through OOP
     """
 
     def __init__(self,
@@ -370,9 +379,10 @@ class Client(BaseClient):
                            timeout: int = 0) -> Response:
 
         """
-        Simulates http request
+        Simulates an http request
 
         :param url: Url where should be request send
+        :type url: str
         :param headers: Http headers which should be used in this GET request
         :param body: Http body part
         :param method: Http message method
@@ -412,15 +422,15 @@ class Client(BaseClient):
 
     async def request_redirect_wrapper(self,
                                        *args: tuple[Any],
-                                       redirect: str,
+                                       redirect: int,
                                        **kwargs: dict[str, Any]
                                        ) -> Response:
         """
-        Wrapper for send_request method, also implements redirection if
+        A wrapper method for send_request, also implements redirection if
         3xx status code received
 
         :param redirect: Maximum request sending counts
-        
+        :type redirect: int
         :return: Response object
         :rtype: Response
         """
@@ -445,10 +455,11 @@ class Client(BaseClient):
                                     **kwargs: dict[str, Any]
                                     ) -> Response:
         """
-        Wrapper for request_redirect_wrapper method, also implements retrying
+        A wrapper method for request_redirect_wrapper, also implements retrying
         for the requests if they were failed
 
         :param retry: Maximum request sending count
+        :type retry: int
         :return: Response object
         :rtype: Response
         """
@@ -473,7 +484,8 @@ class Client(BaseClient):
 
         :param splited_url: Url object which contains all url parts
         (scheme, version, subdomain, domain, ...)
-        :returns: 'transport'
+        :type splited_url: Url
+        :returns: Transport
         """
 
         if self.persistent_connections:
@@ -519,9 +531,11 @@ class Client(BaseClient):
 
     async def __aenter__(self):
         """
-        Implements 'with', close transports after it        
+        Implements 'with', close transports after
+        session ends
 
         :returns: Client object
+        :type: Client
         """
         return self
 
