@@ -5,11 +5,19 @@ from abc import ABC
 from abc import abstractmethod 
 
 class Encoding(ABC):
-    
+    all_encodings = []
+
     @classmethod
     @abstractmethod
     def decompress(cls, text: bytes) -> bytes:
         ...
+
+    def __init_subclass__(cls):
+        Encoding.all_encodings.append(cls)
+
+    @classmethod
+    def stringify(cls) -> str:
+        return cls.__name__
 
 # Encodings
 # -------------
@@ -35,9 +43,3 @@ class Encodings(Enum):
 
     def decompress(self, text: bytes) -> bytes:
         return self.value.decompress(text)
-
-    def __str__(self):
-        return str(
-                self.value.__name__
-                )
-

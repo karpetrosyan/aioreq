@@ -31,6 +31,7 @@ from .headers import AcceptEncoding
 from .headers import Header
 
 from .encodings import Encodings
+from .encodings import Encoding
 
 from ..utils import debug
 
@@ -309,15 +310,15 @@ class Client(BaseClient):
         if headers_obj is None:
             headers_obj = [
                     AcceptEncoding(
-                            (
-                                (Encodings.gzip, ),
-                            )         
+                            [
+                                (encoding, ) for encoding in Encoding.all_encodings
+                                ]         
                                 ),
                     ]
         _headers = {}
 
         for header in headers_obj:
-            self._headers[header.key] = header.value
+            _headers[header.key] = header.value
        
         if headers:
             self.headers =  _headers | headers 
