@@ -145,7 +145,10 @@ class Request(BaseRequest):
 
     def get_raw_request(self) -> bytes:
         """
-        Getter method for raw_request private attribute
+        The Getter method for raw_request private attribute
+
+        :returns: raw request for this Request abstraction
+        :rtype: bytes
         """
 
         if self.__raw_request:
@@ -266,6 +269,9 @@ class Response(BaseResponse):
 
 
 class BaseClient(metaclass=ABCMeta):
+    """
+    An abstract class for all Clients
+    """
 
     @abstractmethod
     async def send_request(self,
@@ -309,14 +315,14 @@ class Client(BaseClient):
                                 ),
                     ]
         _headers = {}
-        
+
+        for header in headers_obj:
+            self._headers[header.key] = header.value
+       
         if headers:
             self.headers =  _headers | headers 
         else:
             self.headers = _headers
-
-        for header in headers_obj:
-            self.headers[header.key] = header.value
        
         self.persistent_connections = persistent_connections
 
