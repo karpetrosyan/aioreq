@@ -42,15 +42,14 @@ class RequestParser(BaseRequestParser):
 
         if request.json:
             request.body = _json.dumps(request.json)
-            request.json = ''
             request.headers['Content-Type'] = "application/json"
 
-        if request.body:
+        elif request.body:
             request.headers['Content-Length'] = len(request.body) 
     
         message = ('\r\n'.join((
             f'{request.method} {request.path} {request.scheme}/{request.version}',
-            f'Host:  {request.host.split("://", 1)[1]}',
+            f'host:  {request.host.split("://", 1)[1]}',
             *(f"{key}:  {value}" for key, value in request.headers.items()),
         )) + ('\r\n\r\n'))
 
