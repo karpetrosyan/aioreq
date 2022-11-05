@@ -8,6 +8,7 @@ from abc import abstractmethod
 from abc import ABC
 from enum import Enum
 from .encodings import Encodings 
+from .encodings import Encoding
 
 def qvalue_validate(qvalue: int) -> bool:
     if 0 <= qvalue <= 1:
@@ -46,7 +47,7 @@ class AcceptEncoding(Header):
             self,
             codings: Collection[
                 tuple[Encodings, int]
-                | tuple[Encodings],
+                | tuple[Encodings] | tuple[Encoding]
                 ]):
         self._codings = {}
         for coding in codings:
@@ -59,7 +60,10 @@ class AcceptEncoding(Header):
 
             if not qvalue_validate(qvalue):
                 raise ValueError("Invalid qvalue given -> {qvalue}. Expected int between 0, 1")
-            self._codings[coding_type] = qvalue
+
+            if isinstance(coding_type, Encodings):
+                coding_type = coding_type.value
+            self._codings[coding_type.stringify()] = qvalue
 
     @property
     def value(self):
