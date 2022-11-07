@@ -1,6 +1,6 @@
 
 
-time python test_aiohttp.py
-time python test_aioreq.py
-time python test_httpx.py
-time python test_requests.py
+time python bench_test_aiohttp.py
+time python bench_test_aioreq.py
+time python bench_test_httpx.py
+time python bench_test_requests.py

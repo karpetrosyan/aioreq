@@ -474,7 +474,7 @@ class Client(BaseClient):
                 if transport.is_closing():
                     transport = None 
                 elif transport.used:
-                    raise AsyncRequestsError("Can't use persistent connections without pipelining")
+                    raise AsyncRequestsError("Can't use persistent connections in async mode without pipelining")
         
         else:
             transport = None
@@ -500,6 +500,14 @@ class Client(BaseClient):
                 raise ConnectionTimeoutError('Socket connection timeout') from err
 
             if self.persistent_connections:
+                if splited_url.get_url_for_dns() in self.connection_mapper:
+                    raise AsyncRequestsError(
+                        (
+                        'Seems you use persistent connections in async mode, which'
+                        'is impossible when you requesting the same domain concurrently'
+                         )
+                    )
+
                 self.connection_mapper[splited_url.get_url_for_dns(
                     )] = transport 
         else:

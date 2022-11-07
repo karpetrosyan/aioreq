@@ -23,7 +23,7 @@ class TestRequestParser:
                         ),
                     (
                         "GET / HTTP/1.1\r\n"
-                        "Host:  youtube.com\r\n"
+                        "host:  youtube.com\r\n"
                         "\r\n"
                         )
                 ),
@@ -39,7 +39,7 @@ class TestRequestParser:
                         ),
                     (
                         "POST /chxkopath HTTP/1.1\r\n"
-                        "Host:  chxko.am\r\n"
+                        "host:  chxko.am\r\n"
                         "testheader:  testvalue\r\n"
                         "testchxko:  chxko\r\n"
                         "\r\n"
@@ -59,7 +59,7 @@ class TestRequestParser:
                         ),
                     (
                         "HEAD /chxkopath HTTP/1.1\r\n"
-                        "Host:  chxko.am\r\n"
+                        "host:  chxko.am\r\n"
                         "testheader:  testvalue\r\n"
                         "testchxko:  chxko\r\n"
                         "Content-Length:  24\r\n"
@@ -81,7 +81,7 @@ class TestRequestParser:
                         ),
                     (
                         "LINK /chxkopath HTTP/1.1\r\n"
-                        "Host:  chxko.am\r\n"
+                        "host:  chxko.am\r\n"
                         "testheader:  testvalue\r\n"
                         "testchxko:  chxko\r\n"
                         "Content-Type:  application/json\r\n"

@@ -5,13 +5,13 @@ import pytest_asyncio
 
 from aioreq.errors.requests import AsyncRequestsError
 
-async def notworking_test_few_requests(one_time_session, event_loop):
-
-    t1 = await one_time_session.get('https://www.facebook.com')
-    t2 = await one_time_session.get('https://www.google.com')
-    t3 = await one_time_session.get('https://www.youtube.com')
-    await asyncio.gather(t1, t2, t3)
-    assert t1.result().status == t2.result().status == t3.result().status
+@pytest.mark.asyncio
+async def test_few_requests(one_time_session, event_loop):
+    t1 = one_time_session.get('https://www.facebook.com')
+    t2 = one_time_session.get('https://www.google.com')
+    t3 = one_time_session.get('https://www.youtube.com')
+    tasks = await asyncio.gather(t1, t2, t3)
+    assert all([result.status == 200 for result in tasks])
 
 @pytest.mark.asyncio
 async def test_normal_request(one_time_session):
@@ -52,17 +52,21 @@ async def test_ping(one_time_session,
     response = await one_time_session.get(server)
     assert response.status == 200
 
+@pytest.mark.asyncio
+async def test_same_domain_requests_with_cache_connections(one_time_session_cached,
+                                                           event_loop):
+    
+    with pytest.raises(AsyncRequestsError):
+        loop = event_loop
+        t1 = loop.create_task(one_time_session_cached.get('https://www.youtube.com'))
+        t2 = loop.create_task(one_time_session_cached.get('https://www.youtube.com'))
+        results = await asyncio.gather(t1, t2, return_exceptions = True)
+        for result in results:
+            if isinstance(result, Exception):
+                raise result
+        
 
-#@pytest.mark.asyncio
-#async def test_same_domain_requests_with_cache_connections(one_time_session_cached,
-#                                                           event_loop):
-#   
-#    loop = event_loop
-#    t1 = loop.create_task(one_time_session_cached.get('https://www.youtube.com'))
-#    t2 = loop.create_task(one_time_session_cached.get('https://www.youtube.com'))
-#    await asyncio.gather(t1, t2)
-#    print(t1, t2)
-#
+
 
 
 
