@@ -1,5 +1,7 @@
 **Aioreq** is a low level asynchronous HTTP client library for Python. It's built on top of non-blocking TCP sockets.
 
+[mygit]: https://github.com//aioreq
+
 ---
 
 ## Install
@@ -21,6 +23,14 @@ $ pip install aioreq
 >>>	)
 >>> resp
 <Response 200 OK>
+>>> resp.status
+200
+>>> resp.status_message
+'OK'
+>>> resp.request
+<Request GET https://www.google.com>
+>>> headers = resp.headers # dict
+>>> body = resp.body # bytes object
 ```
 ### More advanced usage
 
@@ -45,14 +55,31 @@ This code will send 100 get requests to `google.com` asynchronously which is muc
 ```
 ## Benchmarks
 **Aioreq** is a really fast library and to demonstrate the speed, we compared the same program with different python libraries.
-<br/>
-<br/>
+
+
+
+
 Libraries that i used to compare speed.
 * [aiohttp](https://github.com/aio-libs/aiohttp)
 * [httpx](https://github.com/encode/httpx)
 * [requests](https://github.com/psf/requests)
-* 
-## Benchmark results
+---
+### Benchmark run
+
+Clone aioreq [repository][mygit] for first.
+
+Then...
+
+```shell
+$ cd aioreq
+$ python -m venv venv
+$ source ./venv/bin/activate
+$ pip install '.[benchmarks]'
+$ cd benchmarks
+$ source run_tests
+```
+---
+### Benchmark results
 
 Libraries were specified after the prefix \`test_\`.
 
