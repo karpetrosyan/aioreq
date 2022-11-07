@@ -163,23 +163,8 @@ class Request(BaseRequest):
     def add_header(self, header: Header) -> None:
         self.headers[header.key] = header.value
 
-    def __str__(self) -> str:
-        return f"Request({self.method}, {self.host})"
-
     def __repr__(self) -> str:
-        return '\n'.join((
-            f"Request(",
-            f"\tscheme_and_version=\'{self.scheme_and_version}\'",
-            f"\thost= '{self.host}'",
-            f"\tmethod= '{self.method}'",
-            f"\tpath= '{self.path}'",
-            f"\tHeaders:",
-            *(
-                f"\t\t{key}: {value}" for key, value in self.headers.items()
-            ),
-            f"\tBody: {len(self.body)} length"
-            ')'
-        ))
+        return f"<Request {self.method} {self.host}>"
 
 class Response(BaseResponse):
     """
@@ -251,23 +236,8 @@ class Response(BaseResponse):
             return False
         return self.__dict__ == value.__dict__
 
-    def __str__(self) -> str:
-        return f"Response({self.status}, {self.status_message})"
-
-    def __repr__(self):
-        return '\n'.join((
-            f"Response(",
-            f"\tscheme_and_version='{self.scheme_and_version}'",
-            f"\tstatus = {self.status}",
-            f"\tstatus_message = '{self.status_message}'",
-            f"\tHeaders:",
-            *(
-                f"\t\t{key}: {value}" for key, value in self.headers.items()
-            ),
-            f"\tBody: {len(self.body)} length"
-            ')'
-        ))
-
+    def __repr__(self) -> str:
+        return f"<Response {self.status} {self.status_message}>"
 
 class BaseClient(metaclass=ABCMeta):
     """

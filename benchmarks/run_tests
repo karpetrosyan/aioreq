@@ -1,0 +1,6 @@
+
+
+time python test_aiohttp.py
+time python test_aioreq.py
+time python test_httpx.py
+time python test_requests.py

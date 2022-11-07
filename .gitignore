@@ -7,3 +7,4 @@ __pycache__
 *.pyc
 todo
 *mypy*
+README.md.backup
