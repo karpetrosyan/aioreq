@@ -81,7 +81,7 @@ $ source run_tests
 ---
 ### Benchmark results
 
-Libraries were specified after the prefix \`test_\`.
+Libraries were specified after the prefix \`bench\_test\_\`.
 
 ```shell
 $ cd benchmarks

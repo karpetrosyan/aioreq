@@ -44,7 +44,7 @@ class RequestParser(BaseRequestParser):
             request.body = _json.dumps(request.json)
             request.headers['Content-Type'] = "application/json"
 
-        elif request.body:
+        if request.body:
             request.headers['Content-Length'] = len(request.body) 
     
         message = ('\r\n'.join((
