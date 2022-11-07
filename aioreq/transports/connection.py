@@ -73,6 +73,7 @@ class Transport:
         self.used = True
         await self.send_data(raw_data)
         while True:
+            await asyncio.sleep(0.5)
             resp = await self.receive_data()
             if resp is not None:
                 self.used = False

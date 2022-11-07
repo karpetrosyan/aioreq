@@ -6,12 +6,18 @@ setup(
         version='0.0.3',
         description="Async requests lib",
         install_requires = [
-            'certifi'
+            'certifi',
+            'uvloop'
             ],
         extras_require={
             'tests' : [
                 'pytest',
                 'pytest-asyncio'
+                ],
+            'benchmark' : [
+                'aiohttp',
+                'httpx',
+                'requests',
                 ]
             },
         packages = find_packages(),
