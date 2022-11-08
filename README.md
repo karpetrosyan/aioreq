@@ -5,14 +5,14 @@
 ---
 
 ## Install
-```shell
+``` shell
 $ pip install aioreq
 ```
 
 ## Usage
 ### Basic usage
 
-```pycon
+``` python
 >>> import aioreq
 >>> import asyncio
 >>>
@@ -34,9 +34,9 @@ $ pip install aioreq
 ```
 ### More advanced usage
 
-This code will send 100 get requests to `google.com` asynchronously which is much faster then sync requests like [requests](https://github.com/psf/requests) library do.
+This code will send 100 get requests to [`google.com`](https://www.google.com) asynchronously which is much faster then sync requests like [requests](https://github.com/psf/requests) library do.
 
-```
+``` python
 >>> import asyncio
 >>> import aioreq
 >>>
@@ -81,24 +81,92 @@ $ source run_tests
 ---
 ### Benchmark results
 
-Libraries were specified after the prefix \`bench\_test\_\`.
+This is the **average** execution time of each library for **300 asynchronous requests** where responses was received without **chunked** transfer encoding.
+<br/>
+
+
+Benchmark settings.
+
+* **Url** - https://www.google.com
+* **Requests count** - 300
+
+#### With `Content-Length`
+``` shell
+$ cd benchmarks
+$ source run_tests
+Tests with module loading
+---------------------------
+aiohttp benchmark
+
+real    0m3.644s
+user    0m1.179s
+sys     0m0.193s
+---------------------------
+aioreq benchmark
+
+real    0m1.808s
+user    0m0.505s
+sys     0m0.096s
+---------------------------
+httpx benchmark
+
+real    0m3.965s
+user    0m1.699s
+sys     0m0.263s
+---------------------------
+requests benchmark (only 5 requests)
+
+real    0m4.075s
+user    0m0.220s
+sys     0m0.016s
+```
+
+#### With `Transfer-Encoding: Chunked`
+This is the **average** execution time of each library for **50 asynchronous requests** where responses was received with **chunked** transfer encoding.
+<br/>
+
+Benchmark settings.
+
+* **Url** - https://www.youtube.com
+* **Requests count** - 50
 
 ```shell
 $ cd benchmarks
 $ source run_tests
-python test_aiohttp.py  2.01s user 0.25s system 62% cpu 3.599 total
-python test_aioreq.py  2.11s user 0.19s system 70% cpu 3.274 total
-python test_httpx.py  2.90s user 0.39s system 85% cpu 3.849 total
-python test_requests.py  1.74s user 0.13s system 2% cpu 1:15.40 total
+Tests with module loading
+---------------------------
+aiohttp benchmark
+
+real    0m1.821s
+user    0m0.475s
+sys     0m0.123s
+---------------------------
+aioreq benchmark
+
+real    0m2.100s
+user    0m0.832s
+sys     0m0.068s
+---------------------------
+httpx benchmark
+
+real    0m2.289s
+user    0m1.188s
+sys     0m0.192s
+---------------------------
+requests benchmark (only 5 requests)
+
+real    0m4.508s
+user    0m0.289s
+sys     0m0.029s
 ```
 
 As you can see, the synchronous code lags far behind when we make many requests at the same time.<br />
-And the **fastest** asynchronous client turned out to be **aioreq**.<br/>
-<br/>
-This is the **average** execution time of each library for **100 asynchronous requests** where responses was received with **Chunked** transfer encoding.
-<br/>
-<br/>
-These tests are made for **Python 3.11**, for versions **<=3.11** aioreq will run **much slower**, since optimizations have been added to python 3.11 that **greatly affect** aioreq.
+
+
+
+These tests are made for **Python 3.11**, for versions **<=3.11** aioreq will run **little bit slower**, since optimizations have been added to python 3.11 that **greatly affect** aioreq.
+
+
 
 ## Supported Features
 **Aioreq** support basic features to work with **HTTP/1.1**.<br />More functionality will be avaliable in future realeases.<br />
