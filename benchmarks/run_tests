@@ -1,6 +1,18 @@
 
+echo "Tests with module loading"
 
+echo "---------------------------"
+echo "aiohttp benchmark"
 time python bench_test_aiohttp.py
+
+echo "---------------------------"
+echo "aioreq benchmark"
 time python bench_test_aioreq.py
+
+echo "---------------------------"
+echo "httpx benchmark"
 time python bench_test_httpx.py
+
+echo "---------------------------"
+echo "requests benchmark (only 5 requests)"
 time python bench_test_requests.py

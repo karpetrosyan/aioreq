@@ -1,8 +1,0 @@
-import aiohttp
-import asyncio
-
-async def main():
-    async with aiohttp.ClientSession() as cl:
-        a= await cl.get("https://www.google.com")
-        print(a)
-asyncio.run(main())
