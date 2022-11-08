@@ -1,6 +1,8 @@
 from setuptools import setup
 from setuptools import find_packages
 
+long_description = open('README.md').read()
+
 setup(
         name="aioreq",
         version='0.0.3',
@@ -24,5 +26,7 @@ setup(
             },
         packages = find_packages(),
         include_package_data=True,
-        package_data={'aioreq':['*.ini']}
+        package_data={'aioreq':['*.ini']},
+        long_description = long_description,
+        long_description_content_type = 'text/markdown'
         )
