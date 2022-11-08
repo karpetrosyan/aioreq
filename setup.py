@@ -12,7 +12,8 @@ setup(
         extras_require={
             'tests' : [
                 'pytest',
-                'pytest-asyncio'
+                'pytest-asyncio',
+                'uvicorn'
                 ],
             'benchmark' : [
                 'aiohttp',

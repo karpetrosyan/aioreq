@@ -94,10 +94,10 @@ class Request(BaseRequest):
 
     >>> from aioreq.protocol.http import Request
     >>> req = Request(
-    >>>              method='GET',
-    >>>              host='https://google.com',
-    >>>              path='/',
-    >>>              headers={})
+    ...              method='GET',
+    ...              host='https://google.com',
+    ...              path='/',
+    ...              headers={})
     >>> print(req)
     "Request(GET, https://google/com)"
 
@@ -194,11 +194,11 @@ class Response(BaseResponse):
     >>> from aioreq.protocol.http import Response
     >>> 
     >>> a = Response(scheme_and_version='HTTP/1.1',
-    >>>          status=200,
-    >>>          status_message='OK',
-    >>>          headers={},
-    >>>          body=b'Test message',
-    >>>          request=None)
+    ...          status=200,
+    ...          status_message='OK',
+    ...          headers={},
+    ...          body=b'Test message',
+    ...          request=None)
     >>> print(a)
     "Response(200, OK)" 
     """
