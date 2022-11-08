@@ -29,11 +29,17 @@ def temp_function(persistent_connections=False):
 def server():
     proc = subprocess.Popen(
             ['uvicorn', 'tests.server.server:app', '--reload', '--port', '7575'],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
+           stdout=subprocess.PIPE,
+           stderr=subprocess.PIPE
             )
     pid = proc.pid
-    time.sleep(5)
+    text = ''
+    while True:
+        time.sleep(0.1)
+        text += proc.stderr.read1(1111111).decode()
+        if 'startup complete' in text:
+            break
+  
     yield SERVER_URL 
     subprocess.run(['kill', str(pid)])
 

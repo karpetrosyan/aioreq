@@ -13,7 +13,8 @@ setup(
             'tests' : [
                 'pytest',
                 'pytest-asyncio',
-                'uvicorn'
+                'uvicorn',
+                'fastapi'
                 ],
             'benchmark' : [
                 'aiohttp',
