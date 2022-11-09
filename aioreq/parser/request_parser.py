@@ -5,6 +5,8 @@ from abc import abstractmethod
 
 from typing import Iterable
 
+from ..utils import debug
+
 class BaseRequestParser(ABCMeta):
     """
     Change me
@@ -28,6 +30,7 @@ class RequestParser(BaseRequestParser):
         return "&".join([f"{key}={value}" for key, value in parameters])
 
     @classmethod
+    @debug.timer
     def parse(cls, request: 'Request') -> str: # type: ignore 
         """
         Parsing object type of request to string representing HTTP message

@@ -9,12 +9,25 @@ from ..settings import LOGGER_NAME
 from .buffer import Buffer
 from concurrent.futures import ThreadPoolExecutor
 
+from typing import Tuple
+
+from dns import resolver
+
+res = resolver.Resolver()
+res.nameservers = ['1.1.1.1']
+
 log = logging.getLogger(LOGGER_NAME)
 
 context = ssl.SSLContext(ssl.PROTOCOL_TLS)
 context.load_verify_locations(certifi.where())
 
 executor = ThreadPoolExecutor(2)
+
+def get_address(host):
+    answers = res.query(host)
+
+    for rdata in answers:
+        return rdata.address
 
 async def resolve_domain(
                          hostname: str,
@@ -28,11 +41,16 @@ async def resolve_domain(
     :rtype: [str, int]
     """
     if hostname in memo:
+        if not isinstance(memo[hostname], str):
+            log.debug('Got cached dns query')
+            return await memo[hostname]
         return memo[hostname]
 
     log.debug(f"trying resolve {hostname=}")
     loop = asyncio.get_event_loop()
-    host = await loop.run_in_executor(executor, lambda: socket.gethostbyname(hostname))
+    coro = loop.run_in_executor(executor, lambda: socket.gethostbyname(hostname))
+    memo[hostname] = coro
+    host = await coro
     memo[hostname] = host
     return host
 
@@ -48,11 +66,11 @@ class Transport:
         self.writer.write(raw_data)
         await self.writer.drain()
 
-    async def receive_data(self) -> None | bytes:
+    async def receive_data(self) -> Tuple[None, None] | Tuple[bytes, int]:
         data = await self.reader.read(100000)
         log.debug(f"Received data : {len(data)} bytes")
-        resp = self.message_manager.add_data(data)
-        return resp
+        resp, without_body_len = self.message_manager.add_data(data)
+        return resp, without_body_len
 
     async def make_connection(
             self, 
@@ -74,10 +92,10 @@ class Transport:
         await self.send_data(raw_data)
         while True:
 
-            resp = await self.receive_data()
+            resp, without_body_len = await self.receive_data()
             if resp is not None:
                 self.used = False
-                return resp
+                return resp, without_body_len
     
     def is_closing(self) -> bool:
         return self.transport.is_closing()

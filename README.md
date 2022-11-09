@@ -1,6 +1,6 @@
 **Aioreq** is a low level asynchronous HTTP client library for Python. It's built on top of non-blocking TCP sockets.
 
-[mygit]: https://github.com//aioreq
+[mygit]: https://github.com/karosis88/aioreq
 
 ---
 
@@ -60,7 +60,6 @@ This code will send 100 get requests to [`google.com`](https://www.google.com) a
 
 
 Libraries that i used to compare speed.
-* [aiohttp](https://github.com/aio-libs/aiohttp)
 * [httpx](https://github.com/encode/httpx)
 * [requests](https://github.com/psf/requests)
 ---

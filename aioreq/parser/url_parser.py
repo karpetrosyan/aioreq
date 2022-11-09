@@ -3,6 +3,8 @@ import logging
 
 from dataclasses import dataclass
 
+from ..utils import debug
+
 log = logging.getLogger('aioreq')
 
 @dataclass
@@ -97,6 +99,7 @@ class UrlParser:
 
     
     @classmethod
+    @debug.timer
     def parse(cls, url: str) -> Url:
         """
         The main function for this class, which parse url string
