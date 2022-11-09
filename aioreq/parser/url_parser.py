@@ -13,7 +13,7 @@ class Url:
     This class used to store url information as attributes
     and gives interface to get specific part of that url
 
-    :param scheme: HTTP protocol scheme for example HTTP or 'rtsp' which is'n supported in this library
+    :param protocol: HTTP protocol protocol for example HTTP or 'rtsp' which is'n supported in this library
     :param subdomain: URL subdomain like 'www'
     :param domain: URL domain like youtube
     :param top_level_domain: Top level domain like 'com' or 'ru' or 'am'
@@ -22,7 +22,7 @@ class Url:
     :param fragment: Url fragment comes after varaibles like  #test where test is the fragment
     """
 
-    scheme : str | None
+    protocol : str | None
     subdomain : str | None
     domain : str
     top_level_domain : str
@@ -39,9 +39,9 @@ class Url:
         """
 
         if self.subdomain:
-            url = f"{self.scheme}://{subdomain}.{self.domain}.{self.top_level_domain}"
+            url = f"{self.protocol}://{subdomain}.{self.domain}.{self.top_level_domain}"
         else:
-            url = f"{self.scheme}://{self.domain}.{self.top_level_domain}"
+            url = f"{self.protocol}://{self.domain}.{self.top_level_domain}"
         url += self.path
         url += f'?{self.variables}' if self.variables else ''
         url += self.fragment or ''
@@ -56,8 +56,8 @@ class Url:
         """
         
         if self.subdomain:
-            return f"{self.scheme}://{self.subdomain}.{self.domain}.{self.top_level_domain}"
-        return f"{self.scheme}://{self.domain}.{self.top_level_domain}"
+            return f"{self.protocol}://{self.subdomain}.{self.domain}.{self.top_level_domain}"
+        return f"{self.protocol}://{self.domain}.{self.top_level_domain}"
 
     def get_url_for_dns(self):
         """
@@ -85,7 +85,7 @@ class UrlParser:
     
     # regex which getting parts from the url
     regex = re.compile(
-            r'(?P<scheme>https?)://'
+            r'(?P<protocol>https?)://'
             r'((?P<subdomain>[^\.]*)\.)?'
             r'(?P<domain>[^\.]*)\.'
             r'(?P<top_level_domain>[^/#]*)'
@@ -114,7 +114,7 @@ class UrlParser:
         if not matched:
             raise ValueError(f"Invalid url {url}")
 
-        scheme = matched.group('scheme')
+        protocol = matched.group('protocol')
         subdomain = matched.group('subdomain')
         domain = matched.group('domain')
         top_level_domain = matched.group('top_level_domain')
@@ -122,7 +122,7 @@ class UrlParser:
         variables = matched.group('variables')
         fragment = matched.group('fragment')
         return Url(
-                scheme,
+                protocol,
                 subdomain,
                 domain,
                 top_level_domain,

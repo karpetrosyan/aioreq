@@ -12,7 +12,7 @@ class TestUrlParser:
     """
 
     @pytest.mark.parametrize(
-            argnames = ['url', 'scheme', 'subdomain', 'domain', 
+            argnames = ['url', 'protocol', 'subdomain', 'domain', 
              'top_level_domain', 'path', 'variables', 'fragment'],
             argvalues = [
                 ("https://www.youtube.com", 'https', "www", "youtube", "com", "/", None, None),
@@ -29,7 +29,7 @@ class TestUrlParser:
     def test_url_parsing(
             self,
             url: str | None,
-            scheme: str | None,
+            protocol: str | None,
             subdomain: str | None,
             domain: str | None,
             top_level_domain: str | None,
@@ -43,7 +43,7 @@ class TestUrlParser:
         
         url_object = UrlParser.parse(url)
 
-        assert url_object.scheme == scheme
+        assert url_object.protocol == protocol
         assert url_object.domain == domain
         assert url_object.subdomain == subdomain
         assert url_object.top_level_domain == top_level_domain

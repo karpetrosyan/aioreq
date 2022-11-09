@@ -67,7 +67,6 @@ class ResponseParser:
         scheme_and_version, status, status_message, unparsed_headers, body = match.groups() # type: ignore
         headers = {}
         unparsed_headers = unparsed_headers.decode()
-        scheme_and_version = scheme_and_version.decode()
         status = int(status)
         status_message = status_message.decode()
         
@@ -76,7 +75,6 @@ class ResponseParser:
             headers[key.strip()] = value.strip()
 
         response = Response(
-                scheme_and_version = scheme_and_version,
                 status = status,
                 status_message = status_message,
                 headers = headers,
@@ -94,7 +92,6 @@ class ResponseParser:
                 for encoding in encodings:
                     response.body = encoding.decompress(response.body)
         
-        # ignore ""
         response.body = response.body[1:-1]
         return response
 

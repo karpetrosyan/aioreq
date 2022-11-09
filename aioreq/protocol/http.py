@@ -22,6 +22,7 @@ from ..transports.connection import Transport
 
 from ..settings import LOGGER_NAME
 from ..settings import DEFAULT_CONNECTION_TIMEOUT
+from ..settings import TEST_SERVER_DOMAIN
 
 from ..errors.requests import RequestTimeoutError
 from ..errors.requests import ConnectionTimeoutError
@@ -54,6 +55,10 @@ class HttpProtocol(metaclass=ABCMeta):
         "GET",
         "HEAD"
     )
+
+    scheme = 'HTTP'
+    scheme_and_version = 'HTTP/1.1'
+    version = '1.1'
 
 class BaseRequest(HttpProtocol, metaclass=ABCMeta):
     """
@@ -88,7 +93,6 @@ class Request(BaseRequest):
     :type headers: dict[str, str]
     :param path: HTTP server endpoint path specified after top-level domain
     :type path: str
-    :scheme_and_version: HTTP scheme and version
 
     :Example:
 
@@ -101,7 +105,6 @@ class Request(BaseRequest):
     >>> print(req)
     "Request(GET, https://google/com)"
 
-    .. todo:: Remove version properties
     """
 
     def __init__(
@@ -114,9 +117,6 @@ class Request(BaseRequest):
             body: str | bytearray | bytes = '',
             json: dict | None = None,
             path_parameters: Iterable[Iterable[str]] | None = None,
-            scheme: str = 'HTTP',
-            version: str = '1.1',
-            scheme_and_version: str = 'HTTP/1.1',
     ) -> None:
         """
         Request initialization method
@@ -138,9 +138,6 @@ class Request(BaseRequest):
         self.body = body
         self.json = json
         self.path_parameters = path_parameters
-        self.scheme = scheme
-        self.version = version
-        self.scheme_and_version = scheme_and_version
         self.__raw_request = raw_request
         self.parser = request_parser.RequestParser
 
@@ -173,8 +170,6 @@ class Response(BaseResponse):
     This is a Response abstraction class used by 'aioreq.parser.response_parser.ResponseParser.parse'
     by default to make response binary data more friendly and not reccommended to use directly.
 
-    :param scheme_and_version: Version and scheme 
-    :type scheme_and_version: str
     :param status: response code returned with response,
     see also RFC[2616] 6.1.1 Status Code and Reason Pharse
     :type status: int
@@ -193,7 +188,7 @@ class Response(BaseResponse):
     >>> import aioreq
     >>> from aioreq.protocol.http import Response
     >>> 
-    >>> a = Response(scheme_and_version='HTTP/1.1',
+    >>> a = Response(
     ...          status=200,
     ...          status_message='OK',
     ...          headers={},
@@ -205,7 +200,6 @@ class Response(BaseResponse):
 
     def __init__(
             self,
-            scheme_and_version: str,
             status: int,
             status_message: str,
             headers: dict,
@@ -215,7 +209,6 @@ class Response(BaseResponse):
         Response initalization method
         """
 
-        self.scheme_and_version = scheme_and_version
         self.status = status
         self.status_message = status_message
         self.headers = headers
@@ -380,7 +373,6 @@ class Client(BaseClient):
             path_parameters=path_parameters,
             json=json,
             body=body,
-            scheme='HTTP'
         )
         coro = transport.send_http_request(request.get_raw_request())
         if timeout == 0:
@@ -460,7 +452,7 @@ class Client(BaseClient):
         if these connections exists or create the new one and save into connection pool
 
         :param splited_url: Url object which contains all url parts
-        (scheme, version, subdomain, domain, ...)
+        (protocol, version, subdomain, domain, ...)
         :type splited_url: Url
         :returns: Transport
         """
@@ -480,11 +472,11 @@ class Client(BaseClient):
             transport = None
 
         if not transport:
-            if splited_url.domain == 'testulik': # server for tests
+            if splited_url.domain == TEST_SERVER_DOMAIN: # server for tests
                 ip, port = '127.0.0.1', 7575
             else:
                 ip = await resolve_domain(splited_url.get_url_for_dns())
-                port = 443 if splited_url.scheme == 'https' else 80
+                port = 443 if splited_url.protocol == 'https' else 80
 
             loop = asyncio.get_running_loop()
 
@@ -492,7 +484,7 @@ class Client(BaseClient):
             connection_coroutine = transport.make_connection(
                     ip,
                     port,
-                    ssl = splited_url.scheme == 'https'
+                    ssl = splited_url.protocol == 'https'
                     )
             try:
                 await connection_coroutine
