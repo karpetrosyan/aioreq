@@ -9,14 +9,15 @@ setup(
         description="Async requests lib",
         install_requires = [
             'certifi',
-            'uvloop'
+            'uvloop',
+            'dnspython'
             ],
         extras_require={
             'tests' : [
                 'pytest',
                 'pytest-asyncio',
                 'uvicorn',
-                'fastapi'
+                'fastapi',
                 ],
             'benchmark' : [
                 'aiohttp',
