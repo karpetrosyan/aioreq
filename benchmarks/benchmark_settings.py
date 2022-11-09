@@ -1,2 +1,2 @@
-REQUESTS_COUNT = 50
-REQUESTS_URL = 'https://www.youtube.com'
+REQUESTS_COUNT = 300
+REQUESTS_URL = 'https://www.google.com/asdfasdf'
