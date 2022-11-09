@@ -24,7 +24,6 @@ class TestResponseParser:
                     ).encode(),
 
                     Response(
-                            scheme_and_version="HTTP/1.1",
                             status=200,
                             status_message="OK",
                             headers={

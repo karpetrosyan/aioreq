@@ -46,7 +46,7 @@ This code will send 100 get requests to [`google.com`](https://www.google.com) a
 >>>    for j in range(100):
 >>>        tasks.append(
 >>>		asyncio.create_task(
->>>			cl.get('https://www.youtube.com/', )
+>>>			cl.get('https://www.google.com/', )
 >>>				)
 >>> 			)
 >>>    await asyncio.gather(*tasks)
