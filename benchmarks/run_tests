@@ -2,10 +2,6 @@
 echo "Tests with module loading"
 
 echo "---------------------------"
-echo "aiohttp benchmark"
-time python bench_test_aiohttp.py
-
-echo "---------------------------"
 echo "aioreq benchmark"
 time python bench_test_aioreq.py
 
