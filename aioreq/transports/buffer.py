@@ -4,6 +4,8 @@ from enum import Enum
 from ..settings import LOGGER_NAME
 from ..parser.response_parser import ResponseParser
 
+from typing import Tuple
+
 log = logging.getLogger(LOGGER_NAME)
 
 class ResponseParserStrategy(Enum):
@@ -105,6 +107,7 @@ class Buffer:
         self.bytes_should_receive_and_save: int = 0 
         self.bytes_should_receive_and_ignore: int = 0
         self.message_data : bytearray = bytearray()
+        self.without_body_len : int | None = None
 
     def switch_data(self, length: int) -> None:
         """
@@ -151,6 +154,7 @@ class Buffer:
             log.debug(f"Headers done {is_done=}")
             if is_done:
                 without_body_len = ResponseParser.get_without_body_length(self.text)
+                self.without_body_len = without_body_len
                 self.switch_data(without_body_len)
             self.__headers_done = is_done
         return self.__headers_done
@@ -193,5 +197,5 @@ class Buffer:
             
             result = self.body_receiving_strategy.parse(self) # type: ignore
             if result is not None:
-                return result
-        return None
+                return result, self.without_body_len
+        return None, None

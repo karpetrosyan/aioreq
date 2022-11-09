@@ -8,6 +8,8 @@ from ..protocol.headers import TransferEncoding
 from ..protocol.headers import ContentEncoding
 from ..protocol.encodings import Encodings
 
+from ..utils import debug
+
 log = logging.getLogger(LOGGER_NAME)
 
 class BaseResponseParser:
@@ -23,12 +25,21 @@ class ResponseParser:
     # Default regex to parse full response
     regex = re.compile(
             (
-                r'(?P<scheme_and_version>.*) (?P<status_code>\d{3}) (?P<status_message>.*)\r\n'
-                r'(?P<headers>(?:[^:]*: *.*?\r\n)*)'
+                r'(?P<scheme_and_version>HTTP/[210].[210]) (?P<status_code>\d{3}) (?P<status_message>.*?)\r\n'
+                r'(?P<headers>[\d\D]*?)\r\n'
                 r'\r\n'
                 r'(?P<body>[\d\D]*)'
-            ).encode()
+            ).encode(),
         )
+
+    regex_without_body = re.compile(
+        (
+            r'(?P<scheme_and_version>HTTP/[210].[210]) (?P<status_code>\d{3}) (?P<status_message>.*?)\r\n'
+            r'(?P<headers>[\d\D]*?)\r\n'
+            r'\r\n'
+        ).encode()
+    )
+
     # Regex to find content-length header if exists
     regex_content = (r'\r\nContent-length\s*:\s*(?P<length>\d*)\r\n',
                         re.IGNORECASE)
@@ -50,7 +61,31 @@ class ResponseParser:
             re.compile('^\r\n\r\n'.encode())
                         )
 
+    def parse_and_fill_headers(binary_headers: bytes):
+        headers = {}
+        string_headers = binary_headers.decode()
+
+        for line in string_headers.split('\r\n'):
+            key, value = line.split(':', 1)
+            headers[key.strip()] = value.strip()
+        return headers
+
+    def decode_response_body(response: 'Response') -> None:
+        for parser, header in (
+                (TransferEncoding, 'transfer-encoding'),
+                (ContentEncoding, 'content-encoding')
+                ):
+            header_content = response.headers.get(header, None)
+            if header_content:
+                encodings = parser.parse(header_content)
+
+                for encoding in encodings:
+                    response.body = encoding.decompress(response.body)
+        
+        response.body = response.body[1:-1]
+
     @classmethod
+    @debug.timer
     def parse(cls, response: bytes) -> 'Response': # type: ignore
         """
         The main method for this class which parse response
@@ -65,14 +100,9 @@ class ResponseParser:
         from ..protocol.http import Response
         match = cls.regex.search(response)
         scheme_and_version, status, status_message, unparsed_headers, body = match.groups() # type: ignore
-        headers = {}
-        unparsed_headers = unparsed_headers.decode()
+        headers = cls.parse_and_fill_headers(unparsed_headers)
         status = int(status)
         status_message = status_message.decode()
-        
-        for line in unparsed_headers.split('\r\n')[:-1]:
-            key, value = line.split(':', 1)
-            headers[key.strip()] = value.strip()
 
         response = Response(
                 status = status,
@@ -81,21 +111,33 @@ class ResponseParser:
                 body = body
                 )
 
-        for parser, header in (
-                (TransferEncoding, 'transfer-encoding'),
-                (ContentEncoding, 'content-encoding')
-                ):
-            header_content = response.headers.get(header, None)
-            if header_content:
-                encodings = parser.parse(header_content)
-
-                for encoding in encodings:
-                    response.body = encoding.decompress(response.body)
-        
-        response.body = response.body[1:-1]
+        cls.decode_response_body(response)
         return response
 
     @classmethod
+    @debug.timer
+    def body_len_parse(cls, text:str, without_body_len: int) -> 'Response':
+        from ..protocol.http import Response
+
+        withoutbody, body = text[:without_body_len], text[without_body_len:]
+
+        match = cls.regex_without_body.search(withoutbody)
+        scheme_and_version, status, status_message, unparsed_headers = match.groups()
+        status = int(status)
+        headers = cls.parse_and_fill_headers(unparsed_headers)
+        
+        response = Response(
+            status = status,
+            status_message = status_message,
+            headers = headers,
+            body = body
+        )
+
+        cls.decode_response_body(response)
+        return response
+
+    @classmethod
+    @debug.timer
     def search_content_length(cls, text: str) -> int | None:
         """
         Search and returned content-length
@@ -116,6 +158,7 @@ class ResponseParser:
         return int(content_length)
 
     @classmethod
+    @debug.timer
     def get_without_body_length(cls, text: str) -> int:
         """
         Get body less response
@@ -135,6 +178,7 @@ class ResponseParser:
         return match.end() - match.start()
 
     @classmethod
+    @debug.timer
     def headers_done(cls, text:str) -> bool:
         """
         Return true if text contains headers done text,

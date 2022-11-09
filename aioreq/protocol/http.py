@@ -376,14 +376,16 @@ class Client(BaseClient):
         )
         coro = transport.send_http_request(request.get_raw_request())
         if timeout == 0:
-            raw_response = await coro 
+            raw_response, without_body_len = await coro 
         else:
             try:
-                raw_response = await asyncio.wait_for(coro, timeout=timeout)
+                raw_response, without_body_len = await asyncio.wait_for(coro, timeout=timeout)
             except asyncio.exceptions.TimeoutError as e:
                 raise RequestTimeoutError("Request timeout error")
             except BaseException as e:
                 raise e
+
+        return ResponseParser.body_len_parse(raw_response, without_body_len)
 
         response = ResponseParser.parse(raw_response)
         response.request = request
@@ -522,6 +524,11 @@ class Client(BaseClient):
 
         :returns: None
         """
+        for fnc, log_data in debug.function_logs.items():
+            name = log_data['name']
+            time = log_data['time']
+            call_count = log_data['call_count']
+            log.debug(f"Function {fnc.__module__}::{fnc.__name__} log | exec time: {time} | call count: {call_count}")
 
         for host, transport in self.connection_mapper.items():
             transport.writer.close()

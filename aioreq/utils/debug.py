@@ -5,20 +5,22 @@ from time import perf_counter
 from functools import wraps
 
 log = logging.getLogger(LOGGER_NAME)
+function_logs = {}
 
 def timer(fnc):
-    sm = 0
-    cnt = 0
+    if fnc not in function_logs:
+        function_logs[fnc] = {
+            'name' : fnc.__name__,
+            'time' : 0,
+            'call_count': 0
+        }
+    
     @wraps(fnc)
     def inner(*args, **kwargs):
-        nonlocal sm
-        nonlocal cnt
-        cnt += 1
+        function_logs[fnc]['call_count'] += 1
         t1 = perf_counter()
         result = fnc(*args, **kwargs)
-        sm += perf_counter() - t1
-        log.debug(f"{fnc.__name__} take summary {sm}")
-        log.debug(f"{fnc.__name__} calls count is {cnt}")
+        function_logs[fnc]['time'] += perf_counter() - t1
         return result
     return inner
 
