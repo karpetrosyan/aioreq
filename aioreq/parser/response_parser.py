@@ -76,9 +76,9 @@ class ResponseParser:
                 encodings = parser.parse(header_content)
 
                 for encoding in encodings:
-                    response.body = encoding.decompress(response.body)
+                    response.content = encoding.decompress(response.content)
 
-        response.body = response.body[1:-1]
+        response.content = response.content[1:-1]
 
     @classmethod
     @debug.timer
@@ -103,7 +103,7 @@ class ResponseParser:
             status=status,
             status_message=status_message,
             headers=headers,
-            body=body
+            content=body
         )
 
         cls.decode_response_body(response)
@@ -125,7 +125,7 @@ class ResponseParser:
             status=status,
             status_message=status_message,
             headers=headers,
-            body=body
+            content=body
         )
 
         cls.decode_response_body(response)
