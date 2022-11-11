@@ -31,7 +31,7 @@ class TestResponseParser:
                                 'spacetest' : 'test',
                                 'messagetest' : 'hello 123'
                                 },
-                            body=b'',
+                            content=b'',
                         )
 
                 ),

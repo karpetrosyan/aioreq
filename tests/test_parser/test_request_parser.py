@@ -2,6 +2,7 @@ import pytest
 
 from aioreq.parser.request_parser import RequestParser
 from aioreq.protocol.http import Request
+from aioreq.protocol.http import JsonRequest
 
 
 class TestRequestParser:
@@ -55,7 +56,7 @@ class TestRequestParser:
                             'testheader' : "testvalue",
                             'testchxko'  : "chxko"
                             },
-                        body="this is a test body data",
+                        content="this is a test body data",
                         ),
                     (
                         "HEAD /chxkopath HTTP/1.1\r\n"
@@ -69,7 +70,7 @@ class TestRequestParser:
  
                     ),
                 (
-                    Request(
+                    JsonRequest(
                         method="LINK",
                         host="http://chxko.am",
                         path='/chxkopath',
@@ -77,7 +78,7 @@ class TestRequestParser:
                             'testheader' : "testvalue",
                             'testchxko'  : "chxko"
                             },
-                        json="{'this is a test body data': 20}",
+                        content="{'this is a test body data': 20}",
                         ),
                     (
                         "LINK /chxkopath HTTP/1.1\r\n"
@@ -85,11 +86,11 @@ class TestRequestParser:
                         "testheader:  testvalue\r\n"
                         "testchxko:  chxko\r\n"
                         "Content-Type:  application/json\r\n"
-                        "Content-Length:  34\r\n"
+                        "Content-Length:  32\r\n"
                         "\r\n"
-                        '"{\'this is a test body data\': 20}"'
+                        '{\'this is a test body data\': 20}'
                         )
- 
+
                     )
                 ],
             )
@@ -105,26 +106,8 @@ class TestRequestParser:
         :returns: None
         """
 
-        parsed_data = RequestParser.parse(request_obj)
+        parsed_data = type(request_obj).parser.parse(request_obj)
         assert parsed_data == expected_result
 
-    def test_body_and_json_capability(self):
-        """
-        Check if exception is raising when body and json
-        existing for request
-        """
-
-        with pytest.raises(Exception, match=r"Body and Json") as e:
-            Request(
-                method="HEAD",
-                host="http://chxko.am",
-                path='/chxkopath',
-                headers={
-                    'testheader' : "testvalue",
-                    'testchxko'  : "chxko"
-                    },
-                body="this is a test body data",
-                json="this is a json body data"
-                )
 
 

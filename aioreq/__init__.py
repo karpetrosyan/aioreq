@@ -1,5 +1,4 @@
 import asyncio
-import uvloop
 
 from .protocol import http
 from .protocol import headers
@@ -11,5 +10,9 @@ from .parser import response_parser
 from .parser import url_parser
 from .transports import connection
 
-asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+try:
+    import uvloop
 
+    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+except:
+    ...

@@ -10,8 +10,8 @@ from .headers import AcceptEncoding
 from .headers import Header
 from ..errors.requests import AsyncRequestsError
 from ..errors.requests import ConnectionTimeoutError
-from ..errors.requests import RequestTimeoutError
-from ..parser import request_parser
+from ..parser.request_parser import RequestParser
+from ..parser.request_parser import JsonRequestParser
 from ..parser.response_parser import ResponseParser
 from ..parser.url_parser import UrlParser
 from ..settings import LOGGER_NAME
@@ -21,6 +21,7 @@ from ..settings import TEST_SERVER_DOMAIN
 from ..transports.connection import Transport
 from ..transports.connection import resolve_domain
 from ..utils import debug
+from ..utils.generic import wrap_errors
 
 log = logging.getLogger(LOGGER_NAME)
 
@@ -43,22 +44,7 @@ class HttpProtocol(metaclass=ABCMeta):
 
 class BaseRequest(HttpProtocol, metaclass=ABCMeta):
     """
-    An abstract Request class 
-    """
-
-    @abstractmethod
-    def get_raw_request(self) -> bytes: ...
-
-
-class BaseResponse(HttpProtocol, metaclass=ABCMeta):
-    """
-    An abstract Response class
-    """
-
-
-class Request(BaseRequest):
-    """
-    An HTTP request abstraction 
+    An abstract class for all HTTP request classes
 
     This is a low level Request abstraction class which used by Client by default,
     but can be used directly.
@@ -85,8 +71,9 @@ class Request(BaseRequest):
     ...              headers={})
     >>> print(req)
     "Request(GET, https://google/com)"
-
     """
+
+    parser = None
 
     def __init__(
             self,
@@ -95,8 +82,7 @@ class Request(BaseRequest):
             headers: dict['str', 'str'],
             path: str,
             raw_request: None | bytes = None,
-            body: str | bytearray | bytes = '',
-            json: dict | None = None,
+            content: str | bytearray | bytes = '',
             path_parameters: Iterable[Iterable[str]] | None = None,
     ) -> None:
         """
@@ -106,43 +92,50 @@ class Request(BaseRequest):
         if path_parameters is None:
             path_parameters = ()
 
-        if body and json:
-            raise ValueError(
-                "Body and Json attributes was"
-                "given but there is only one needed"
-            )
-
         self.host = host
         self.headers = headers
         self.method = method
         self.path = path
-        self.body = body
-        self.json = json
+        self.content = content
         self.path_parameters = path_parameters
-        self.__raw_request = raw_request
-        self.parser = request_parser.RequestParser
+        self._raw_request = raw_request
+
+    def add_header(self, header: Header) -> None:
+        self.headers[header.key] = header.value
 
     def get_raw_request(self) -> bytes:
         """
-        The Getter method for raw_request private attribute
+        The Getter method for raw_request private attribute if
+        request has been pares once, otherwise parse and return
 
         :returns: raw request for this Request abstraction
         :rtype: bytes
         """
 
-        if self.__raw_request:
-            return self.__raw_request
+        if self._raw_request:
+            return self._raw_request
 
         message = self.parser.parse(self)
         enc_message = message.encode('utf-8')
-        self.__raw_request = enc_message
+        self._raw_request = enc_message
         return enc_message
-
-    def add_header(self, header: Header) -> None:
-        self.headers[header.key] = header.value
 
     def __repr__(self) -> str:
         return f"<Request {self.method} {self.host}>"
+
+
+class BaseResponse(HttpProtocol, metaclass=ABCMeta):
+    """
+    An abstract Response class
+    """
+
+
+class Request(BaseRequest):
+    parser = RequestParser
+
+
+class JsonRequest(BaseRequest):
+    parser = JsonRequestParser
 
 
 class Response(BaseResponse):
@@ -159,8 +152,8 @@ class Response(BaseResponse):
     :param headers: HTTP headers sent by the server, see also RFC[2616] 6.2
     Response Headers Fields
     :type headers: dict[str, str]
-    :param body: response body
-    :type body: bytes
+    :param content: response body
+    :type content: bytes
     :param request: Request for this response 
     :type request: Request
 
@@ -173,7 +166,7 @@ class Response(BaseResponse):
     ...          status=200,
     ...          status_message='OK',
     ...          headers={},
-    ...          body=b'Test message',
+    ...          content=b'Test message',
     ...          request=None)
     >>> print(a)
     "Response(200, OK)" 
@@ -184,7 +177,7 @@ class Response(BaseResponse):
             status: int,
             status_message: str,
             headers: dict,
-            body: bytes,
+            content: bytes,
             request: Request | None = None):
         """
         Response initalization method
@@ -193,7 +186,7 @@ class Response(BaseResponse):
         self.status = status
         self.status_message = status_message
         self.headers = headers
-        self.body = body
+        self.content = content
         self.request = request
 
     def __eq__(self, value: 'Response') -> bool:
@@ -219,13 +212,17 @@ class BaseClient(metaclass=ABCMeta):
     """
 
     @abstractmethod
+    async def _send_request(self,
+                            url: str,
+                            method: str,
+                            content: str | bytearray | bytes = '',
+                            path_parameters: Iterable[Iterable[str]] | None = None,
+                            headers: None | dict = None,
+                            ) -> Response: ...
+
+    @abstractmethod
     async def send_request(self,
-                           url: str,
-                           method: str,
-                           body: str | bytearray | bytes = '',
-                           path_parameters: Iterable[Iterable[str]] | None = None,
-                           headers: None | dict = None,
-                           json: dict | None = None) -> Response: ...
+                           request: Request,) -> Response: ...
 
 
 class Client(BaseClient):
@@ -287,9 +284,8 @@ class Client(BaseClient):
     async def get(
             self,
             url: str,
-            body: str | bytearray | bytes = '',
+            content: str | bytearray | bytes = '',
             headers: None | dict[str, str] = None,
-            json: dict | None = None,
             path_parameters: Iterable[Iterable[str]] | None = None,
             obj_headers: Iterable[Header] | None = None,
             timeout: int = 0,
@@ -298,9 +294,8 @@ class Client(BaseClient):
         return await self.request_retry_wrapper(
             url=url,
             method="GET",
-            body=body,
+            content=content,
             headers=headers,
-            json=json,
             path_parameters=path_parameters,
             obj_headers=obj_headers,
             timeout=timeout,
@@ -311,9 +306,8 @@ class Client(BaseClient):
     async def post(
             self,
             url: str,
-            body: str | bytearray | bytes = '',
+            content: str | bytearray | bytes = '',
             headers: None | dict[str, str] = None,
-            json: dict | None = None,
             path_parameters: None | Iterable[Iterable[str]] = None,
             obj_headers: None | Iterable[Header] = None,
             timeout: int = 0,
@@ -322,9 +316,8 @@ class Client(BaseClient):
         return await self.request_retry_wrapper(
             url=url,
             method="POST",
-            body=body,
+            content=content,
             headers=headers,
-            json=json,
             path_parameters=path_parameters,
             obj_headers=obj_headers,
             timeout=timeout,
@@ -332,15 +325,14 @@ class Client(BaseClient):
             retry=retry + 1
         )
 
-    async def send_request(self,
-                           url: str,
-                           method: str,
-                           body: str | bytearray | bytes = '',
-                           path_parameters: Iterable[Iterable[str]] | None = None,
-                           headers: None | dict[str, str] = None,
-                           json: dict | None = None,
-                           obj_headers: Iterable[Header] | None = None,
-                           timeout: int = 0) -> Response:
+    async def _send_request(self,
+                            url: str,
+                            method: str,
+                            content: str | bytearray | bytes = '',
+                            path_parameters: Iterable[Iterable[str]] | None = None,
+                            headers: None | dict[str, str] = None,
+                            obj_headers: Iterable[Header] | None = None,
+                            timeout: int = 0) -> Response:
 
         """
         Simulates a http request
@@ -348,12 +340,10 @@ class Client(BaseClient):
         :type url: str
         :param headers: Http headers which should be used in this GET request
         :type headers: Dict[str, str]
-        :param body: Http body part
-        :type body: str or bytearray or bytes
+        :param content: Http body part
+        :type content: str or bytearray or bytes
         :param method: Http message method
         :type method: str
-        :param json: For json requests
-        :type json: dict
         :param path_parameters:
         :type path_parameters: Iterable[Header] or None
         :param timeout: The requeset timeout
@@ -375,19 +365,27 @@ class Client(BaseClient):
             headers=self.headers | headers,
             path=splited_url.path,
             path_parameters=path_parameters,
-            json=json,
-            body=body,
+            content=content,
         )
         coro = transport.send_http_request(request.get_raw_request())
-        if timeout == 0:
-            raw_response, without_body_len = await coro
-        else:
-            try:
-                raw_response, without_body_len = await asyncio.wait_for(coro, timeout=timeout)
-            except asyncio.exceptions.TimeoutError:
-                raise RequestTimeoutError("Request timeout error")
-            except BaseException as e:
-                raise e
+        raw_response, without_body_len = await wrap_errors(coro=coro, timeout=timeout)
+
+        return ResponseParser.body_len_parse(raw_response, without_body_len)
+
+    async def send_request(self,
+                           request: Request,
+                           timeout: int = 0) -> Response:
+        """
+        Send request by giving Request object directly
+        :param request: Request instance
+        :type request: Request
+        :param timeout: Timeout for request
+        :type timeout: int
+        """
+        splited_url = UrlParser.parse(request.host + request.path)
+        transport = await self.get_connection(splited_url)
+        coro = transport.send_http_request(request.get_raw_request())
+        raw_response, without_body_len = await wrap_errors(coro=coro, timeout=timeout)
 
         return ResponseParser.body_len_parse(raw_response, without_body_len)
 
@@ -409,7 +407,7 @@ class Client(BaseClient):
 
         while redirect != 0:
             redirect -= 1
-            result = await self.send_request(*args, **kwargs)
+            result = await self._send_request(*args, **kwargs)
 
             if (result.status // 100) == 3:
                 kwargs['url'] = result.headers['Location']
@@ -445,7 +443,7 @@ class Client(BaseClient):
                     raise e
                 log.info(f'Retrying request cause of {e}')
 
-    async def get_connection(self, splited_url):
+    async def get_connection(self, splited_url: str):
         """
         Getting connection from already opened connections, to perform Keep-Alive logic,
         if these connections exists or create the new one and save into connection pool
@@ -458,7 +456,7 @@ class Client(BaseClient):
         if self.persistent_connections:
             log.debug(f"{self.connection_mapper} searching into mapped connections")
             transport = self.connection_mapper.get(
-                splited_url.get_url_for_dns(), None)
+                splited_url.domain, None)
 
             if transport:
                 if transport.is_closing():
