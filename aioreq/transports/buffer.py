@@ -8,6 +8,7 @@ from typing import Tuple
 
 log = logging.getLogger(LOGGER_NAME)
 
+
 class ResponseParserStrategy(Enum):
     """
     Enumeration which implements Strategy design pattern, used to
@@ -16,7 +17,8 @@ class ResponseParserStrategy(Enum):
     chunked = 'chunked'
     content_length = 'content_length'
 
-    def parse_content_length(self, buffer: 'Buffer') -> None | str:
+    @staticmethod
+    def parse_content_length(buffer: 'Buffer') -> bytes | None:
         """
         Parse incoming PendingMessage object which receiving data which body length
         specified by Content-Length header.
@@ -24,18 +26,18 @@ class ResponseParserStrategy(Enum):
         RFC[2616] 14.13 Content-Length:
             The Content-Lenght entity-header field indicates the size of the entity-body,
             in decimal number of OCTETs, sent to the recipent or, in the case of the HEAD method,
-            the size of the entity-body that would have been sent had the request been a GET.
-
+            the size of the entity-body that would have been sent had the request been a GET
         :param buffer: Buffer instance representing message receiving
-        :return: None or the verified string which seems like an HTTP message 
+        :return: None or the verified string which seems like an HTTP message
         """
-                                                                                
+
         if len(buffer.text) >= buffer.content_length:
             buffer.switch_data(buffer.content_length)
             return buffer.message_verify()
         return None
 
-    def parse_chunked(self, buffer: 'Buffer') -> None | str:
+    @staticmethod
+    def parse_chunked(buffer: 'Buffer') -> None | bytes:
         """
         Parse incoming PendingMessage object which receiving data which body length
         specified by Transfer-Encoding : chunked.
@@ -44,9 +46,9 @@ class ResponseParserStrategy(Enum):
             The chunked encoding modifies the body of a message in order to transfer it as a series of
             chunkd, each with its own size indicator, followed by an OPTIONAL trailer containing entity-header
             fields. This allows dynamically produced content to be transferred along with the information
-            necessary for the recipient to verify that it has received the full message.
-
-        :param pending_message: PendingMessage instance representing message receiving
+            necessary for the recipient to verify that it has received the full message
+        :param buffer: aioreq.transports.buffer.Buffer object
+        :type buffer: Buffer
         :return: None or the verified string which seems like an HTTP message 
         """
 
@@ -60,10 +62,10 @@ class ResponseParserStrategy(Enum):
                     break
             elif buffer.bytes_should_receive_and_ignore:
                 if buffer.bytes_should_receive_and_ignore <= len(buffer.text):
-                    buffer.ignore_data(buffer.bytes_should_receive_and_ignore) 
+                    buffer.ignore_data(buffer.bytes_should_receive_and_ignore)
                     buffer.bytes_should_receive_and_ignore = 0
                 else:
-                    break 
+                    break
 
             else:
                 for pattern in ResponseParser.regex_end_chunks:
@@ -81,16 +83,18 @@ class ResponseParserStrategy(Enum):
     def parse(self, buffer: 'Buffer') -> bytes | None:
         """
         General interface to work with parsing strategies
+        :param buffer: aioreq.transports.buffer.Buffer object
+        :type buffer: Buffer
 
-        :param pending_message: object which is working with message pending
         :returns: Parsed and verifyed http response or NoneType object
-        :rtype: str or None
+        :rtype: bytes or None
         """
         match self.value:
             case 'content_length':
                 return self.parse_content_length(buffer)
             case 'chunked':
                 return self.parse_chunked(buffer)
+
 
 class Buffer:
     """
@@ -104,16 +108,15 @@ class Buffer:
         self.__headers_done: bool = False
         self.body_receiving_strategy: ResponseParserStrategy | None = None
         self.content_length: int | None = None
-        self.bytes_should_receive_and_save: int = 0 
+        self.bytes_should_receive_and_save: int = 0
         self.bytes_should_receive_and_ignore: int = 0
-        self.message_data : bytearray = bytearray()
-        self.without_body_len : int | None = None
+        self.message_data: bytearray = bytearray()
+        self.without_body_len: int | None = None
 
     def switch_data(self, length: int) -> None:
         """
-        Delete data from the self.text and add into self.message_data
-
-        :param length: Message length to delete from the self.text
+        Delete from unparsed data and add to parsed ones
+        :param length: Message length to delete from unpares data
         :return: None
         """
 
@@ -135,8 +138,7 @@ class Buffer:
 
     def ignore_data(self, length: int) -> None:
         """
-        Just delete text from self.text by giving length
-
+        Just delete text length of {length} from unparsed data
         :param length: Length message which should be ignored (deleted)
         :returns: None
         """
@@ -151,7 +153,6 @@ class Buffer:
 
         if not self.__headers_done:
             is_done = ResponseParser.headers_done(self.text)
-            log.debug(f"Headers done {is_done=}")
             if is_done:
                 without_body_len = ResponseParser.get_without_body_length(self.text)
                 self.without_body_len = without_body_len
@@ -179,23 +180,22 @@ class Buffer:
         for byte in _bytes:
             self.text.append(byte)
 
-    def add_data(self, text: bytes) -> None | str:
+    def add_data(self, text: bytes) -> Tuple[None, None] | Tuple[bytes, int]:
         """
         Calls whenever new data required to be added
-    
         :param text: Text to add
         :ptype text: str
 
         :returns: None if message not verified else verified message
         """
-        self.fill_bytes(text)    
+        self.fill_bytes(text)
 
         if self.headers_done():
-            
+
             if not self.body_receiving_strategy:
                 self.find_strategy()
-            
-            result = self.body_receiving_strategy.parse(self) # type: ignore
-            if result is not None:
+
+            result = self.body_receiving_strategy.parse(self)  # type: ignore
+            if result:
                 return result, self.without_body_len
         return None, None

@@ -1,51 +1,29 @@
-import ssl
-import time
-import logging
 import asyncio
-import certifi
-import json as _json
-
+import logging
 from abc import ABCMeta
 from abc import abstractmethod
+from typing import Any
+from typing import Iterable
 
-from collections.abc import Collection
-from ..protocol.headers import Header
-
-from ..errors.requests import AsyncRequestsError
-
-from ..parser.url_parser import UrlParser
-from ..parser.response_parser import ResponseParser
-from ..parser import request_parser
-
-from ..transports.connection import resolve_domain
-from ..transports.connection import Transport 
-
-from ..settings import LOGGER_NAME
-from ..settings import DEFAULT_CONNECTION_TIMEOUT
-from ..settings import TEST_SERVER_DOMAIN
-from ..settings import REQUEST_RETRY_COUNT
-from ..settings import REQUEST_REDIRECT_COUNT
-
-from ..errors.requests import RequestTimeoutError
-from ..errors.requests import ConnectionTimeoutError
-
-from .headers import TransferEncoding
+from .encodings import Encoding
 from .headers import AcceptEncoding
 from .headers import Header
-
-from .encodings import Encodings
-from .encodings import Encoding
-
+from ..errors.requests import AsyncRequestsError
+from ..errors.requests import ConnectionTimeoutError
+from ..errors.requests import RequestTimeoutError
+from ..parser import request_parser
+from ..parser.response_parser import ResponseParser
+from ..parser.url_parser import UrlParser
+from ..settings import LOGGER_NAME
+from ..settings import REQUEST_REDIRECT_COUNT
+from ..settings import REQUEST_RETRY_COUNT
+from ..settings import TEST_SERVER_DOMAIN
+from ..transports.connection import Transport
+from ..transports.connection import resolve_domain
 from ..utils import debug
 
-from typing import Coroutine
-from typing import Iterable
-from typing import Any
-from enum import Enum
-
-from concurrent.futures import ProcessPoolExecutor
-
 log = logging.getLogger(LOGGER_NAME)
+
 
 class HttpProtocol(metaclass=ABCMeta):
     """
@@ -62,6 +40,7 @@ class HttpProtocol(metaclass=ABCMeta):
     scheme_and_version = 'HTTP/1.1'
     version = '1.1'
 
+
 class BaseRequest(HttpProtocol, metaclass=ABCMeta):
     """
     An abstract Request class 
@@ -76,14 +55,14 @@ class BaseResponse(HttpProtocol, metaclass=ABCMeta):
     An abstract Response class
     """
 
+
 class Request(BaseRequest):
     """
     An HTTP request abstraction 
 
     This is a low level Request abstraction class which used by Client by default,
     but can be used directly.
-    By default used by 'aioreq.protocol.http.Client.send_request' 
-
+    By default, used by 'aioreq.protocol.http.Client.send_request'
     :param method: HTTP method (GET, POST, PUT, PATCH),
     see also RFC[2616] 5.1.1 Method
     :type method: str
@@ -165,13 +144,13 @@ class Request(BaseRequest):
     def __repr__(self) -> str:
         return f"<Request {self.method} {self.host}>"
 
+
 class Response(BaseResponse):
     """
     An HTTP response asbtraction
 
     This is a Response abstraction class used by 'aioreq.parser.response_parser.ResponseParser.parse'
-    by default to make response binary data more friendly and not reccommended to use directly.
-
+    by default to make response binary data more friendly and not reccommended to use directly
     :param status: response code returned with response,
     see also RFC[2616] 6.1.1 Status Code and Reason Pharse
     :type status: int
@@ -220,7 +199,6 @@ class Response(BaseResponse):
     def __eq__(self, value: 'Response') -> bool:
         """
         Check if two Response objects have the same attributes or not
-
         :param value: right side value of equal
         :type value: Response 
         :returns: True if values are equal
@@ -234,6 +212,7 @@ class Response(BaseResponse):
     def __repr__(self) -> str:
         return f"<Response {self.status} {self.status_message}>"
 
+
 class BaseClient(metaclass=ABCMeta):
     """
     An abstract class for all Clients
@@ -246,7 +225,8 @@ class BaseClient(metaclass=ABCMeta):
                            body: str | bytearray | bytes = '',
                            path_parameters: Iterable[Iterable[str]] | None = None,
                            headers: None | dict = None,
-                           json: dict | None = None) -> Response:...
+                           json: dict | None = None) -> Response: ...
+
 
 class Client(BaseClient):
     """
@@ -263,43 +243,55 @@ class Client(BaseClient):
     :param headers_obj: Iterable object which contains
     Header objects defined in 'aioreq.protocol.headers',
     this is an easy way to use HTTP Headers through OOP
+
+    :Example:
+
+    >>> import aioreq
+    >>> import asyncio
+
+    >>> async def main():
+    >>>     async with aioreq.http.Client() as cl:
+    >>>         return await cl.get('https://www.youtube.com')
+    >>> asyncio.run(main())
+
+    .. todo: Isolate clients utils.debug.timer logging system
     """
 
     def __init__(self,
-                 headers : dict[str, str] | None = None,
+                 headers: dict[str, str] | None = None,
                  persistent_connections: bool = False,
                  headers_obj: Iterable[Header] | None = None):
 
         self.connection_mapper = {}
-      
+
         if headers_obj is None:
             headers_obj = [
-                    AcceptEncoding(
-                            [
-                                (encoding, ) for encoding in Encoding.all_encodings
-                                ]         
-                                ),
+                AcceptEncoding(
+                    [
+                        (encoding,) for encoding in Encoding.all_encodings
                     ]
+                ),
+            ]
         _headers = {}
 
         for header in headers_obj:
             _headers[header.key] = header.value
-       
+
         if headers:
-            self.headers =  _headers | headers 
+            self.headers = _headers | headers
         else:
             self.headers = _headers
-       
+
         self.persistent_connections = persistent_connections
 
     async def get(
-            self, 
-            url : str, 
-            body : str | bytearray | bytes = '', 
-            headers : None | dict[str, str] = None, 
-            json: dict | None = None, 
-            path_parameters: None | Iterable[Iterable[str]] = None,
-            obj_headers : None | Iterable[Header] = None,
+            self,
+            url: str,
+            body: str | bytearray | bytes = '',
+            headers: None | dict[str, str] = None,
+            json: dict | None = None,
+            path_parameters: Iterable[Iterable[str]] | None = None,
+            obj_headers: Iterable[Header] | None = None,
             timeout: int = 0,
             redirect: int = REQUEST_REDIRECT_COUNT,
             retry: int = REQUEST_RETRY_COUNT) -> Response:
@@ -312,18 +304,18 @@ class Client(BaseClient):
             path_parameters=path_parameters,
             obj_headers=obj_headers,
             timeout=timeout,
-            redirect=redirect+1,
-            retry=retry+1
+            redirect=redirect + 1,
+            retry=retry + 1
         )
 
     async def post(
-            self, 
-            url : str, 
-            body : str | bytearray | bytes= '', 
-            headers : None | dict[str, str] = None, 
-            json: dict | None = None, 
-            path_parameters: None | Iterable[Iterable[str]] = None, 
-            obj_headers : None | Iterable[Header] = None,
+            self,
+            url: str,
+            body: str | bytearray | bytes = '',
+            headers: None | dict[str, str] = None,
+            json: dict | None = None,
+            path_parameters: None | Iterable[Iterable[str]] = None,
+            obj_headers: None | Iterable[Header] = None,
             timeout: int = 0,
             redirect: int = REQUEST_REDIRECT_COUNT,
             retry: int = REQUEST_RETRY_COUNT) -> Response:
@@ -336,8 +328,8 @@ class Client(BaseClient):
             path_parameters=path_parameters,
             obj_headers=obj_headers,
             timeout=timeout,
-            redirect=redirect+1,
-            retry=retry+1
+            redirect=redirect + 1,
+            retry=retry + 1
         )
 
     async def send_request(self,
@@ -347,26 +339,36 @@ class Client(BaseClient):
                            path_parameters: Iterable[Iterable[str]] | None = None,
                            headers: None | dict[str, str] = None,
                            json: dict | None = None,
-                           obj_headers : None | Iterable[Header] = None,
+                           obj_headers: Iterable[Header] | None = None,
                            timeout: int = 0) -> Response:
 
         """
-        Simulates an http request
-
+        Simulates a http request
         :param url: Url where should be request send
         :type url: str
         :param headers: Http headers which should be used in this GET request
+        :type headers: Dict[str, str]
         :param body: Http body part
+        :type body: str or bytearray or bytes
         :param method: Http message method
+        :type method: str
+        :param json: For json requests
+        :type json: dict
         :param path_parameters:
+        :type path_parameters: Iterable[Header] or None
+        :param timeout: The requeset timeout
+        :type timeout: int
+        :param obj_headers: Headers represented by simplified Header object
+        :type obj_headers: Header
         :returns: Response object which represents returned by server response
+        :rtype: Response
         """
 
         if headers is None:
             headers = {}
 
         splited_url = UrlParser.parse(url)
-        transport = await self.get_connection( splited_url )
+        transport = await self.get_connection(splited_url)
         request = Request(
             method=method,
             host=splited_url.get_url_without_path(),
@@ -378,37 +380,32 @@ class Client(BaseClient):
         )
         coro = transport.send_http_request(request.get_raw_request())
         if timeout == 0:
-            raw_response, without_body_len = await coro 
+            raw_response, without_body_len = await coro
         else:
             try:
                 raw_response, without_body_len = await asyncio.wait_for(coro, timeout=timeout)
-            except asyncio.exceptions.TimeoutError as e:
+            except asyncio.exceptions.TimeoutError:
                 raise RequestTimeoutError("Request timeout error")
             except BaseException as e:
                 raise e
 
         return ResponseParser.body_len_parse(raw_response, without_body_len)
 
-        response = ResponseParser.parse(raw_response)
-        response.request = request
-        return response
-
     async def request_redirect_wrapper(self,
                                        *args: tuple[Any],
                                        redirect: int,
-                                       **kwargs: dict[str, Any]
+                                       **kwargs
                                        ) -> Response:
         """
         A wrapper method for send_request, also implements redirection if
         3xx status code received
-
         :param redirect: Maximum request sending counts
         :type redirect: int
         :return: Response object
         :rtype: Response
         """
 
-        redirect = max(1, redirect) # minimum one request required
+        redirect = max(1, redirect)  # minimum one request required
 
         while redirect != 0:
             redirect -= 1
@@ -421,23 +418,22 @@ class Client(BaseClient):
             else:
                 return result
             log.info(f'Redirecting reuqest with status code {result.status}')
-                    
+
     async def request_retry_wrapper(self,
                                     *args: tuple[Any],
                                     retry: int,
-                                    **kwargs: dict[str, Any]
+                                    **kwargs
                                     ) -> Response:
         """
         A wrapper method for request_redirect_wrapper, also implements retrying
         for the requests if they were failed
-
         :param retry: Maximum request sending count
         :type retry: int
         :return: Response object
         :rtype: Response
         """
 
-        retry = max(1, retry) # minimum one request required
+        retry = max(1, retry)  # minimum one request required
 
         while retry != 0:
             retry -= 1
@@ -447,14 +443,12 @@ class Client(BaseClient):
             except BaseException as e:
                 if retry < 1:
                     raise e
-                raise e
                 log.info(f'Retrying request cause of {e}')
 
     async def get_connection(self, splited_url):
         """
         Getting connection from already opened connections, to perform Keep-Alive logic,
         if these connections exists or create the new one and save into connection pool
-
         :param splited_url: Url object which contains all url parts
         (protocol, version, subdomain, domain, ...)
         :type splited_url: Url
@@ -465,31 +459,29 @@ class Client(BaseClient):
             log.debug(f"{self.connection_mapper} searching into mapped connections")
             transport = self.connection_mapper.get(
                 splited_url.get_url_for_dns(), None)
-                
+
             if transport:
                 if transport.is_closing():
-                    transport = None 
+                    transport = None
                 elif transport.used:
                     raise AsyncRequestsError("Can't use persistent connections in async mode without pipelining")
-        
+
         else:
             transport = None
 
         if not transport:
-            if splited_url.domain == TEST_SERVER_DOMAIN: # server for tests
+            if splited_url.domain == TEST_SERVER_DOMAIN:  # server for tests
                 ip, port = '127.0.0.1', 7575
             else:
                 ip = await resolve_domain(splited_url.get_url_for_dns())
                 port = 443 if splited_url.protocol == 'https' else 80
 
-            loop = asyncio.get_running_loop()
-
             transport = Transport()
             connection_coroutine = transport.make_connection(
-                    ip,
-                    port,
-                    ssl = splited_url.protocol == 'https'
-                    )
+                ip,
+                port,
+                ssl=splited_url.protocol == 'https'
+            )
             try:
                 await connection_coroutine
             except asyncio.exceptions.TimeoutError as err:
@@ -499,16 +491,16 @@ class Client(BaseClient):
                 if splited_url.get_url_for_dns() in self.connection_mapper:
                     raise AsyncRequestsError(
                         (
-                        'Seems you use persistent connections in async mode, which'
-                        'is impossible when you requesting the same domain concurrently'
-                         )
+                            'Seems you use persistent connections in async mode, which'
+                            'is impossible when you requesting the same domain concurrently'
+                        )
                     )
 
                 self.connection_mapper[splited_url.get_url_for_dns(
-                    )] = transport 
+                )] = transport
         else:
             log.info("Using already opened connection")
-        return transport 
+        return transport
 
     async def __aenter__(self):
         """
@@ -527,7 +519,6 @@ class Client(BaseClient):
         :returns: None
         """
         for fnc, log_data in debug.function_logs.items():
-            name = log_data['name']
             time = log_data['time']
             call_count = log_data['call_count']
             log.debug(f"Function {fnc.__module__}::{fnc.__name__} log | exec time: {time} | call count: {call_count}")

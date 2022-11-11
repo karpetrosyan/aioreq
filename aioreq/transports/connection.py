@@ -1,19 +1,14 @@
-import ssl
-import socket
-import certifi
 import asyncio
-import random
 import logging
+import ssl
+from typing import Tuple
 
+import certifi
+from dns import asyncresolver
+
+from .buffer import Buffer
 from ..errors.requests import AsyncRequestsError
 from ..settings import LOGGER_NAME
-from .buffer import Buffer
-
-from typing import Tuple
-from typing import Coroutine
-from typing import Dict
-
-from dns import asyncresolver
 
 res = asyncresolver.Resolver()
 res.nameservers = ['1.1.1.1']
@@ -31,11 +26,10 @@ async def get_address(host):
 
 async def resolve_domain(
         hostname: str,
-        memo: Dict[str, str] | Dict[str, Coroutine] = {}
+        memo=dict()
 ) -> str:
     """
     Ip port resolving by making dns requests
-
     :param hostname: Domain name for example YouTube.com
     :type hostname: str
     :param memo: cache dict for dns queries
@@ -50,7 +44,6 @@ async def resolve_domain(
         return memo[hostname]
 
     log.debug(f"trying resolve {hostname=}")
-    loop = asyncio.get_event_loop()
     coro = get_address(hostname)
     memo[hostname] = coro
     host = await coro
@@ -72,8 +65,7 @@ class Transport:
 
     async def send_data(self, raw_data: bytes) -> None:
         """
-        An asynchornous alternative for socket.send_all method.
-
+        An asynchronous alternative for socket.send_all method
         :param raw_data: Data which should be sent
         :type raw_data: bytes
 
@@ -97,8 +89,7 @@ class Transport:
             port: int,
             ssl: bool) -> None:
         """
-        An asynchronous alternative for socket.connect.
-
+        An asynchronous alternative for socket connect
         :param ip: Ip where connection should be made
         :type ip: str
         :param port: Connection port
@@ -119,8 +110,7 @@ class Transport:
 
     async def send_http_request(self, raw_data: bytes) -> Tuple[bytes, int]:
         """
-        The lowest level http request method, can be used directly.
-
+        The lowest level http request method, can be used directly
         :param raw_data: HTTP message bytes
         :type raw_data: bytes
 

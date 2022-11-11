@@ -2,22 +2,25 @@
 Contains Header classes to simplify header sending
 """
 
-from collections.abc import Collection
-from abc import ABCMeta
-from abc import abstractmethod
 from abc import ABC
+from abc import abstractmethod
+from collections.abc import Collection
 from enum import Enum
-from .encodings import Encodings 
+
 from .encodings import Encoding
+from .encodings import Encodings
+
 
 def qvalue_validate(qvalue: int) -> bool:
     if 0 <= qvalue <= 1:
         return True
     return False
 
+
 class MimeType(Enum):
     json = 'application/json'
     html = 'application/html'
+
 
 class ServerHeader(ABC):
 
@@ -25,13 +28,14 @@ class ServerHeader(ABC):
     @abstractmethod
     def parse(self, value: str) -> str: ...
 
-class Header(ABC):
 
+class Header(ABC):
     key = 'NotImplemented'
 
     @property
     @abstractmethod
     def value(self) -> str: ...
+
 
 class AcceptEncoding(Header):
     """
@@ -53,7 +57,7 @@ class AcceptEncoding(Header):
         for coding in codings:
             assert 0 < len(coding) < 3
             if len(coding) == 2:
-                coding_type, qvalue = coding # type: ignore
+                coding_type, qvalue = coding  # type: ignore
             else:
                 coding_type = coding[0]
                 qvalue = 1
@@ -69,10 +73,11 @@ class AcceptEncoding(Header):
     def value(self):
         text = ' '
         for coding, qvalue in self._codings.items():
-            text+=f"{str(coding)}; q={qvalue}, "
+            text += f"{str(coding)}; q={qvalue}, "
         if self._codings:
             text = text[:-2]
         return text
+
 
 class Accept(Header):
     """
@@ -87,35 +92,36 @@ class Accept(Header):
 
     def __init__(
             self,
-            types = Collection[
+            types=Collection[
                 tuple[
                     MimeType,
                     int | None
-                    ] |
+                ] |
                 tuple[
                     MimeType
-                    ]
                 ]
-            ):
-         
+                ]
+    ):
+
         self.media_ranges = {}
         for media_range in types:
             assert 0 < len(media_range) < 3
             if len(media_range) == 2:
                 type, qvalue = media_range
             else:
-                type ,= media_range
+                type, = media_range
                 qvalue = 1
             self.media_ranges[type] = qvalue
-    
+
     @property
     def value(self) -> str:
         text = ' '
         for type, qvalue in self.media_ranges.items():
-            text+=f'{type.value}; q={qvalue}, '
+            text += f'{type.value}; q={qvalue}, '
         text = text[:-2]
         return text
-    
+
+
 class ServerEncoding(ServerHeader):
 
     def __init__(self):
@@ -124,7 +130,7 @@ class ServerEncoding(ServerHeader):
 
     @classmethod
     def parse(cls, text: str):
-        self = cls() 
+        self = cls()
         encodings = text.split(',')
         for encoding in encodings:
             if encoding != 'chunked':
@@ -139,10 +145,12 @@ class ServerEncoding(ServerHeader):
     def __next__(self):
         if self.iternum >= len(self.encodings):
             raise StopIteration
-        encoding = self.encodings[self.iternum] 
+        encoding = self.encodings[self.iternum]
         self.iternum += 1
         return encoding
 
-class TransferEncoding(ServerEncoding): ...
-class ContentEncoding(ServerEncoding): ...
 
+class TransferEncoding(ServerEncoding): ...
+
+
+class ContentEncoding(ServerEncoding): ...

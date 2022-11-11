@@ -7,6 +7,7 @@ from ..utils import debug
 
 log = logging.getLogger('aioreq')
 
+
 @dataclass
 class Url:
     """
@@ -15,22 +16,29 @@ class Url:
     This class used to store url information as attributes
     and gives interface to get specific part of that url
 
-    :param protocol: HTTP protocol protocol for example HTTP or 'rtsp' which is'n supported in this library
-    :param subdomain: URL subdomain like 'www'
-    :param domain: URL domain like youtube
+    :param protocol: Url protocol
+    :type protocol: str or None
+    :param subdomain: URL subdomain
+    :type subdomain: str or None
+    :param domain: URL domain
+    :type domain: str or None
     :param top_level_domain: Top level domain like 'com' or 'ru' or 'am'
+    :type top_level_domain: str or None
     :param path: Url path which comes after top level domain, like /users/id/132
+    :type path: str or None
     :param variables: Variables which comes after path, like '?name=kar1&profession=programmer&group=&'
+    :type variables: str or None
     :param fragment: Url fragment comes after varaibles like  #test where test is the fragment
+    :type fragment: str or None
     """
 
-    protocol : str | None
-    subdomain : str | None
-    domain : str
-    top_level_domain : str
-    path : str
-    variables : str | None
-    fragment : str | None
+    protocol: str | None
+    subdomain: str | None
+    domain: str
+    top_level_domain: str
+    path: str
+    variables: str | None
+    fragment: str | None
 
     def get_url(self):
         """
@@ -41,7 +49,7 @@ class Url:
         """
 
         if self.subdomain:
-            url = f"{self.protocol}://{subdomain}.{self.domain}.{self.top_level_domain}"
+            url = f"{self.protocol}://{self.subdomain}.{self.domain}.{self.top_level_domain}"
         else:
             url = f"{self.protocol}://{self.domain}.{self.top_level_domain}"
         url += self.path
@@ -56,7 +64,7 @@ class Url:
         :returns: pathless url
         :rtype: str
         """
-        
+
         if self.subdomain:
             return f"{self.protocol}://{self.subdomain}.{self.domain}.{self.top_level_domain}"
         return f"{self.protocol}://{self.domain}.{self.top_level_domain}"
@@ -79,25 +87,25 @@ class Url:
         """
 
         self.path = self.path or '/'
-    
+
+
 class UrlParser:
     """
     Url parser which parse url and gives Url object
     """
-    
+
     # regex which getting parts from the url
     regex = re.compile(
-            r'(?P<protocol>https?)://'
-            r'((?P<subdomain>[^\.]*)\.)?'
-            r'(?P<domain>[^\.]*)\.'
-            r'(?P<top_level_domain>[^/#]*)'
-            r'(?P<port>\d*)?'
-            r'(?:(?P<path>/[^#?]*)((?:\?'
-            r'(?P<variables>[^#]*)?))?)?'
-            r'(?:#(?P<fragment>.*))?'
-            )
+        r'(?P<protocol>https?)://'
+        r'((?P<subdomain>[^\.]*)\.)?'
+        r'(?P<domain>[^\.]*)\.'
+        r'(?P<top_level_domain>[^/#]*)'
+        r'(?P<port>\d*)?'
+        r'(?:(?P<path>/[^#?]*)((?:\?'
+        r'(?P<variables>[^#]*)?))?)?'
+        r'(?:#(?P<fragment>.*))?'
+    )
 
-    
     @classmethod
     @debug.timer
     def parse(cls, url: str) -> Url:
@@ -125,12 +133,11 @@ class UrlParser:
         variables = matched.group('variables')
         fragment = matched.group('fragment')
         return Url(
-                protocol,
-                subdomain,
-                domain,
-                top_level_domain,
-                path,
-                variables,
-                fragment
-                )
-
+            protocol,
+            subdomain,
+            domain,
+            top_level_domain,
+            path,
+            variables,
+            fragment
+        )

@@ -2,7 +2,8 @@ import gzip as _gzip
 
 from enum import Enum
 from abc import ABC
-from abc import abstractmethod 
+from abc import abstractmethod
+
 
 class Encoding(ABC):
     all_encodings = []
@@ -19,6 +20,7 @@ class Encoding(ABC):
     def stringify(cls) -> str:
         return cls.__name__
 
+
 # Encodings
 # -------------
 
@@ -26,13 +28,15 @@ class gzip(Encoding):
 
     @classmethod
     def decompress(cls, text: bytes) -> bytes:
-        return _gzip.decompress(text) 
+        return _gzip.decompress(text)
+
 
 class compress(Encoding):
 
     @classmethod
     def decompress(cls, text: bytes) -> bytes:
         raise NotImplementedError
+
 
 # Enum for encodings
 # -------------
