@@ -23,6 +23,8 @@ from ..transports.connection import Transport
 from ..settings import LOGGER_NAME
 from ..settings import DEFAULT_CONNECTION_TIMEOUT
 from ..settings import TEST_SERVER_DOMAIN
+from ..settings import REQUEST_RETRY_COUNT
+from ..settings import REQUEST_REDIRECT_COUNT
 
 from ..errors.requests import RequestTimeoutError
 from ..errors.requests import ConnectionTimeoutError
@@ -296,11 +298,11 @@ class Client(BaseClient):
             body : str | bytearray | bytes = '', 
             headers : None | dict[str, str] = None, 
             json: dict | None = None, 
-            path_parameters: None | Iterable[Iterable[str]] = None, 
+            path_parameters: None | Iterable[Iterable[str]] = None,
             obj_headers : None | Iterable[Header] = None,
             timeout: int = 0,
-            redirect: int = 3,
-            retry: int = 3) -> Response:
+            redirect: int = REQUEST_REDIRECT_COUNT,
+            retry: int = REQUEST_RETRY_COUNT) -> Response:
         return await self.request_retry_wrapper(
             url=url,
             method="GET",
@@ -323,8 +325,8 @@ class Client(BaseClient):
             path_parameters: None | Iterable[Iterable[str]] = None, 
             obj_headers : None | Iterable[Header] = None,
             timeout: int = 0,
-            redirect: int = 3,
-            retry: int = 3) -> Response:
+            redirect: int = REQUEST_REDIRECT_COUNT,
+            retry: int = REQUEST_RETRY_COUNT) -> Response:
         return await self.request_retry_wrapper(
             url=url,
             method="POST",
