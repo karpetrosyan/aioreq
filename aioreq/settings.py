@@ -42,6 +42,9 @@ LOGGER_NAME = parser.get('Logging', 'logger_name')
 MAIN_LOGGER_LEVEL = parser.get('Logging', 'logger_level')
 STREAM_HANDLER_LEVEL = parser.get('Logging', 'stream_handler_level')
 
+REQUEST_REDIRECT_COUNT = parser.getint('Aioreq', 'request_redirect_count')
+REQUEST_RETRY_COUNT = parser.getint('Aioreq', 'request_retry_count')
+
 TEST_SERVER_DOMAIN = parser.get('Tests', 'test_server_domain')
 
 
