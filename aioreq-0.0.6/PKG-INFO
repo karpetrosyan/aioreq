@@ -1,3 +1,34 @@
+Metadata-Version: 2.1
+Name: aioreq
+Version: 0.0.6
+Summary: Asynchronous HTTP library.
+Project-URL: Homepage, https://github.com/karosis88/aioerq
+Project-URL: Source, https://github.com/karosis88/aioreq
+License-File: LICENSE
+Classifier: Development Status :: 2 - Pre-Alpha
+Classifier: Framework :: AsyncIO
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Natural Language :: English
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: Implementation :: CPython
+Classifier: Topic :: Internet :: WWW/HTTP
+Requires-Python: >=3.10
+Requires-Dist: certifi
+Requires-Dist: dnspython
+Provides-Extra: benchmark
+Requires-Dist: aiohttp; extra == 'benchmark'
+Requires-Dist: httpx; extra == 'benchmark'
+Requires-Dist: requests; extra == 'benchmark'
+Provides-Extra: tests
+Requires-Dist: fastapi; extra == 'tests'
+Requires-Dist: pytest; extra == 'tests'
+Requires-Dist: pytest-asyncio; extra == 'tests'
+Requires-Dist: uvicorn; extra == 'tests'
+Provides-Extra: uvloop
+Requires-Dist: uvloop; extra == 'uvloop'
+Description-Content-Type: text/markdown
+
 **Aioreq** is a low level asynchronous HTTP client library for Python. It's built on top of non-blocking TCP sockets.
 
 [mygit]: https://github.com/karosis88/aioreq

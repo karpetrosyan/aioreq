@@ -1,0 +1,53 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "aioreq"
+dynamic = ["version"]
+requires-python = ">=3.10"
+description = "Asynchronous HTTP library."
+readme = "README.md"
+license-files = { paths = ["LICENSE"]}
+dependencies = [
+    "certifi",
+    "dnspython",
+]
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "License :: OSI Approved :: MIT License",
+  "Natural Language :: English",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Topic :: Internet :: WWW/HTTP",
+  "Framework :: AsyncIO",
+]
+
+[project.urls]
+Homepage = "https://github.com/karosis88/aioerq"
+Source = "https://github.com/karosis88/aioreq"
+
+[project.optional-dependencies]
+benchmark = [
+    "aiohttp",
+    "httpx",
+    "requests",
+]
+tests = [
+    "fastapi",
+    "pytest",
+    "pytest-asyncio",
+    "uvicorn",
+]
+uvloop = [
+    "uvloop",
+]
+
+[tool.hatch.version]
+path = "aioreq/__init__.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/aioreq",
+]

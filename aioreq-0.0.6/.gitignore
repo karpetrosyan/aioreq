@@ -1,0 +1,12 @@
+.pyc
+venv
+*egg-info
+dist
+build
+__pycache__
+*.pyc
+todo
+*mypy*
+README.md.backup
+oldvenv
+.idea

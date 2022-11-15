@@ -1,1 +1,2 @@
 prune __pycache__.py
+include README.md
