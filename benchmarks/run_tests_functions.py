@@ -16,6 +16,7 @@ def print_result(text):
     with lock:
         print(text)
 
+
 def run_benchmark_async(benchmark_name, function):
     try:
         print('Run benchmark...')
@@ -24,13 +25,13 @@ def run_benchmark_async(benchmark_name, function):
         responses = loop.run_until_complete(function())
         t2 = perf_counter()
         print_result(
-                (f"Function test for {benchmark_name} completed. Time spent: {t2-t1} | "
-                 f"status 200 count: {len([code for code in responses if code == 200 or code == '200'])}"
-                 )
+            (f"Function test for {benchmark_name} completed. Time spent: {t2 - t1} | "
+             f"status 200 count: {len([code for code in responses if code == 200 or code == '200'])}"
+             )
         )
     except BaseException as e:
         print_result(f"{e} was raised for {benchmark_name}")
-        
+
 
 def run_benchmark_sync(benchmark_name, function):
     try:
@@ -38,35 +39,33 @@ def run_benchmark_sync(benchmark_name, function):
         t1 = perf_counter()
         function()
         t2 = perf_counter()
-        print_result(f"Function test for {benchmark_name} completed. Time spent: {t2-t1}")
+        print_result(f"Function test for {benchmark_name} completed. Time spent: {t2 - t1}")
     except BaseException as e:
         print_result(f"{e} was raised for {benchmark_name}")
 
+
 async_test_configs = {
 
-    aioreq_main : {
-        'benchmark_name' : 'aioreq',
-        'function' : run_benchmark_async
+    aioreq_main: {
+        'benchmark_name': 'aioreq',
+        'function': run_benchmark_async
     },
-    httpx_main : {
-        'benchmark_name' : 'httpx',
-        'function' : run_benchmark_async
+    httpx_main: {
+        'benchmark_name': 'httpx',
+        'function': run_benchmark_async
     },
-    requests_main : {
-        'benchmark_name' : 'requests',
-        'function' : run_benchmark_sync
+    requests_main: {
+        'benchmark_name': 'requests',
+        'function': run_benchmark_sync
     }
 }
-
 
 if __name__ == '__main__':
     with ThreadPoolExecutor(6) as pool:
         pool.map(
             lambda md: async_test_configs[md]['function'](
-                benchmark_name = async_test_configs[md]['benchmark_name'],
-                function = md
-            ),  
+                benchmark_name=async_test_configs[md]['benchmark_name'],
+                function=md
+            ),
             (requests_main, aioreq_main, httpx_main)
-            )
-        
-
+        )

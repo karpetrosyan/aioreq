@@ -74,7 +74,7 @@ class ResponseParserStrategy(Enum):
                         return buffer.message_verify()
 
                 match = ResponseParser.regex_find_chunk.search(buffer.text)
-                if match is None:
+                if match is None or match.groups()[0] == b'0':
                     break
                 size = int(match.group('content_size'), 16)
                 buffer.bytes_should_receive_and_save = size
@@ -89,6 +89,7 @@ class ResponseParserStrategy(Enum):
         :returns: Parsed and verifyed http response or NoneType object
         :rtype: bytes or None
         """
+
         match self.value:
             case 'content_length':
                 return self.parse_content_length(buffer)
@@ -188,6 +189,7 @@ class Buffer:
 
         :returns: None if message not verified else verified message
         """
+
         self.fill_bytes(text)
 
         if self.headers_done():
