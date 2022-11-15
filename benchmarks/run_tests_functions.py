@@ -8,8 +8,18 @@ from bench_test_httpx import main as httpx_main
 from bench_test_requests import main as requests_main
 from threading import Lock
 from concurrent.futures import ThreadPoolExecutor
+from benchmark_settings import REQUESTS_COUNT
+from benchmark_settings import SYNC_REQUESTS_COUNT
 
 lock = Lock()
+
+text = ('========================\n'
+        'Benchmark settings\n'
+        f'\tAsync lib test requests count : {REQUESTS_COUNT}\n'
+        f'\tSync lib test requests count  : {SYNC_REQUESTS_COUNT}\n'
+        f'=======================')
+
+print(text)
 
 
 def print_result(text):
@@ -19,29 +29,44 @@ def print_result(text):
 
 def run_benchmark_async(benchmark_name, function):
     try:
-        print('Run benchmark...')
         loop = asyncio.new_event_loop()
         t1 = perf_counter()
         responses = loop.run_until_complete(function())
         t2 = perf_counter()
+        codes = {}
+        for code in responses:
+            if code not in codes:
+                codes[code] = 0
+            codes[code] += 1
+
         print_result(
-            (f"Function test for {benchmark_name} completed. Time spent: {t2 - t1} | "
-             f"status 200 count: {len([code for code in responses if code == 200 or code == '200'])}"
+            (f"Function test for {benchmark_name} completed. Total time: {t2 - t1}\n"
+             f"Received statuses\n"
+             f"\t{codes}"
              )
         )
     except BaseException as e:
-        print_result(f"{e} was raised for {benchmark_name}")
+        print_result(f"Error: {e} type of {type(e)} was raised for {benchmark_name}")
 
 
 def run_benchmark_sync(benchmark_name, function):
     try:
-        print('Run benchmark...')
         t1 = perf_counter()
-        function()
+        responses = function()
         t2 = perf_counter()
-        print_result(f"Function test for {benchmark_name} completed. Time spent: {t2 - t1}")
+        codes = {}
+        for code in responses:
+            if code not in codes:
+                codes[code] = 0
+            codes[code] += 1
+        print_result(
+            (f"Function test for {benchmark_name} completed. Total time: {t2 - t1}\n"
+             f"Received statuses\n"
+             f"\t{codes}"
+             )
+        )
     except BaseException as e:
-        print_result(f"{e} was raised for {benchmark_name}")
+        print_result(f"Error: {e} type of {type(e)} was raised for {benchmark_name}")
 
 
 async_test_configs = {

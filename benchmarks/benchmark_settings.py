@@ -1,2 +1,3 @@
-REQUESTS_COUNT = 300
-REQUESTS_URL = 'https://www.google.com'
+REQUESTS_COUNT = 200
+REQUESTS_URL = 'https://www.github.com'
+SYNC_REQUESTS_COUNT = 5

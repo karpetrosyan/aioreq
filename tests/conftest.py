@@ -5,7 +5,7 @@ import aioreq
 import subprocess
 import pytest_asyncio
 
-from functools import wraps 
+from functools import wraps
 
 SCOPE_SESSION = pytest_asyncio.fixture(scope='session')
 SCOPE_FUNCTION = pytest_asyncio.fixture(scope='function')
@@ -18,20 +18,22 @@ def event_loop():
     yield loop
     loop.close()
 
+
 def temp_function(persistent_connections=False):
-    
     async def inner():
         async with aioreq.http.Client(persistent_connections=persistent_connections) as s:
-         yield s
+            yield s
+
     return inner
+
 
 @pytest.fixture(scope='session')
 def server():
     proc = subprocess.Popen(
-            ['uvicorn', 'tests.server.server:app', '--reload', '--port', '7575'],
-           stdout=subprocess.PIPE,
-           stderr=subprocess.PIPE
-            )
+        ['uvicorn', 'tests.server.server:app', '--reload', '--port', '7575'],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
     pid = proc.pid
     text = ''
     while True:
@@ -39,15 +41,16 @@ def server():
         text += proc.stderr.read1(1111111).decode()
         if 'startup complete' in text:
             break
-  
-    yield SERVER_URL 
+
+    yield SERVER_URL
     subprocess.run(['kill', str(pid)])
+
 
 @pytest.fixture(scope='session')
 def get_gzip_url(server):
     return SERVER_URL + '/gzip'
 
+
 one_time_session = SCOPE_FUNCTION(temp_function())
 session = SCOPE_SESSION(temp_function())
 one_time_session_cached = SCOPE_SESSION(temp_function(persistent_connections=True))
-
