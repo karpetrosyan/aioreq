@@ -24,30 +24,30 @@ async def get_address(host):
     return answers.rrset[0].address
 
 
+dns_cache = dict()
+
+
 async def resolve_domain(
         hostname: str,
-        memo=dict()
 ) -> str:
     """
     Ip port resolving by making dns requests
     :param hostname: Domain name for example YouTube.com
     :type hostname: str
-    :param memo: cache dict for dns queries
-    :type memo: dict
     :returns: ip and port for that domain
     :rtype: [str, int]
     """
-    if hostname in memo:
-        if not isinstance(memo[hostname], str):
+    if hostname in dns_cache:
+        if not isinstance(dns_cache[hostname], str):
             log.debug('Got cached dns query')
-            return await memo[hostname]
-        return memo[hostname]
+            return await dns_cache[hostname]
+        return dns_cache[hostname]
 
     log.debug(f"trying resolve {hostname=}")
-    coro = get_address(hostname)
-    memo[hostname] = coro
+    coro = asyncio.create_task(get_address(hostname))
+    dns_cache[hostname] = coro
     host = await coro
-    memo[hostname] = host
+    dns_cache[hostname] = host
     return host
 
 
@@ -78,7 +78,7 @@ class Transport:
         """
         An asynchronous alternative for socket.recv() method.
         """
-        data = await self.reader.read(100000)
+        data = await self.reader.read(10000)
         log.debug(f"Received data : {len(data)} bytes")
         resp, without_body_len = self.message_manager.add_data(data)
         return resp, without_body_len

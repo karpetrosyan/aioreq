@@ -279,6 +279,7 @@ class Client(BaseClient):
         else:
             self.headers = _headers
 
+        self.transports = []
         self.persistent_connections = persistent_connections
 
     async def get(
@@ -369,7 +370,6 @@ class Client(BaseClient):
         )
         coro = transport.send_http_request(request.get_raw_request())
         raw_response, without_body_len = await wrap_errors(coro=coro, timeout=timeout)
-
         return ResponseParser.body_len_parse(raw_response, without_body_len)
 
     async def send_request(self,
@@ -386,7 +386,6 @@ class Client(BaseClient):
         transport = await self.get_connection(splited_url)
         coro = transport.send_http_request(request.get_raw_request())
         raw_response, without_body_len = await wrap_errors(coro=coro, timeout=timeout)
-
         return ResponseParser.body_len_parse(raw_response, without_body_len)
 
     async def request_redirect_wrapper(self,
@@ -408,7 +407,6 @@ class Client(BaseClient):
         while redirect != 0:
             redirect -= 1
             result = await self._send_request(*args, **kwargs)
-
             if (result.status // 100) == 3:
                 kwargs['url'] = result.headers['Location']
                 if redirect < 1:
@@ -443,7 +441,7 @@ class Client(BaseClient):
                     raise e
                 log.info(f'Retrying request cause of {e}')
 
-    async def get_connection(self, splited_url: str):
+    async def get_connection(self, splited_url: 'Url'):
         """
         Getting connection from already opened connections, to perform Keep-Alive logic,
         if these connections exists or create the new one and save into connection pool
@@ -452,7 +450,6 @@ class Client(BaseClient):
         :type splited_url: Url
         :returns: Transport
         """
-
         if self.persistent_connections:
             log.debug(f"{self.connection_mapper} searching into mapped connections")
             transport = self.connection_mapper.get(
@@ -482,6 +479,8 @@ class Client(BaseClient):
             )
             try:
                 await connection_coroutine
+                self.transports.append(transport)
+
             except asyncio.exceptions.TimeoutError as err:
                 raise ConnectionTimeoutError('Socket connection timeout') from err
 
@@ -521,7 +520,10 @@ class Client(BaseClient):
             call_count = log_data['call_count']
             log.debug(f"Function {fnc.__module__}::{fnc.__name__} log | exec time: {time} | call count: {call_count}")
 
-        for host, transport in self.connection_mapper.items():
+        tasks = []
+
+        for transport in self.transports:
             transport.writer.close()
-            await transport.writer.wait_closed()
-            log.info(f"Transport closed {transport=}")
+            log.debug('Trying to close')
+            tasks.append(transport.writer.wait_closed())
+        await asyncio.gather(*tasks)

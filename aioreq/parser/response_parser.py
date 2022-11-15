@@ -43,16 +43,10 @@ class ResponseParser:
         regex_content[1]
     )
 
-    regex_without_body_length = re.compile(
-        (r'(?P<scheme_and_version>.*) (?P<status_code>\d{3}) (?P<status_message>.*)\r\n'
-         r'(?P<headers>(?:.*:? .*\r\n)*)'
-         r'\r\n').encode()
-    )
-
     regex_find_chunk = re.compile("^(?P<content_size>[0-9abcdefABCDEF]+)\r\n".encode())
     regex_end_chunks = (
-        re.compile('^0\r\n\r\n'.encode()),
-        re.compile('^\r\n\r\n'.encode())
+        re.compile(r'0\r\n\r\n'.encode()),
+        # re.compile('^\r\n\r\n'.encode())
     )
 
     @classmethod
@@ -165,7 +159,7 @@ class ResponseParser:
         :rtype: int
         """
 
-        match = cls.regex_without_body_length.match(text)
+        match = cls.regex_without_body.match(text)
         assert match
         assert match.start() == 0, f"Got unexpected {match.start=}"
         return match.end() - match.start()
@@ -179,7 +173,7 @@ class ResponseParser:
         contains an empty line
         """
 
-        match = cls.regex_without_body_length.match(text)
+        match = cls.regex_without_body.match(text)
         if match:
             assert match.start() == 0, f"Got unexpected {match.start=}"  # type: ignore
         return match is not None
