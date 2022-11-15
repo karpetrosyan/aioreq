@@ -75,97 +75,71 @@ $ python -m venv venv
 $ source ./venv/bin/activate
 $ pip install '.[benchmarks]'
 $ cd benchmarks
-$ source run_tests
+$ python run_tests_functions.py
 ```
 ---
 ### Benchmark results
 
-This is the **average** execution time of each library for **300 asynchronous requests** where responses was received without **chunked** transfer encoding.
+This is the **average** execution time of each library for **200 asynchronous requests** where responses was received without **chunked** transfer encoding.
 <br/>
 
 
 Benchmark settings.
 
-* **Url** - https://www.google.com
-* **Requests count** - 300
+* **Url** - https://www.github.com
+* **Requests count** - 200
 
 #### With `Content-Length`
 ``` shell
-$ cd benchmarks
-$ source run_tests
-Tests with module loading
----------------------------
-aiohttp benchmark
-
-real    0m3.644s
-user    0m1.179s
-sys     0m0.193s
----------------------------
-aioreq benchmark
-
-real    0m1.808s
-user    0m0.505s
-sys     0m0.096s
----------------------------
-httpx benchmark
-
-real    0m3.965s
-user    0m1.699s
-sys     0m0.263s
----------------------------
-requests benchmark (only 5 requests)
-
-real    0m4.075s
-user    0m0.220s
-sys     0m0.016s
+$ cd becnhmarks
+$ python run_tests_functions.py
+========================
+Benchmark settings
+        Async lib test requests count : 200
+        Sync lib test requests count  : 5
+=======================
+Function test for aioreq completed. Total time: 1.2442591340004583
+Received statuses
+        {301: 200}
+Function test for requests completed. Total time: 1.6835168350007734
+Received statuses
+        {200: 5}
+Function test for httpx completed. Total time: 1.691718664000291
+Received statuses
+        {301: 200}
 ```
 
 #### With `Transfer-Encoding: Chunked`
-This is the **average** execution time of each library for **50 asynchronous requests** where responses was received with **chunked** transfer encoding.
+This is the **average** execution time of each library for **100 asynchronous requests** where responses was received with **chunked** transfer encoding.
 <br/>
 
 Benchmark settings.
 
 * **Url** - https://www.youtube.com
-* **Requests count** - 50
+* **Requests count** - 100
 
 ```shell
 $ cd benchmarks
-$ source run_tests
-Tests with module loading
----------------------------
-aiohttp benchmark
-
-real    0m1.821s
-user    0m0.475s
-sys     0m0.123s
----------------------------
-aioreq benchmark
-
-real    0m2.100s
-user    0m0.832s
-sys     0m0.068s
----------------------------
-httpx benchmark
-
-real    0m2.289s
-user    0m1.188s
-sys     0m0.192s
----------------------------
-requests benchmark (only 5 requests)
-
-real    0m4.508s
-user    0m0.289s
-sys     0m0.029s
+$ python run_tests_functions.py
+========================
+Benchmark settings
+        Async lib test requests count : 100
+        Sync lib test requests count  : 5
+=======================
+Function test for aioreq completed. Total time: 3.837283965000097
+Received statuses
+        {200: 100}
+Function test for requests completed. Total time: 6.098562907998712
+Received statuses
+        {200: 5}
+Function test for httpx completed. Total time: 6.467480723000335
+Received statuses
+        {200: 100}
 ```
 
 As you can see, the synchronous code lags far behind when we make many requests at the same time.<br />
 
-
-
-These tests are made for **Python 3.11**, for versions **<=3.11** aioreq will run **little bit slower**, since optimizations have been added to python 3.11 that **greatly affect** aioreq.
-
-
+These tests are made for **Python 3.11**, for versions **<=3.11** aioreq will run **little slower**, since optimizations have been added to python 3.11 that **greatly affect** aioreq.
 
 ## Supported Features
 **Aioreq** support basic features to work with **HTTP/1.1**.<br />More functionality will be avaliable in future realeases.<br />
