@@ -45,6 +45,9 @@ class HttpProtocol(metaclass=ABCMeta):
 
 
 class HeaderDict(HttpProtocol):
+    """
+    Dict like object used to represent the HTTP headers.
+    """
 
     def __init__(self,
                  initial_headers: dict[str, str] | None = None):
@@ -138,7 +141,7 @@ class BaseRequest(HttpProtocol, metaclass=ABCMeta):
             self,
             method: str,
             host: str,
-            headers: dict[str, str],
+            headers: dict[str, str] | HeaderDict,
             path: str,
             raw_request: None | bytes = None,
             content: str | bytearray | bytes = '',
@@ -244,7 +247,7 @@ class Response(BaseResponse):
             content: bytes,
             request: Request | None = None):
         """
-        Response initalization method
+        Response initialization method
         """
 
         self.status = status
@@ -276,7 +279,6 @@ class BaseClient(metaclass=ABCMeta):
 
        This is a Client abstraction used to communicate with the
        HTTP protocol, send requests, receive responses and so on
-
        :param headers: HTTP protocol headers
        :type headers: dict[str, str], None
        :param persistent_connections: Persistent connections support for our client
@@ -336,19 +338,19 @@ class BaseClient(metaclass=ABCMeta):
         self.transports = []
         self.persistent_connections = persistent_connections
 
-    async def get_connection(self, splited_url: Url):
+    async def get_connection(self, splitted_url: Url):
         """
         Getting connection from already opened connections, to perform Keep-Alive logic,
         if these connections exists or create the new one and save into connection pool
-        :param splited_url: Url object which contains all url parts
+        :param splitted_url: Url object which contains all url parts
         (protocol, version, subdomain, domain, ...)
-        :type splited_url: Url
+        :type splitted_url: Url
         :returns: Transport
         """
         if self.persistent_connections:
             log.debug(f"{self.connection_mapper} searching into mapped connections")
             transport = self.connection_mapper.get(
-                splited_url.domain, None)
+                splitted_url.domain, None)
 
             if transport:
                 if transport.is_closing():
@@ -360,17 +362,17 @@ class BaseClient(metaclass=ABCMeta):
             transport = None
 
         if not transport:
-            if splited_url.domain == TEST_SERVER_DOMAIN:  # server for tests
+            if splitted_url.domain == TEST_SERVER_DOMAIN:  # server for tests
                 ip, port = 'localhost', 7575
             else:
-                ip = await resolve_domain(splited_url.get_url_for_dns())
-                port = 443 if splited_url.protocol == 'https' else 80
+                ip = await resolve_domain(splitted_url.get_url_for_dns())
+                port = 443 if splitted_url.protocol == 'https' else 80
 
             transport = Transport()
             connection_coroutine = transport.make_connection(
                 ip,
                 port,
-                ssl=splited_url.protocol == 'https'
+                ssl=splitted_url.protocol == 'https'
             )
             try:
                 await connection_coroutine
@@ -380,7 +382,7 @@ class BaseClient(metaclass=ABCMeta):
                 raise ConnectionTimeoutError('Socket connection timeout') from err
 
             if self.persistent_connections:
-                if splited_url.get_url_for_dns() in self.connection_mapper:
+                if splitted_url.get_url_for_dns() in self.connection_mapper:
                     raise AsyncRequestsError(
                         (
                             'Seems you use persistent connections in async mode, which'
@@ -388,7 +390,7 @@ class BaseClient(metaclass=ABCMeta):
                         )
                     )
 
-                self.connection_mapper[splited_url.get_url_for_dns(
+                self.connection_mapper[splitted_url.get_url_for_dns(
                 )] = transport
         else:
             log.info("Using already opened connection")
@@ -443,7 +445,7 @@ class Client(BaseClient):
             self,
             url: str,
             content: str | bytearray | bytes = '',
-            headers: None | dict[str, str] = None,
+            headers: dict[str, str] | None = None,
             path_parameters: Iterable[Iterable[str]] | None = None,
             obj_headers: Iterable[Header] | None = None,
             timeout: int = 0,
@@ -465,9 +467,9 @@ class Client(BaseClient):
             self,
             url: str,
             content: str | bytearray | bytes = '',
-            headers: None | dict[str, str] = None,
-            path_parameters: None | Iterable[Iterable[str]] = None,
-            obj_headers: None | Iterable[Header] = None,
+            headers: dict[str, str] | None = None,
+            path_parameters: Iterable[Iterable[str]] | None = None,
+            obj_headers: Iterable[Header] | None = None,
             timeout: int = 0,
             redirect: int = REQUEST_REDIRECT_COUNT,
             retry: int = REQUEST_RETRY_COUNT) -> Response:
@@ -504,7 +506,7 @@ class Client(BaseClient):
         :type method: str
         :param path_parameters:
         :type path_parameters: Iterable[Header] or None
-        :param timeout: The requeset timeout
+        :param timeout: The request timeout
         :type timeout: int
         :param obj_headers: Headers represented by simplified Header object
         :type obj_headers: Header
@@ -514,13 +516,13 @@ class Client(BaseClient):
 
         headers = HeaderDict(initial_headers=headers)
 
-        splited_url = UrlParser.parse(url)
-        transport = await self.get_connection(splited_url)
+        splitted_url = UrlParser.parse(url)
+        transport = await self.get_connection(splitted_url)
         request = Request(
             method=method,
-            host=splited_url.get_url_without_path(),
+            host=splitted_url.get_url_without_path(),
             headers=self.headers | headers,
-            path=splited_url.path,
+            path=splitted_url.path,
             path_parameters=path_parameters,
             content=content,
         )
@@ -553,7 +555,7 @@ class Client(BaseClient):
                     return result
             else:
                 return result
-            log.info(f'Redirecting reuqest with status code {result.status}')
+            log.info(f'Redirecting request with status code {result.status}')
 
     async def request_retry_wrapper(self,
                                     *args: tuple[Any],
@@ -630,8 +632,8 @@ class StreamClient(BaseClient):
             url: str,
             content: str | bytearray | bytes = '',
             headers: None | dict[str, str] = None,
-            path_parameters: None | Iterable[Iterable[str]] = None,
-            obj_headers: None | Iterable[Header] = None,
+            path_parameters: Iterable[Iterable[str]] | None = None,
+            obj_headers: Iterable[Header] | None = None,
             timeout: int = 0):
         async for chunk in self._send_request(
                 url=url,
@@ -649,8 +651,8 @@ class StreamClient(BaseClient):
             url: str,
             content: str | bytearray | bytes = '',
             headers: None | dict[str, str] = None,
-            path_parameters: None | Iterable[Iterable[str]] = None,
-            obj_headers: None | Iterable[Header] = None,
+            path_parameters: Iterable[Iterable[str]] | None = None,
+            obj_headers: Iterable[Header] | None = None,
             timeout: int = 0):
         async for chunk in self._send_request(
                 url=url,
