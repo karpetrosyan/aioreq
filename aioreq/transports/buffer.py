@@ -97,15 +97,18 @@ class ResponseParserStrategy(Enum):
                 return self.parse_chunked(buffer)
 
 
-class Buffer:
+class BaseBuffer:
+    ...
+
+
+class Buffer(BaseBuffer):
     """
     Implementing message receiving using ResponseParserStrategy which support
     receiving by content_length or chunked
     """
 
-    def __init__(self,
-                 text: str) -> None:
-        self.text = bytearray(text.encode())
+    def __init__(self) -> None:
+        self.text = bytearray()
         self.__headers_done: bool = False
         self.body_receiving_strategy: ResponseParserStrategy | None = None
         self.content_length: int | None = None
@@ -113,6 +116,7 @@ class Buffer:
         self.bytes_should_receive_and_ignore: int = 0
         self.message_data: bytearray = bytearray()
         self.without_body_len: int | None = None
+        self.verified: bool = False
 
     def switch_data(self, length: int) -> None:
         """
@@ -134,7 +138,9 @@ class Buffer:
         """
 
         msg = self.message_data
+
         self.message_data = bytearray()
+        self.verified = True
         return msg
 
     def ignore_data(self, length: int) -> None:
@@ -201,3 +207,23 @@ class Buffer:
             if result:
                 return result, self.without_body_len
         return None, None
+
+
+class StreamBuffer(BaseBuffer):
+
+    def __init__(self):
+        self.buffer = Buffer()
+        self.headers_skipped = False
+
+    def add_data(self,
+                 text: bytes) -> tuple[bytes, bool] | None:
+        done = self.buffer.add_data(text)
+
+        if self.buffer.message_data:
+            if not self.headers_skipped:
+                self.headers_skipped = True
+                self.buffer.message_data = bytearray(b'')
+                return
+        msg = self.buffer.message_data
+        self.buffer.message_data = bytearray(b'')
+        return msg if not self.buffer.verified else done[0], self.buffer.verified
