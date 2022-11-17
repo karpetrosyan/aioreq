@@ -13,7 +13,7 @@ SERVER_URL = 'http://testulik.com'
 
 # Server constants
 CONSTANTS = dict(
-    GZIP_RESPONSE_TEXT="testgzip" * 1000000,
+    GZIP_RESPONSE_TEXT="testgzip" * 10000,
     STREAMING_RESPONSE_CHUNK_COUNT=10
 )
 
@@ -40,18 +40,13 @@ def temp_function(persistent_connections=False, stream=False):
 @pytest.fixture(scope='session')
 def server():
     proc = subprocess.Popen(
-        ['uvicorn', 'tests.server:app', '--reload', '--port', '7575'],
+        ['uvicorn', 'tests.server:app', '--port', '7575'],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE
     )
     pid = proc.pid
-    text = ''
-    while True:
-        time.sleep(0.1)
-        text += proc.stderr.read1(1000).decode()
-        if 'startup complete' in text:
-            print(text)
-            break
+    text = proc.stdout.read(7).decode()
+    assert text == 'started'
 
     yield SERVER_URL
     subprocess.run(['kill', str(pid)])

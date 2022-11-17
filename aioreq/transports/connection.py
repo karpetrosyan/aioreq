@@ -80,7 +80,6 @@ class Transport:
         An asynchronous alternative for socket.recv() method.
         """
         data = await self.reader.read(1000)
-        log.debug(f"Received data : {len(data)} bytes")
         resp, without_body_len = self.message_manager.add_data(data)
         return resp, without_body_len
 
@@ -106,11 +105,14 @@ class Transport:
         :returns: None
         """
 
-        reader, writer = await asyncio.open_connection(
-            host=ip,
-            port=port,
-            ssl=context if ssl else None
-        )
+        reader, writer = await \
+            asyncio.wait_for(asyncio.open_connection(
+                host=ip,
+                port=port,
+                ssl=context if ssl else None
+            ),
+                timeout=3
+            )
         self.reader = reader
         self.writer = writer
 
