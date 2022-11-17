@@ -8,11 +8,13 @@ from .conftest import CONSTANTS
 app = FastAPI()
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
+@app.on_event('startup')
+async def startup():
+    print('started', flush=True)
 
 @app.get("/gzip")
 async def gzip():
     return CONSTANTS['GZIP_RESPONSE_TEXT']
-
 
 @app.get('/ping')
 async def ping():

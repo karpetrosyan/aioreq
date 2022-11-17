@@ -35,7 +35,7 @@ class TestRequestParser:
                         path='/chxkopath',
                         headers={
                             'testheader' : "testvalue",
-                            'testchxko'  : "chxko"
+                            'TEstchxko'  : "chxko"
                             }
                         ),
                     (
@@ -63,7 +63,7 @@ class TestRequestParser:
                         "host:  chxko.am\r\n"
                         "testheader:  testvalue\r\n"
                         "testchxko:  chxko\r\n"
-                        "Content-Length:  24\r\n"
+                        "content-length:  24\r\n"
                         "\r\n"
                         "this is a test body data"
                         )
@@ -85,8 +85,8 @@ class TestRequestParser:
                         "host:  chxko.am\r\n"
                         "testheader:  testvalue\r\n"
                         "testchxko:  chxko\r\n"
-                        "Content-Type:  application/json\r\n"
-                        "Content-Length:  32\r\n"
+                        "content-type:  application/json\r\n"
+                        "content-length:  32\r\n"
                         "\r\n"
                         '{\'this is a test body data\': 20}'
                         )

@@ -38,6 +38,13 @@ async def test_moving_301(one_time_session):
     assert response.status == 200
 
 @pytest.mark.asyncio
+async def test_ping(one_time_session,
+                    server):
+    response = await one_time_session.get(server, timeout=3)
+    assert response.status == 200
+
+
+@pytest.mark.asyncio
 async def test_gzip(one_time_session,
                     constants,
                     get_gzip_url):
@@ -52,14 +59,6 @@ async def test_https_request(one_time_session):
     url = 'https://google.com'
     response = await one_time_session.get(url)
     assert response.status == 200
-
-
-@pytest.mark.asyncio
-async def test_ping(one_time_session,
-                    server):
-    response = await asyncio.wait_for(one_time_session.get(server), timeout=3)
-    assert response.status == 200
-
 
 @pytest.mark.asyncio
 async def test_same_domain_requests_with_cache_connections(one_time_session_cached,
@@ -96,7 +95,7 @@ async def test_dirctly_requests_using(one_time_session,
     result1, result2 = await asyncio.gather(t1, t2)
 
     assert result1.status == 301 == result2.status
-    assert 'Content-Type' in result1.headers
+    assert 'content-type' in result1.headers
 
 
 @pytest.mark.asyncio

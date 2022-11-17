@@ -38,11 +38,14 @@ class RequestParser(BaseRequestParser):
         if request.content:
             request.headers['Content-Length'] = len(request.content)
 
-        message = ('\r\n'.join((
-            f'{request.method} {request.path} {request.scheme_and_version}',
-            f'host:  {request.host.split("://", 1)[1]}',
-            *(f"{key}:  {value}" for key, value in request.headers.items()),
-        )) + '\r\n\r\n')
+        message = (
+                '\r\n'.join(
+                    (
+                        f'{request.method} {request.path} {request.scheme_and_version}',
+                        f'host:  {request.host.split("://", 1)[1]}',
+                        *request.headers.get_parsed(),
+                    )
+                ) + '\r\n\r\n')
 
         if type(request.content) in (bytes, bytearray):
             request.content = request.content.decode()

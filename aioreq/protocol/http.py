@@ -44,6 +44,53 @@ class HttpProtocol(metaclass=ABCMeta):
     version = '1.1'
 
 
+class HeaderDict(HttpProtocol):
+
+    def __init__(self,
+                 initial_headers: dict[str, str] | None = None):
+        self._headers = {}
+        self.cache = ''
+
+        if initial_headers:
+            for key, value in initial_headers.items():
+                self[key] = value
+
+    def __setitem__(self, key: str, value: str):
+        self.cache = None
+        self._headers[key.lower()] = value
+
+    def __getitem__(self, item):
+        return self._headers[item.lower()]
+
+    def add_header(self, header: Header):
+        self[header.key] = header.value
+
+    def get_parsed(self):
+        if self.cache is not None:
+            return self.cache
+
+        headers = (f"{key}:  {value}" for key, value in self._headers.items())
+        self.cache = headers
+        return headers
+
+    def items(self):
+        return self._headers.items()
+
+    def get(self, name, default):
+        return self._headers.get(name.lower(), default)
+
+    def __contains__(self, item):
+        return item in self._headers
+
+    def __or__(self, other):
+        if not isinstance(other, HeaderDict):
+            raise ValueError(f"Can't combine {self.__class__.__name__} object with {type(other).__name__}")
+
+        return HeaderDict(
+            initial_headers=self._headers | other._headers
+        )
+
+
 class BaseRequest(HttpProtocol, metaclass=ABCMeta):
     """
     An abstract class for all HTTP request classes
@@ -91,7 +138,7 @@ class BaseRequest(HttpProtocol, metaclass=ABCMeta):
             self,
             method: str,
             host: str,
-            headers: dict['str', 'str'],
+            headers: dict[str, str],
             path: str,
             raw_request: None | bytes = None,
             content: str | bytearray | bytes = '',
@@ -105,15 +152,12 @@ class BaseRequest(HttpProtocol, metaclass=ABCMeta):
             path_parameters = ()
 
         self.host = host
-        self.headers = headers
+        self.headers = HeaderDict(headers)
         self.method = method
         self.path = path
         self.content = content
         self.path_parameters = path_parameters
         self._raw_request = raw_request
-
-    def add_header(self, header: Header) -> None:
-        self.headers[header.key] = header.value
 
     def get_raw_request(self) -> bytes:
         """
@@ -196,7 +240,7 @@ class Response(BaseResponse):
             self,
             status: int,
             status_message: str,
-            headers: dict,
+            headers: dict[str, str],
             content: bytes,
             request: Request | None = None):
         """
@@ -205,7 +249,7 @@ class Response(BaseResponse):
 
         self.status = status
         self.status_message = status_message
-        self.headers = headers
+        self.headers = HeaderDict(headers)
         self.content = content
         self.request = request
 
@@ -260,13 +304,11 @@ class BaseClient(metaclass=ABCMeta):
 
     @staticmethod
     def get_avaliable_encodings():
-        return [
-            AcceptEncoding(
-                [
-                    (encoding,) for encoding in Encoding.all_encodings
-                ]
-            ),
-        ]
+        return AcceptEncoding(
+            [
+                (encoding,) for encoding in Encoding.all_encodings
+            ]
+        )
 
     def __init__(self,
                  headers: dict[str, str] | None = None,
@@ -275,25 +317,22 @@ class BaseClient(metaclass=ABCMeta):
                  enable_encodings: bool = True):
 
         self.connection_mapper = {}
+        headers = HeaderDict(initial_headers=headers)
+
+        if headers_obj is None:
+            headers_obj = ()
 
         for header in headers_obj:
+            headers[header.key] = header.value
             # Check if AcceptEncoding header was given directly then don't use default ones
-            if isinstance(header, AcceptEncoding):
-                break
-        else:
-            if enable_encodings:
-                headers_obj = self.get_avaliable_encodings()
+            if enable_encodings and isinstance(header, AcceptEncoding):
+                enable_encodings = False
 
-        _headers = {}
+        if enable_encodings and 'accept-encoding' not in headers:
+            accept_encoding_object = self.get_avaliable_encodings()
+            headers.add_header(accept_encoding_object)
 
-        for header in headers_obj:
-            _headers[header.key] = header.value
-
-        if headers:
-            self.headers = _headers | headers
-        else:
-            self.headers = _headers
-
+        self.headers = headers
         self.transports = []
         self.persistent_connections = persistent_connections
 
@@ -322,7 +361,7 @@ class BaseClient(metaclass=ABCMeta):
 
         if not transport:
             if splited_url.domain == TEST_SERVER_DOMAIN:  # server for tests
-                ip, port = '127.0.0.1', 7575
+                ip, port = 'localhost', 7575
             else:
                 ip = await resolve_domain(splited_url.get_url_for_dns())
                 port = 443 if splited_url.protocol == 'https' else 80
@@ -473,8 +512,7 @@ class Client(BaseClient):
         :rtype: Response
         """
 
-        if headers is None:
-            headers = {}
+        headers = HeaderDict(initial_headers=headers)
 
         splited_url = UrlParser.parse(url)
         transport = await self.get_connection(splited_url)
@@ -561,9 +599,9 @@ class Client(BaseClient):
 
 
 class StreamClient(BaseClient):
-    """
-    .. todo: Add encoding/decoding support for Stream Requests
-    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs, enable_encodings=False)
 
     async def _send_request(self,
                             url: str,
@@ -573,8 +611,7 @@ class StreamClient(BaseClient):
                             headers: None | dict[str, str] = None,
                             obj_headers: Iterable[Header] | None = None,
                             timeout: int = 0) -> AsyncIterable:
-        if headers is None:
-            headers = {}
+        headers = HeaderDict(initial_headers=headers)
 
         splited_url = UrlParser.parse(url)
         request = Request(

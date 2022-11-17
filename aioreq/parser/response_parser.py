@@ -67,7 +67,6 @@ class ResponseParser:
         ):
             header_content = response.headers.get(header, None)
             if header_content:
-                print(header_content)
                 encodings = parser.parse(header_content)
 
                 for encoding in encodings:
