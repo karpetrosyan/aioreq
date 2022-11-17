@@ -37,22 +37,21 @@ async def test_moving_301(one_time_session):
     response = await one_time_session.get(url, retry=0, redirect=1)
     assert response.status == 200
 
-
+@pytest.mark.asyncio
+async def test_gzip(one_time_session,
+                    constants,
+                    get_gzip_url):
+    ...
+    expected = constants['GZIP_RESPONSE_TEXT'].encode()
+    response = await asyncio.wait_for(one_time_session.get(get_gzip_url), timeout=3)
+    assert 'content-encoding' in response.headers
+    # then server sent encoded message!
+    assert len(response.content) == len(expected)
 @pytest.mark.asyncio
 async def test_https_request(one_time_session):
     url = 'https://google.com'
     response = await one_time_session.get(url)
     assert response.status == 200
-
-
-@pytest.mark.asyncio
-async def test_gzip_request(one_time_session,
-                            get_gzip_url):
-    expected = ('testgzip' * 100000).encode()
-    response = await asyncio.wait_for(one_time_session.get(get_gzip_url), timeout=3)
-    assert 'content-encoding' in response.headers  # if content-encoding exists
-    # then server sent encoded message!
-    assert len(response.content) == len(expected)
 
 
 @pytest.mark.asyncio
@@ -92,10 +91,20 @@ async def test_dirctly_requests_using(one_time_session,
         path='/',
     )
 
-
     t1 = asyncio.create_task(one_time_session.send_request(req))
     t2 = asyncio.create_task(one_time_session.send_request(jsonreq))
     result1, result2 = await asyncio.gather(t1, t2)
 
     assert result1.status == 301 == result2.status
     assert 'Content-Type' in result1.headers
+
+
+@pytest.mark.asyncio
+async def test_stream_request(one_time_session_stream,
+                              get_stream_test_url,
+                              constants):
+    t2 = bytearray()
+    async for chunk in one_time_session_stream.get(get_stream_test_url):
+        for byte in chunk:
+            t2.append(byte)
+    assert t2 == b'test' * constants['STREAMING_RESPONSE_CHUNK_COUNT']

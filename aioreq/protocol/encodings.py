@@ -31,11 +31,11 @@ class gzip(Encoding):
         return _gzip.decompress(text)
 
 
-class compress(Encoding):
-
-    @classmethod
-    def decompress(cls, text: bytes) -> bytes:
-        raise NotImplementedError
+# class compress(Encoding):
+#
+#     @classmethod
+#     def decompress(cls, text: bytes) -> bytes:
+#         raise NotImplementedError
 
 
 # Enum for encodings
@@ -43,7 +43,7 @@ class compress(Encoding):
 
 class Encodings(Enum):
     gzip = gzip
-    compress = compress
+    # compress = compress
 
     def decompress(self, text: bytes) -> bytes:
         return self.value.decompress(text)

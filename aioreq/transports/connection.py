@@ -6,12 +6,12 @@ from typing import Tuple
 import certifi
 from dns import asyncresolver
 
-from .buffer import Buffer
+from .buffer import Buffer, StreamBuffer
 from ..errors.requests import AsyncRequestsError
 from ..settings import LOGGER_NAME
 
 res = asyncresolver.Resolver()
-res.nameservers = ['1.1.1.1']
+res.nameservers = ['1.1.1.1', '8.8.8.8']
 
 log = logging.getLogger(LOGGER_NAME)
 
@@ -61,7 +61,8 @@ class Transport:
         self.reader: None | asyncio.StreamReader = None
         self.writer: None | asyncio.StreamWriter = None
         self.used: bool = False
-        self.message_manager: Buffer = Buffer(text='')
+        self.message_manager: Buffer = Buffer()
+        self.stream_message_manager: StreamBuffer = StreamBuffer()
 
     async def send_data(self, raw_data: bytes) -> None:
         """
@@ -78,10 +79,15 @@ class Transport:
         """
         An asynchronous alternative for socket.recv() method.
         """
-        data = await self.reader.read(10000)
+        data = await self.reader.read(1000)
         log.debug(f"Received data : {len(data)} bytes")
         resp, without_body_len = self.message_manager.add_data(data)
         return resp, without_body_len
+
+    async def receive_data_stream(self):
+        data = await self.reader.read(5)
+        headerless_data = self.stream_message_manager.add_data(data)
+        return headerless_data
 
     async def make_connection(
             self,
@@ -108,6 +114,11 @@ class Transport:
         self.reader = reader
         self.writer = writer
 
+    def check_used(self):
+        if self.used:
+            raise AsyncRequestsError('Using transport which already in use')
+        self.used = True
+
     async def send_http_request(self, raw_data: bytes) -> Tuple[bytes, int]:
         """
         The lowest level http request method, can be used directly
@@ -117,9 +128,7 @@ class Transport:
         :returns: Response bytes and without data len
         :rtype: Tuple[bytes, int]
         """
-        if self.used:
-            raise AsyncRequestsError('Using transport which already in use')
-        self.used = True
+        self.check_used()
         await self.send_data(raw_data)
         while True:
 
@@ -127,6 +136,23 @@ class Transport:
             if resp is not None:
                 self.used = False
                 return resp, without_body_len
+
+    async def send_http_stream_request(
+            self,
+            raw_data: bytes):
+
+        self.check_used()
+        await self.send_data(raw_data)
+
+        while True:
+            body = await self.receive_data_stream()
+            if body is not None:
+                _bytes, done = body
+                if _bytes:
+                    yield _bytes
+                if done:
+                    break
+            await asyncio.sleep(0)
 
     def is_closing(self) -> bool:
         """

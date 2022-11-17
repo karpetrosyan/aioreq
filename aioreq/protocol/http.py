@@ -14,6 +14,7 @@ from ..parser.request_parser import RequestParser
 from ..parser.request_parser import JsonRequestParser
 from ..parser.response_parser import ResponseParser
 from ..parser.url_parser import UrlParser
+from ..parser.url_parser import Url
 from ..settings import LOGGER_NAME
 from ..settings import REQUEST_REDIRECT_COUNT
 from ..settings import REQUEST_RETRY_COUNT
@@ -22,6 +23,7 @@ from ..transports.connection import Transport
 from ..transports.connection import resolve_domain
 from ..utils import debug
 from ..utils.generic import wrap_errors
+from typing import AsyncIterable
 
 log = logging.getLogger(LOGGER_NAME)
 
@@ -74,6 +76,16 @@ class BaseRequest(HttpProtocol, metaclass=ABCMeta):
     """
 
     parser = None
+
+    __slots__ = (
+        'method',
+        'host',
+        'headers',
+        'path',
+        'raw_request',
+        'content',
+        'path_parameters',
+    )
 
     def __init__(
             self,
@@ -128,6 +140,14 @@ class BaseResponse(HttpProtocol, metaclass=ABCMeta):
     """
     An abstract Response class
     """
+
+    __slots__ = (
+        'status',
+        'status_message',
+        'headers',
+        'content',
+        'request'
+    )
 
 
 class Request(BaseRequest):
@@ -208,8 +228,20 @@ class Response(BaseResponse):
 
 class BaseClient(metaclass=ABCMeta):
     """
-    An abstract class for all Clients
-    """
+       A session like class Client used to make requests
+
+       This is a Client abstraction used to communicate with the
+       HTTP protocol, send requests, receive responses and so on
+
+       :param headers: HTTP protocol headers
+       :type headers: dict[str, str], None
+       :param persistent_connections: Persistent connections support for our client
+       see also RFC[2616] 8.1 Persistent Connections
+       :type persistent_connections: bool
+       :param headers_obj: Iterable object which contains
+       Header objects defined in 'aioreq.protocol.headers',
+       this is an easy way to use HTTP Headers through OOP
+       """
 
     @abstractmethod
     async def _send_request(self,
@@ -218,57 +250,40 @@ class BaseClient(metaclass=ABCMeta):
                             content: str | bytearray | bytes = '',
                             path_parameters: Iterable[Iterable[str]] | None = None,
                             headers: None | dict = None,
-                            ) -> Response: ...
+                            ) -> Response:
+        ...
 
     @abstractmethod
     async def send_request(self,
-                           request: Request,) -> Response: ...
+                           request: Request, ) -> Response:
+        ...
 
-
-class Client(BaseClient):
-    """
-    A session like class Client used to make requests 
-
-    This is a Client abstraction used to communicate with the
-    HTTP protocol, send requests, receive responses and so on
-
-    :param headers: HTTP protocol headers
-    :type headers: dict[str, str], None
-    :param persistent_connections: Persistent connections support for our client
-    see also RFC[2616] 8.1 Persistent Connections
-    :type persistent_connections: bool
-    :param headers_obj: Iterable object which contains
-    Header objects defined in 'aioreq.protocol.headers',
-    this is an easy way to use HTTP Headers through OOP
-
-    :Example:
-
-    >>> import aioreq
-    >>> import asyncio
-
-    >>> async def main():
-    >>>     async with aioreq.http.Client() as cl:
-    >>>         return await cl.get('https://www.youtube.com')
-    >>> asyncio.run(main())
-
-    .. todo: Isolate clients utils.debug.timer logging system
-    """
+    @staticmethod
+    def get_avaliable_encodings():
+        return [
+            AcceptEncoding(
+                [
+                    (encoding,) for encoding in Encoding.all_encodings
+                ]
+            ),
+        ]
 
     def __init__(self,
                  headers: dict[str, str] | None = None,
                  persistent_connections: bool = False,
-                 headers_obj: Iterable[Header] | None = None):
+                 headers_obj: Iterable[Header] | None = None,
+                 enable_encodings: bool = True):
 
         self.connection_mapper = {}
 
-        if headers_obj is None:
-            headers_obj = [
-                AcceptEncoding(
-                    [
-                        (encoding,) for encoding in Encoding.all_encodings
-                    ]
-                ),
-            ]
+        for header in headers_obj:
+            # Check if AcceptEncoding header was given directly then don't use default ones
+            if isinstance(header, AcceptEncoding):
+                break
+        else:
+            if enable_encodings:
+                headers_obj = self.get_avaliable_encodings()
+
         _headers = {}
 
         for header in headers_obj:
@@ -281,6 +296,109 @@ class Client(BaseClient):
 
         self.transports = []
         self.persistent_connections = persistent_connections
+
+    async def get_connection(self, splited_url: Url):
+        """
+        Getting connection from already opened connections, to perform Keep-Alive logic,
+        if these connections exists or create the new one and save into connection pool
+        :param splited_url: Url object which contains all url parts
+        (protocol, version, subdomain, domain, ...)
+        :type splited_url: Url
+        :returns: Transport
+        """
+        if self.persistent_connections:
+            log.debug(f"{self.connection_mapper} searching into mapped connections")
+            transport = self.connection_mapper.get(
+                splited_url.domain, None)
+
+            if transport:
+                if transport.is_closing():
+                    transport = None
+                elif transport.used:
+                    raise AsyncRequestsError("Can't use persistent connections in async mode without pipelining")
+
+        else:
+            transport = None
+
+        if not transport:
+            if splited_url.domain == TEST_SERVER_DOMAIN:  # server for tests
+                ip, port = '127.0.0.1', 7575
+            else:
+                ip = await resolve_domain(splited_url.get_url_for_dns())
+                port = 443 if splited_url.protocol == 'https' else 80
+
+            transport = Transport()
+            connection_coroutine = transport.make_connection(
+                ip,
+                port,
+                ssl=splited_url.protocol == 'https'
+            )
+            try:
+                await connection_coroutine
+                self.transports.append(transport)
+
+            except asyncio.exceptions.TimeoutError as err:
+                raise ConnectionTimeoutError('Socket connection timeout') from err
+
+            if self.persistent_connections:
+                if splited_url.get_url_for_dns() in self.connection_mapper:
+                    raise AsyncRequestsError(
+                        (
+                            'Seems you use persistent connections in async mode, which'
+                            'is impossible when you requesting the same domain concurrently'
+                        )
+                    )
+
+                self.connection_mapper[splited_url.get_url_for_dns(
+                )] = transport
+        else:
+            log.info("Using already opened connection")
+        return transport
+
+    async def __aenter__(self):
+        """
+        Implements 'with', close transports after
+        session ends
+
+        :returns: Client object
+        :type: Client
+        """
+        return self
+
+    async def __aexit__(self, *args, **kwargs):
+        """
+        Close using recourses
+
+        :returns: None
+        """
+        for fnc, log_data in debug.function_logs.items():
+            time = log_data['time']
+            call_count = log_data['call_count']
+            log.debug(f"Function {fnc.__module__}::{fnc.__name__} log | exec time: {time} | call count: {call_count}")
+
+        tasks = []
+
+        for transport in self.transports:
+            transport.writer.close()
+            log.debug('Trying to close')
+            tasks.append(transport.writer.wait_closed())
+        await asyncio.gather(*tasks)
+
+
+class Client(BaseClient):
+    """
+    :Example:
+
+   >>> import aioreq
+   >>> import asyncio
+
+   >>> async def main():
+   >>>     async with aioreq.http.Client() as cl:
+   >>>         return await cl.get('https://www.youtube.com')
+   >>> resp = asyncio.run(main())
+
+   .. todo: Isolate clients utils.debug.timer logging system
+    """
 
     async def get(
             self,
@@ -372,22 +490,6 @@ class Client(BaseClient):
         raw_response, without_body_len = await wrap_errors(coro=coro, timeout=timeout)
         return ResponseParser.body_len_parse(raw_response, without_body_len)
 
-    async def send_request(self,
-                           request: Request,
-                           timeout: int = 0) -> Response:
-        """
-        Send request by giving Request object directly
-        :param request: Request instance
-        :type request: Request
-        :param timeout: Timeout for request
-        :type timeout: int
-        """
-        splited_url = UrlParser.parse(request.host + request.path)
-        transport = await self.get_connection(splited_url)
-        coro = transport.send_http_request(request.get_raw_request())
-        raw_response, without_body_len = await wrap_errors(coro=coro, timeout=timeout)
-        return ResponseParser.body_len_parse(raw_response, without_body_len)
-
     async def request_redirect_wrapper(self,
                                        *args: tuple[Any],
                                        redirect: int,
@@ -441,89 +543,93 @@ class Client(BaseClient):
                     raise e
                 log.info(f'Retrying request cause of {e}')
 
-    async def get_connection(self, splited_url: 'Url'):
+    async def send_request(self,
+                           request: BaseRequest,
+                           timeout: int = 0) -> Response:
         """
-        Getting connection from already opened connections, to perform Keep-Alive logic,
-        if these connections exists or create the new one and save into connection pool
-        :param splited_url: Url object which contains all url parts
-        (protocol, version, subdomain, domain, ...)
-        :type splited_url: Url
-        :returns: Transport
+        Send request by giving Request object directly
+        :param request: Request instance
+        :type request: Request
+        :param timeout: Timeout for request
+        :type timeout: int
         """
-        if self.persistent_connections:
-            log.debug(f"{self.connection_mapper} searching into mapped connections")
-            transport = self.connection_mapper.get(
-                splited_url.domain, None)
+        splited_url = UrlParser.parse(request.host + request.path)
+        transport = await self.get_connection(splited_url)
+        coro = transport.send_http_request(request.get_raw_request())
+        raw_response, without_body_len = await wrap_errors(coro=coro, timeout=timeout)
+        return ResponseParser.body_len_parse(raw_response, without_body_len)
 
-            if transport:
-                if transport.is_closing():
-                    transport = None
-                elif transport.used:
-                    raise AsyncRequestsError("Can't use persistent connections in async mode without pipelining")
 
-        else:
-            transport = None
+class StreamClient(BaseClient):
+    """
+    .. todo: Add encoding/decoding support for Stream Requests
+    """
 
-        if not transport:
-            if splited_url.domain == TEST_SERVER_DOMAIN:  # server for tests
-                ip, port = '127.0.0.1', 7575
-            else:
-                ip = await resolve_domain(splited_url.get_url_for_dns())
-                port = 443 if splited_url.protocol == 'https' else 80
+    async def _send_request(self,
+                            url: str,
+                            method: str,
+                            content: str | bytearray | bytes = '',
+                            path_parameters: Iterable[Iterable[str]] | None = None,
+                            headers: None | dict[str, str] = None,
+                            obj_headers: Iterable[Header] | None = None,
+                            timeout: int = 0) -> AsyncIterable:
+        if headers is None:
+            headers = {}
 
-            transport = Transport()
-            connection_coroutine = transport.make_connection(
-                ip,
-                port,
-                ssl=splited_url.protocol == 'https'
-            )
-            try:
-                await connection_coroutine
-                self.transports.append(transport)
+        splited_url = UrlParser.parse(url)
+        request = Request(
+            method=method,
+            host=splited_url.get_url_without_path(),
+            headers=self.headers | headers,
+            path=splited_url.path,
+            path_parameters=path_parameters,
+            content=content,
+        )
+        async for chunk in self.send_request(request):
+            yield chunk
 
-            except asyncio.exceptions.TimeoutError as err:
-                raise ConnectionTimeoutError('Socket connection timeout') from err
+    async def post(
+            self,
+            url: str,
+            content: str | bytearray | bytes = '',
+            headers: None | dict[str, str] = None,
+            path_parameters: None | Iterable[Iterable[str]] = None,
+            obj_headers: None | Iterable[Header] = None,
+            timeout: int = 0):
+        async for chunk in self._send_request(
+                url=url,
+                method="POST",
+                content=content,
+                headers=headers,
+                path_parameters=path_parameters,
+                obj_headers=obj_headers,
+                timeout=timeout,
+        ):
+            yield chunk
 
-            if self.persistent_connections:
-                if splited_url.get_url_for_dns() in self.connection_mapper:
-                    raise AsyncRequestsError(
-                        (
-                            'Seems you use persistent connections in async mode, which'
-                            'is impossible when you requesting the same domain concurrently'
-                        )
-                    )
+    async def get(
+            self,
+            url: str,
+            content: str | bytearray | bytes = '',
+            headers: None | dict[str, str] = None,
+            path_parameters: None | Iterable[Iterable[str]] = None,
+            obj_headers: None | Iterable[Header] = None,
+            timeout: int = 0):
+        async for chunk in self._send_request(
+                url=url,
+                method="GET",
+                content=content,
+                headers=headers,
+                path_parameters=path_parameters,
+                obj_headers=obj_headers,
+                timeout=timeout,
+        ):
+            yield chunk
 
-                self.connection_mapper[splited_url.get_url_for_dns(
-                )] = transport
-        else:
-            log.info("Using already opened connection")
-        return transport
-
-    async def __aenter__(self):
-        """
-        Implements 'with', close transports after
-        session ends
-
-        :returns: Client object
-        :type: Client
-        """
-        return self
-
-    async def __aexit__(self, *args, **kwargs):
-        """
-        Close using recourses
-
-        :returns: None
-        """
-        for fnc, log_data in debug.function_logs.items():
-            time = log_data['time']
-            call_count = log_data['call_count']
-            log.debug(f"Function {fnc.__module__}::{fnc.__name__} log | exec time: {time} | call count: {call_count}")
-
-        tasks = []
-
-        for transport in self.transports:
-            transport.writer.close()
-            log.debug('Trying to close')
-            tasks.append(transport.writer.wait_closed())
-        await asyncio.gather(*tasks)
+    async def send_request(self,
+                           request: BaseRequest) -> AsyncIterable:
+        splited_url = UrlParser.parse(request.host + request.path)
+        transport = await self.get_connection(splited_url)
+        coro = transport.send_http_stream_request(request.get_raw_request())
+        async for chunk in coro:
+            yield chunk
