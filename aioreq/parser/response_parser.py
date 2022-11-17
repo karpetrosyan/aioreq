@@ -44,10 +44,8 @@ class ResponseParser:
     )
 
     regex_find_chunk = re.compile("^(?P<content_size>[0-9abcdefABCDEF]+)\r\n".encode())
-    regex_end_chunks = (
-        re.compile(r'0\r\n\r\n'.encode()),
-        # re.compile('^\r\n\r\n'.encode())
-    )
+    regex_end_chunk = re.compile(r'^0\r\n\r\n'.encode())
+
 
     @classmethod
     def parse_and_fill_headers(cls, binary_headers: bytes):
@@ -60,7 +58,7 @@ class ResponseParser:
         return headers
 
     @classmethod
-    def decode_response_body(cls, response: 'Response') -> None:
+    def decode_response_body(cls, response) -> None:
         for parser, header in (
                 (TransferEncoding, 'transfer-encoding'),
                 (ContentEncoding, 'content-encoding')
@@ -105,7 +103,7 @@ class ResponseParser:
 
     @classmethod
     @debug.timer
-    def body_len_parse(cls, text: bytes, without_body_len: int) -> 'Response':
+    def body_len_parse(cls, text: bytes, without_body_len: int):
         from ..protocol.http import Response
 
         withoutbody, body = text[:without_body_len], text[without_body_len:]
@@ -177,3 +175,5 @@ class ResponseParser:
         if match:
             assert match.start() == 0, f"Got unexpected {match.start=}"  # type: ignore
         return match is not None
+
+

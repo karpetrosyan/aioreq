@@ -68,10 +68,10 @@ class ResponseParserStrategy(Enum):
                     break
 
             else:
-                for pattern in ResponseParser.regex_end_chunks:
-                    end_match = pattern.search(buffer.text)
-                    if end_match:
-                        return buffer.message_verify()
+                pattern = ResponseParser.regex_end_chunk
+                end_match = pattern.search(buffer.text)
+                if end_match:
+                    return buffer.message_verify()
 
                 match = ResponseParser.regex_find_chunk.search(buffer.text)
                 if match is None or match.groups()[0] == b'0':
@@ -187,7 +187,7 @@ class Buffer(BaseBuffer):
         for byte in _bytes:
             self.text.append(byte)
 
-    def add_data(self, text: bytes) -> Tuple[None, None] | Tuple[bytes, int]:
+    def add_data(self, text: bytes) -> Tuple[bytes, int] | Tuple[None, None]:
         """
         Calls whenever new data required to be added
         :param text: Text to add
@@ -210,20 +210,37 @@ class Buffer(BaseBuffer):
 
 
 class StreamBuffer(BaseBuffer):
+    """
+    A buffer for stream responses.
+
+    This class is meant to work with large response data. If receiving all response data at once, it can crash our
+    program because of ram overflow, so handling each chunk separately is also supported.
+    """
 
     def __init__(self):
         self.buffer = Buffer()
         self.headers_skipped = False
 
     def add_data(self,
-                 text: bytes) -> tuple[bytes, bool] | None:
+                 text: bytes) -> tuple[bytes, bool] | bytes:
+        """
+        :returns: None if
+        """
+        print('given', text)
         done = self.buffer.add_data(text)
 
-        if self.buffer.message_data:
-            if not self.headers_skipped:
+        if self.buffer.verified:
+            if self.headers_skipped:
+                return done[0], True
+            return done[0][self.buffer.without_body_len:], True
+
+        if self.buffer.without_body_len:
+            if not self.headers_skipped:  # if headers not received, receive and clean the bytearray
                 self.headers_skipped = True
+                body_received = self.buffer.message_data[self.buffer.without_body_len:]
                 self.buffer.message_data = bytearray(b'')
-                return
+                return body_received, False
         msg = self.buffer.message_data
         self.buffer.message_data = bytearray(b'')
-        return msg if not self.buffer.verified else done[0], self.buffer.verified
+        print(msg)
+        return msg, False

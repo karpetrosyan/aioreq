@@ -1,7 +1,5 @@
 import pytest
 import asyncio
-import aioreq
-import pytest_asyncio
 
 from aioreq.errors.requests import AsyncRequestsError
 from aioreq.protocol.http import Request
@@ -37,6 +35,7 @@ async def test_moving_301(one_time_session):
     response = await one_time_session.get(url, retry=0, redirect=1)
     assert response.status == 200
 
+
 @pytest.mark.asyncio
 async def test_ping(one_time_session,
                     server):
@@ -54,11 +53,14 @@ async def test_gzip(one_time_session,
     assert 'content-encoding' in response.headers
     # then server sent encoded message!
     assert len(response.content) == len(expected)
+
+
 @pytest.mark.asyncio
 async def test_https_request(one_time_session):
     url = 'https://google.com'
     response = await one_time_session.get(url)
     assert response.status == 200
+
 
 @pytest.mark.asyncio
 async def test_same_domain_requests_with_cache_connections(one_time_session_cached,
@@ -106,4 +108,15 @@ async def test_stream_request(one_time_session_stream,
     async for chunk in one_time_session_stream.get(get_stream_test_url):
         for byte in chunk:
             t2.append(byte)
-    assert t2 == b'test' * constants['STREAMING_RESPONSE_CHUNK_COUNT']
+    assert t2 == bytearray('test' * constants['STREAMING_RESPONSE_CHUNK_COUNT'], 'utf-8')
+
+
+@pytest.mark.asyncio
+async def test_root_with_stream(one_time_session_stream,
+                              server):
+    t2 = bytearray()
+    async for chunk in one_time_session_stream.get(server):
+        for byte in chunk:
+            t2.append(byte)
+    assert t2 == bytearray(b'"Hello World"')
+

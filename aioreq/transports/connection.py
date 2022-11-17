@@ -58,8 +58,8 @@ class Transport:
     """
 
     def __init__(self):
-        self.reader: None | asyncio.StreamReader = None
-        self.writer: None | asyncio.StreamWriter = None
+        self.reader: asyncio.StreamReader | None = None
+        self.writer: asyncio.StreamWriter | None = None
         self.used: bool = False
         self.message_manager: Buffer = Buffer()
         self.stream_message_manager: StreamBuffer = StreamBuffer()
@@ -84,7 +84,7 @@ class Transport:
         return resp, without_body_len
 
     async def receive_data_stream(self):
-        data = await self.reader.read(5)
+        data = await self.reader.read(20)
         headerless_data = self.stream_message_manager.add_data(data)
         return headerless_data
 
@@ -147,13 +147,11 @@ class Transport:
         await self.send_data(raw_data)
 
         while True:
-            body = await self.receive_data_stream()
-            if body is not None:
-                _bytes, done = body
-                if _bytes:
-                    yield _bytes
-                if done:
-                    break
+            body, done = await self.receive_data_stream()
+            if body:
+                yield body
+            if done:
+                break
             await asyncio.sleep(0)
 
     def is_closing(self) -> bool:

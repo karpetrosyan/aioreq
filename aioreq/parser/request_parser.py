@@ -1,6 +1,5 @@
 import json as _json
 
-from abc import ABCMeta
 from abc import abstractmethod
 from typing import Iterable
 from ..utils import debug

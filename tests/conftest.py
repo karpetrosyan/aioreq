@@ -1,11 +1,8 @@
-import time
 import pytest
 import asyncio
 import aioreq
 import subprocess
 import pytest_asyncio
-
-from functools import wraps
 
 SCOPE_SESSION = pytest_asyncio.fixture(scope='session')
 SCOPE_FUNCTION = pytest_asyncio.fixture(scope='function')
@@ -14,7 +11,7 @@ SERVER_URL = 'http://testulik.com'
 # Server constants
 CONSTANTS = dict(
     GZIP_RESPONSE_TEXT="testgzip" * 10000,
-    STREAMING_RESPONSE_CHUNK_COUNT=10
+    STREAMING_RESPONSE_CHUNK_COUNT=30
 )
 
 
