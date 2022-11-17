@@ -223,10 +223,6 @@ class StreamBuffer(BaseBuffer):
 
     def add_data(self,
                  text: bytes) -> tuple[bytes, bool] | bytes:
-        """
-        :returns: None if
-        """
-        print('given', text)
         done = self.buffer.add_data(text)
 
         if self.buffer.verified:
@@ -237,10 +233,12 @@ class StreamBuffer(BaseBuffer):
         if self.buffer.without_body_len:
             if not self.headers_skipped:  # if headers not received, receive and clean the bytearray
                 self.headers_skipped = True
+
+                # if transfer encoding was chunked, then with headers it can also receive some chunks
+                # This code receive additional content which comes with `headers`
                 body_received = self.buffer.message_data[self.buffer.without_body_len:]
-                self.buffer.message_data = bytearray(b'')
+                self.buffer.message_data.clear()  # clear message_data
                 return body_received, False
         msg = self.buffer.message_data
-        self.buffer.message_data = bytearray(b'')
-        print(msg)
+        self.buffer.message_data.clear()  # clear message_data
         return msg, False
