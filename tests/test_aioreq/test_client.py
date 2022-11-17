@@ -113,10 +113,9 @@ async def test_stream_request(one_time_session_stream,
 
 @pytest.mark.asyncio
 async def test_root_with_stream(one_time_session_stream,
-                              server):
+                                server):
     t2 = bytearray()
     async for chunk in one_time_session_stream.get(server):
         for byte in chunk:
             t2.append(byte)
     assert t2 == bytearray(b'"Hello World"')
-
