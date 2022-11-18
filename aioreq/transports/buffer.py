@@ -237,8 +237,8 @@ class StreamBuffer(BaseBuffer):
                 # if transfer encoding was chunked, then with headers it can also receive some chunks
                 # This code receive additional content which comes with `headers`
                 body_received = self.buffer.message_data[self.buffer.without_body_len:]
-                self.buffer.message_data.clear()  # clear message_data
+                self.buffer.message_data = bytearray(b'')  # clear message_data
                 return body_received, False
         msg = self.buffer.message_data
-        self.buffer.message_data.clear()  # clear message_data
+        self.buffer.message_data = bytearray(b'')  # clear message_data
         return msg, False
