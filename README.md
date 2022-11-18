@@ -11,12 +11,12 @@ $ pip install aioreq
 
 ## Usage
 ### Basic usage
-
+---
 ``` python
 >>> import aioreq
 >>> import asyncio
 >>>
->>> cl = aioreq.http.Client()
+>>> cl = aioreq.Client()
 >>>
 >>> resp = asyncio.run(
 >>>	cl.get('https://www.google.com')
@@ -32,7 +32,18 @@ $ pip install aioreq
 >>> headers = resp.headers # dict
 >>> body = resp.body # bytes object
 ```
+
+or using **Context manager** which is the best practice.
+``` python
+import aioreq
+import asyncio
+
+async def main():
+        async with aioreq.Client() as cl:
+                await cl.get('https://google.com')
+```
 ### More advanced usage
+---
 
 This code will send 100 get requests to [`google.com`](https://www.google.com) asynchronously which is much faster then sync requests like [requests](https://github.com/psf/requests) library do.
 
@@ -41,18 +52,38 @@ This code will send 100 get requests to [`google.com`](https://www.google.com) a
 >>> import aioreq
 >>>
 >>> async def main():
->>>    cl = aioreq.http.Client()
->>>    tasks = []
->>>    for j in range(100):
->>>        tasks.append(
->>>		asyncio.create_task(
->>>			cl.get('https://www.google.com/', )
->>>				)
->>> 			)
->>>    await asyncio.gather(*tasks)
+>>>    async with aioreq.http.Client() as cl:
+>>>        tasks = []
+>>>        for j in range(100):
+>>>            tasks.append(
+>>>		                  asyncio.create_task(
+>>>		  	                  cl.get('https://www.google.com/', )
+>>>				                 )
+>>> 			           )
+>>>        await asyncio.gather(*tasks)
 >>>
 >>> asyncio.run(main())
 ```
+
+### Streams
+---
+Sometimes we use HTTP protocol to download videos, photos and maybe some files. When downloading  very large files, it is necessary to use Stream instead of the default Client. A client gives us a response which contains all information including headers, status code, status message and full body, which can be very large when it downloads videos or files. So we can't store it in RAM. Stream gives just a chunk of the body each time, so we can write it onto the hard drive, then receive another chunk and solve the ram overflow problem.
+
+There is some basic Stream usage
+``` python
+>>> import aioreq
+>>> import asyncio
+>>> 
+>>> async def main():
+>>>        local_file = open('test', 'wb')
+>>>        async with aioreq.StreamClient() as cl:
+>>>                # This code iterates through the message and yields each received chunk separately.
+>>>                async for chunk in cl.get('https://pathtoverybigfile.aioreq'):
+>>>                        local_file.write(chunk)
+
+
+```
+
 ## Benchmarks
 **Aioreq** is a really fast library and to demonstrate the speed, we compared the same program with different python libraries.
 
