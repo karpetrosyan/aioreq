@@ -31,7 +31,7 @@ async def resolve_domain(
         hostname: str,
 ) -> str:
     """
-    Ip port resolving by making dns requests
+    Makes an asynchronous DNS request to resolve the IP address.
     :param hostname: Domain name for example YouTube.com
     :type hostname: str
     :returns: ip and port for that domain

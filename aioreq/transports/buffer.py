@@ -1,4 +1,5 @@
 import logging
+from abc import abstractmethod, ABC
 
 from enum import Enum
 from ..settings import LOGGER_NAME
@@ -11,8 +12,8 @@ log = logging.getLogger(LOGGER_NAME)
 
 class ResponseParserStrategy(Enum):
     """
-    Enumeration which implements Strategy design pattern, used to
-    choose a way of parsing response
+    An enumeration that implements the strategy design pattern used to
+    choice of method for parsing the answer.
     """
     chunked = 'chunked'
     content_length = 'content_length'
@@ -20,15 +21,15 @@ class ResponseParserStrategy(Enum):
     @staticmethod
     def parse_content_length(buffer: 'Buffer') -> bytes | None:
         """
-        Parse incoming PendingMessage object which receiving data which body length
-        specified by Content-Length header.
+        Parse incoming `BaseBuffer` object receiving data on which body length by `content-length` header.
 
         RFC[2616] 14.13 Content-Length:
             The Content-Lenght entity-header field indicates the size of the entity-body,
             in decimal number of OCTETs, sent to the recipent or, in the case of the HEAD method,
             the size of the entity-body that would have been sent had the request been a GET
-        :param buffer: Buffer instance representing message receiving
-        :return: None or the verified string which seems like an HTTP message
+        :param buffer: A buffer which data should be parsed
+        :type buffer: BaseBuffer
+        :return: Parsed and verified HTTP response or `NoneType` object
         """
 
         if len(buffer.text) >= buffer.content_length:
@@ -39,17 +40,16 @@ class ResponseParserStrategy(Enum):
     @staticmethod
     def parse_chunked(buffer: 'Buffer') -> None | bytes:
         """
-        Parse incoming PendingMessage object which receiving data which body length
-        specified by Transfer-Encoding : chunked.
+        Parse incoming `BaseBuffer` object receiving data on which body length by chunked transfer encoding.
 
         RFC[2616] 3.6.1 Chunked Transfer Coding:
             The chunked encoding modifies the body of a message in order to transfer it as a series of
             chunkd, each with its own size indicator, followed by an OPTIONAL trailer containing entity-header
             fields. This allows dynamically produced content to be transferred along with the information
             necessary for the recipient to verify that it has received the full message
-        :param buffer: aioreq.transports.buffer.Buffer object
-        :type buffer: Buffer
-        :return: None or the verified string which seems like an HTTP message 
+        :param buffer: A buffer which data should be parsed
+        :type buffer: BaseBuffer
+        :return: Parsed and verified HTTP response or `NoneType` object
         """
 
         while True:
@@ -83,10 +83,9 @@ class ResponseParserStrategy(Enum):
     def parse(self, buffer: 'Buffer') -> bytes | None:
         """
         General interface to work with parsing strategies
-        :param buffer: aioreq.transports.buffer.Buffer object
-        :type buffer: Buffer
-
-        :returns: Parsed and verifyed http response or NoneType object
+        :param buffer: A buffer which data should be parsed
+        :type buffer: BaseBuffer
+        :returns: Parsed and verified HTTP response or `NoneType` object
         :rtype: bytes or None
         """
 
@@ -98,7 +97,10 @@ class ResponseParserStrategy(Enum):
 
 
 class BaseBuffer:
-    ...
+
+    @abstractmethod
+    def add_data(self, text: bytes) -> tuple[bytes, bool] | Tuple[bytes, int] | Tuple[None, None]:
+        ...
 
 
 class Buffer(BaseBuffer):
@@ -120,9 +122,9 @@ class Buffer(BaseBuffer):
 
     def switch_data(self, length: int) -> None:
         """
-        Delete from unparsed data and add to parsed ones
+        Deletes from buffer's unparsed data and add to parsed ones
         :param length: Message length to delete from unpares data
-        :return: None
+        :returns: None
         """
 
         for byte in self.text[:length]:
@@ -131,8 +133,7 @@ class Buffer(BaseBuffer):
 
     def message_verify(self) -> bytes:
         """
-        If message seems like full, call this method to return and clean the
-        self.message_data
+        Should be called whenever response messages seem full.
 
         :returns: None
         """
@@ -145,8 +146,8 @@ class Buffer(BaseBuffer):
 
     def ignore_data(self, length: int) -> None:
         """
-        Just delete text length of {length} from unparsed data
-        :param length: Length message which should be ignored (deleted)
+        Removes the elements from the buffer by the given length
+        :param length: Bytes count to remove from the buffer's unparsed data
         :returns: None
         """
 
@@ -154,8 +155,8 @@ class Buffer(BaseBuffer):
 
     def headers_done(self) -> bool:
         """
-        Check if text contains HTTP message data included full headers
-        or there is headers coming now
+        Checks if the text contains HTTP message data including full headers
+        or full headers are not received yet.
         """
 
         if not self.__headers_done:
@@ -169,9 +170,8 @@ class Buffer(BaseBuffer):
 
     def find_strategy(self) -> None:
         """
-        Find and set strategy for getting message, it can be chunked receiving or
-        with content_length
-
+        Finds and sets a strategy for getting a message, which can be chunked
+        or by content_length
         :returns: None
         """
 
@@ -184,16 +184,21 @@ class Buffer(BaseBuffer):
         log.debug(f"Strategy found: {self.body_receiving_strategy}")
 
     def fill_bytes(self, _bytes: bytes):
+        """
+        Adds given bytes into the buffer's unparsed data
+        :param _bytes: Bytes to add to the buffer
+        :returns: None
+        """
         for byte in _bytes:
             self.text.append(byte)
 
     def add_data(self, text: bytes) -> Tuple[bytes, int] | Tuple[None, None]:
         """
-        Calls whenever new data required to be added
-        :param text: Text to add
-        :ptype text: str
-
-        :returns: None if message not verified else verified message
+        Called whenever new data is required to be added
+        :param text: text to add
+        :type text: bytes
+        :returns: `Tuple[None, None]` if the message not verified else full body and without body len
+        :rtype: Tuple[bytes, int] | Tuple[None, None]
         """
 
         self.fill_bytes(text)
@@ -209,12 +214,12 @@ class Buffer(BaseBuffer):
         return None, None
 
 
-class StreamBuffer(BaseBuffer):
+class StreamBuffer(BaseBuffer, ABC):
     """
-    A buffer for stream responses.
+    The buffer for stream responses.
 
-    This class is meant to work with large response data. If receiving all response data at once, it can crash our
-    program because of ram overflow, so handling each chunk separately is also supported.
+    This class is meant to work with big response data. If it receives all response data at once, the program can crash
+    because of ram overflow. Therefore, handling each chunk separately is also supported.
     """
 
     def __init__(self):
@@ -222,7 +227,11 @@ class StreamBuffer(BaseBuffer):
         self.headers_skipped = False
 
     def add_data(self,
-                 text: bytes) -> tuple[bytes, bool] | bytes:
+                 text: bytes) -> tuple[bytes, bool]:
+        """
+        Adds new bytes into the buffer and gets parsed result if possible, otherwise returns `None`
+        """
+
         done = self.buffer.add_data(text)
 
         if self.buffer.verified:
