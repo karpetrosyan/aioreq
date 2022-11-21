@@ -2,6 +2,7 @@ import re
 import logging
 
 from dataclasses import dataclass
+from ..errors.parser import UrlParsingError
 
 from ..utils import debug
 
@@ -97,10 +98,10 @@ class UrlParser:
     # regex which getting parts from the url
     regex = re.compile(
         r'(?P<protocol>https?)://'
-        r'((?P<subdomain>[^\.]*)\.)?'
-        r'(?P<domain>[^\.]*)\.'
-        r'(?P<top_level_domain>[^/#]*)'
-        r'(?P<port>\d*)?'
+        r'((?P<subdomain>[^\.]+)\.)?'
+        r'(?P<domain>[^\.]+)\.'
+        r'(?P<top_level_domain>[^/#]+)'
+        r'(?P<port>\d+)?'
         r'(?:(?P<path>/[^#?]*)((?:\?'
         r'(?P<variables>[^#]*)?))?)?'
         r'(?:#(?P<fragment>.*))?'
@@ -123,7 +124,7 @@ class UrlParser:
         matched = cls.regex.search(url)
 
         if not matched:
-            raise ValueError(f"Invalid url {url}")
+            raise UrlParsingError(url)
 
         protocol = matched.group('protocol')
         subdomain = matched.group('subdomain')
