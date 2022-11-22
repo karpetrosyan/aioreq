@@ -79,11 +79,12 @@ class HeaderDict(HttpProtocol):
     def items(self):
         return self._headers.items()
 
-    def get(self, name, default):
-        return self._headers.get(name.lower(), default)
+    def get(self, name, default=None):
+        print(name.lower(), name.lower() in self._headers, self._headers)
+        return self._headers.get(name.lower())
 
     def __contains__(self, item):
-        return item in self._headers
+        return item.lower() in self._headers
 
     def __or__(self, other):
         if not isinstance(other, HeaderDict):
@@ -92,6 +93,12 @@ class HeaderDict(HttpProtocol):
         return HeaderDict(
             initial_headers=self._headers | other._headers
         )
+
+    def __len__(self):
+        return len(self._headers)
+
+    def __str__(self):
+        return str(self._headers)
 
 
 class BaseRequest(HttpProtocol, metaclass=ABCMeta):
@@ -398,7 +405,7 @@ class BaseClient(metaclass=ABCMeta):
 
     async def __aenter__(self):
         """
-        Implements 'with', close transports after
+        Implements 'with', closes transports after
         session ends
 
         :returns: Client object
@@ -408,7 +415,7 @@ class BaseClient(metaclass=ABCMeta):
 
     async def __aexit__(self, *args, **kwargs):
         """
-        Close using recourses
+        Closes using recourses
 
         :returns: None
         """
@@ -430,15 +437,15 @@ class Client(BaseClient):
     """
     :Example:
 
-   >>> import aioreq
-   >>> import asyncio
+    >>> import aioreq
+    >>> import asyncio
+    ...
+    >>> async def main():
+    >>>     async with aioreq.http.Client() as cl:
+    >>>         return await cl.get('https://www.youtube.com')
+    >>> resp = asyncio.run(main())
 
-   >>> async def main():
-   >>>     async with aioreq.http.Client() as cl:
-   >>>         return await cl.get('https://www.youtube.com')
-   >>> resp = asyncio.run(main())
-
-   .. todo: Isolate clients utils.debug.timer logging system
+    .. todo: Isolate clients utils.debug.timer logging system
     """
 
     async def get(
