@@ -4,9 +4,11 @@ import asyncio
 
 from .protocol import http
 from .protocol.http import *
+from .protocol import headers
 
 try:
-    import uvloop
+    ...
+    # import uvloop
 
     # asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 except:

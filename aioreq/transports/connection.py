@@ -117,7 +117,7 @@ class Transport:
 
     def check_used(self):
         if self.used:
-            raise AsyncRequestsError('Using transport which already in use')
+            raise AsyncRequestsError('Using transport which is already in use')
         self.used = True
 
     async def send_http_request(self, raw_data: bytes) -> Tuple[bytes, int]:
