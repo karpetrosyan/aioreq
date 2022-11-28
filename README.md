@@ -1,4 +1,4 @@
-**Aioreq** is a low-level asynchronous HTTP client library for Python. It's built on top of non-blocking TCP sockets.
+**Aioreq** is a low level asynchronous HTTP client library for Python. It's built on top of non-blocking TCP sockets.
 
 [mygit]: https://github.com/karosis88/aioreq
 
@@ -33,7 +33,7 @@ $ pip install aioreq
 >>> body = resp.body # bytes object
 ```
 
-Much better if you use context manager.
+or using **Context manager** which is the best practice.
 ``` python
 import aioreq
 import asyncio
@@ -45,7 +45,7 @@ async def main():
 ### More advanced usage
 ---
 
-This code will send 100 get requests to [google](https://google.com) asynchronously which is much faster than sync requests do.
+This code will send 100 get requests to [`google.com`](https://www.google.com) asynchronously which is much faster then sync requests like [requests](https://github.com/psf/requests) library do.
 
 ``` python
 >>> import asyncio
@@ -67,7 +67,7 @@ This code will send 100 get requests to [google](https://google.com) asynchronou
 
 ### Streams
 ---
-Sometimes we use the HTTP protocol to download videos, photos, and maybe some files. When downloading very large files, it is necessary to use Stream instead of the default Client. A client gives us a response that contains all information including headers, status code, status message, and full body, which can be very large when it downloads videos or files. So we can't store it in RAM. Stream gives just a chunk of the body each time, so we can write it onto the hard drive, then receive another chunk and solve the ram overflow problem.
+Sometimes we use HTTP protocol to download videos, photos and maybe some files. When downloading  very large files, it is necessary to use Stream instead of the default Client. A client gives us a response which contains all information including headers, status code, status message and full body, which can be very large when it downloads videos or files. So we can't store it in RAM. Stream gives just a chunk of the body each time, so we can write it onto the hard drive, then receive another chunk and solve the ram overflow problem.
 
 There is some basic Stream usage
 ``` python
@@ -111,7 +111,7 @@ $ python run_tests_functions.py
 ---
 ### Benchmark results
 
-This is the **average** execution time of each library for **200 asynchronous requests** where responses were received without **chunked** transfer encoding.
+This is the **average** execution time of each library for **200 asynchronous requests** where responses was received without **chunked** transfer encoding.
 <br/>
 
 
@@ -141,7 +141,7 @@ Received statuses
 ```
 
 #### With `Transfer-Encoding: Chunked`
-This is the **average** execution time of each library for **100 asynchronous requests** where responses were received with **chunked** transfer encoding.
+This is the **average** execution time of each library for **100 asynchronous requests** where responses was received with **chunked** transfer encoding.
 <br/>
 
 Benchmark settings.
@@ -174,7 +174,7 @@ As you can see, the synchronous code lags far behind when we make many requests 
 **Aioreq** support basic features to work with **HTTP/1.1**.<br />More functionality will be avaliable in future realeases.<br />
 This is the latest version features.
 * Keep-Alive (Persistent Connections)
-* Automatic accepting and decoding responses
+* Automatic accepting and decoding responses. Using `Accept-Encoding` header
 * HTTPS support, TLS/SSL Verification using [certifi](https://github.com/certifi/python-certifi) library
 * Request Timeouts
 
