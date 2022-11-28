@@ -1,11 +1,9 @@
 import re
-import gzip
 import logging
 
 from ..settings import LOGGER_NAME
 from ..protocol.headers import TransferEncoding
 from ..protocol.headers import ContentEncoding
-from ..protocol.encodings import Encodings
 
 from ..utils import debug
 

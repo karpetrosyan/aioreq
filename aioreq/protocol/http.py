@@ -195,16 +195,7 @@ class BaseRequest(HttpProtocol, metaclass=ABCMeta):
         message = self.parser.parse(self)
         enc_message = message.encode('utf-8')
         self._raw_request = enc_message
-        print(enc_message)
         return enc_message
-
-    @property
-    def host(self):
-        return self._host
-
-    @host.setter
-    def host(self, value):
-        self._host = value.rstrip('/')
 
     def __repr__(self) -> str:
         return f"<Request {self.method} {self.host}>"
@@ -728,8 +719,16 @@ class Client(BaseClient):
         Send request by giving Request object directly
         :param request: Request instance
         :type request: Request
-        :param timeout: Timeout for request
+        :param timeout: Request timeout
         :type timeout: int
+        :param redirect: Request maximum redirect count
+        :type redirect: int
+        :param retry: Request retry count
+        :type retry: int
+
+        :returns: Response
+        :rtype Response:
+
         """
         return await self.request_retry_wrapper(
             retry=retry,
@@ -753,7 +752,6 @@ class StreamClient(BaseClient):
                             timeout: int = 0) -> AsyncIterable:
         headers = Headers(initial_headers=headers)
 
-        splited_url = UrlParser.parse(url)
         request = Request(
             url=url,
             method=method,
