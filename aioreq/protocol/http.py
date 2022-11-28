@@ -1,13 +1,13 @@
 import asyncio
 import logging
-from abc import ABCMeta
+from abc import ABCMeta, ABC
 from abc import abstractmethod
 from typing import Any
 from typing import Iterable
 
 from .encodings import Encoding
 from .headers import AcceptEncoding
-from .headers import Header
+from .headers import BaseHeader
 from ..errors.requests import AsyncRequestsError
 from ..errors.requests import ConnectionTimeoutError
 from ..parser.request_parser import RequestParser
@@ -28,7 +28,7 @@ from typing import AsyncIterable
 log = logging.getLogger(LOGGER_NAME)
 
 
-class HttpProtocol(metaclass=ABCMeta):
+class HttpProtocol(ABC):
     """
     An abstract class for all Http units representing HTTP/1.1 protocol
     with the general attributes
@@ -44,7 +44,18 @@ class HttpProtocol(metaclass=ABCMeta):
     version = '1.1'
 
 
-class HeaderDict(HttpProtocol):
+class MetaHeaders(type):
+
+    def __call__(cls, initial_headers=None):
+        """
+        If headers is a Header object, then don't create a new one.
+        """
+        if isinstance(initial_headers, Headers):
+            return initial_headers
+        return super(MetaHeaders, cls).__call__(initial_headers)
+
+
+class Headers(metaclass=MetaHeaders):
     """
     Dict like object used to represent the HTTP headers.
     """
@@ -65,7 +76,7 @@ class HeaderDict(HttpProtocol):
     def __getitem__(self, item):
         return self._headers[item.lower()]
 
-    def add_header(self, header: Header):
+    def add_header(self, header: BaseHeader):
         self[header.key] = header.value
 
     def get_parsed(self):
@@ -80,25 +91,26 @@ class HeaderDict(HttpProtocol):
         return self._headers.items()
 
     def get(self, name, default=None):
-        print(name.lower(), name.lower() in self._headers, self._headers)
-        return self._headers.get(name.lower())
+        return self._headers.get(name.lower(), default)
 
     def __contains__(self, item):
         return item.lower() in self._headers
 
     def __or__(self, other):
-        if not isinstance(other, HeaderDict):
+        if not isinstance(other, Headers):
             raise ValueError(f"Can't combine {self.__class__.__name__} object with {type(other).__name__}")
 
-        return HeaderDict(
+        return Headers(
             initial_headers=self._headers | other._headers
         )
 
     def __len__(self):
         return len(self._headers)
 
-    def __str__(self):
-        return str(self._headers)
+    def __repr__(self):
+        return f"Headers:\n" + '\n'.join(
+            (f"\t{key}: {value}" for key, value in self._headers.items())
+        )
 
 
 class BaseRequest(HttpProtocol, metaclass=ABCMeta):
@@ -111,14 +123,9 @@ class BaseRequest(HttpProtocol, metaclass=ABCMeta):
     :param method: HTTP method (GET, POST, PUT, PATCH),
     see also RFC[2616] 5.1.1 Method
     :type method: str
-    :param host: HTTP header host which contains host's domain,
-    see also RFC[2616] 14.23 Host
-    :type host: str
     :param headers: HTTP headers paired by (key, value) where 'key'= header name
     and 'value'= header value
     :type headers: dict[str, str]
-    :param path: HTTP server endpoint path specified after top-level domain
-    :type path: str
 
     :Example:
 
@@ -136,7 +143,7 @@ class BaseRequest(HttpProtocol, metaclass=ABCMeta):
 
     __slots__ = (
         'method',
-        'host',
+        '_host',
         'headers',
         'path',
         'raw_request',
@@ -146,27 +153,31 @@ class BaseRequest(HttpProtocol, metaclass=ABCMeta):
 
     def __init__(
             self,
-            method: str,
-            host: str,
-            headers: dict[str, str] | HeaderDict,
-            path: str,
+            url: str,
+            *,
+            headers: Headers | dict[str, str] | None,
+            method: str = 'GET',
             raw_request: None | bytes = None,
             content: str | bytearray | bytes = '',
-            path_parameters: Iterable[Iterable[str]] | None = None,
+            params: Iterable[Iterable[str]] | None = None,
     ) -> None:
         """
         Request initialization method
         """
 
-        if path_parameters is None:
-            path_parameters = ()
+        if params is None:
+            params = ()
 
-        self.host = host
-        self.headers = HeaderDict(headers)
+        splited_url = UrlParser.parse(url)
+
+        self._host = splited_url.get_url_without_path()
+        self.path = splited_url.path
+
+        self.headers = Headers(headers)
+
         self.method = method
-        self.path = path
         self.content = content
-        self.path_parameters = path_parameters
+        self.path_parameters = params
         self._raw_request = raw_request
 
     def get_raw_request(self) -> bytes:
@@ -184,10 +195,23 @@ class BaseRequest(HttpProtocol, metaclass=ABCMeta):
         message = self.parser.parse(self)
         enc_message = message.encode('utf-8')
         self._raw_request = enc_message
+        print(enc_message)
         return enc_message
+
+    @property
+    def host(self):
+        return self._host
+
+    @host.setter
+    def host(self, value):
+        self._host = value.rstrip('/')
 
     def __repr__(self) -> str:
         return f"<Request {self.method} {self.host}>"
+
+    def __getattribute__(self, item):
+        self._raw_request = None  # Clear cache
+        return super().__getattribute__(item)
 
 
 class BaseResponse(HttpProtocol, metaclass=ABCMeta):
@@ -259,7 +283,7 @@ class Response(BaseResponse):
 
         self.status = status
         self.status_message = status_message
-        self.headers = HeaderDict(headers)
+        self.headers = Headers(headers)
         self.content = content
         self.request = request
 
@@ -291,7 +315,6 @@ class BaseClient(metaclass=ABCMeta):
        :param persistent_connections: Persistent connections support for our client
        see also RFC[2616] 8.1 Persistent Connections
        :type persistent_connections: bool
-       :param headers_obj: Iterable object which contains
        Header objects defined in 'aioreq.protocol.headers',
        this is an easy way to use HTTP Headers through OOP
        """
@@ -302,7 +325,7 @@ class BaseClient(metaclass=ABCMeta):
                             method: str,
                             content: str | bytearray | bytes = '',
                             path_parameters: Iterable[Iterable[str]] | None = None,
-                            headers: None | dict = None,
+                            headers: None | dict[str, str] | Headers = None,
                             ) -> Response:
         ...
 
@@ -314,28 +337,19 @@ class BaseClient(metaclass=ABCMeta):
     @staticmethod
     def get_avaliable_encodings():
         return AcceptEncoding(
-            [
-                (encoding,) for encoding in Encoding.all_encodings
-            ]
+            
+           *((encoding, 1) for encoding in Encoding.all_encodings)
+            
         )
 
     def __init__(self,
-                 headers: dict[str, str] | None = None,
+                 headers: dict[str, str] | Headers | None = None,
                  persistent_connections: bool = False,
-                 headers_obj: Iterable[Header] | None = None,
                  enable_encodings: bool = True):
 
         self.connection_mapper = {}
-        headers = HeaderDict(initial_headers=headers)
 
-        if headers_obj is None:
-            headers_obj = ()
-
-        for header in headers_obj:
-            headers[header.key] = header.value
-            # Check if AcceptEncoding header was given directly then don't use default ones
-            if enable_encodings and isinstance(header, AcceptEncoding):
-                enable_encodings = False
+        headers = Headers(initial_headers=headers)
 
         if enable_encodings and 'accept-encoding' not in headers:
             accept_encoding_object = self.get_avaliable_encodings()
@@ -345,7 +359,7 @@ class BaseClient(metaclass=ABCMeta):
         self.transports = []
         self.persistent_connections = persistent_connections
 
-    async def get_connection(self, splitted_url: Url):
+    async def _get_connection(self, splitted_url: Url):
         """
         Getting connection from already opened connections, to perform Keep-Alive logic,
         if these connections exists or create the new one and save into connection pool
@@ -454,7 +468,6 @@ class Client(BaseClient):
             content: str | bytearray | bytes = '',
             headers: dict[str, str] | None = None,
             path_parameters: Iterable[Iterable[str]] | None = None,
-            obj_headers: Iterable[Header] | None = None,
             timeout: int = 0,
             redirect: int = REQUEST_REDIRECT_COUNT,
             retry: int = REQUEST_RETRY_COUNT) -> Response:
@@ -464,7 +477,6 @@ class Client(BaseClient):
             content=content,
             headers=headers,
             path_parameters=path_parameters,
-            obj_headers=obj_headers,
             timeout=timeout,
             redirect=redirect + 1,
             retry=retry + 1
@@ -476,7 +488,6 @@ class Client(BaseClient):
             content: str | bytearray | bytes = '',
             headers: dict[str, str] | None = None,
             path_parameters: Iterable[Iterable[str]] | None = None,
-            obj_headers: Iterable[Header] | None = None,
             timeout: int = 0,
             redirect: int = REQUEST_REDIRECT_COUNT,
             retry: int = REQUEST_RETRY_COUNT) -> Response:
@@ -486,11 +497,120 @@ class Client(BaseClient):
             content=content,
             headers=headers,
             path_parameters=path_parameters,
-            obj_headers=obj_headers,
             timeout=timeout,
             redirect=redirect + 1,
             retry=retry + 1
         )
+
+    async def put(
+            self,
+            url: str,
+            content: str | bytearray | bytes = '',
+            headers: dict[str, str] | None = None,
+            path_parameters: Iterable[Iterable[str]] | None = None,
+            timeout: int = 0,
+            redirect: int = REQUEST_REDIRECT_COUNT,
+            retry: int = REQUEST_RETRY_COUNT) -> Response:
+        return await self.request_retry_wrapper(
+            url=url,
+            method="PUT",
+            content=content,
+            headers=headers,
+            path_parameters=path_parameters,
+            timeout=timeout,
+            redirect=redirect + 1,
+            retry=retry + 1
+        )
+
+    async def delete(
+            self,
+            url: str,
+            content: str | bytearray | bytes = '',
+            headers: dict[str, str] | None = None,
+            path_parameters: Iterable[Iterable[str]] | None = None,
+            timeout: int = 0,
+            redirect: int = REQUEST_REDIRECT_COUNT,
+            retry: int = REQUEST_RETRY_COUNT) -> Response:
+        return await self.request_retry_wrapper(
+            url=url,
+            method="DELETE",
+            content=content,
+            headers=headers,
+            path_parameters=path_parameters,
+            timeout=timeout,
+            redirect=redirect + 1,
+            retry=retry + 1
+        )
+
+    async def options(
+            self,
+            url: str,
+            content: str | bytearray | bytes = '',
+            headers: dict[str, str] | None = None,
+            path_parameters: Iterable[Iterable[str]] | None = None,
+            timeout: int = 0,
+            redirect: int = REQUEST_REDIRECT_COUNT,
+            retry: int = REQUEST_RETRY_COUNT) -> Response:
+        return await self.request_retry_wrapper(
+            url=url,
+            method="OPTIONS",
+            content=content,
+            headers=headers,
+            path_parameters=path_parameters,
+            timeout=timeout,
+            redirect=redirect + 1,
+            retry=retry + 1
+        )
+
+    async def head(
+            self,
+            url: str,
+            content: str | bytearray | bytes = '',
+            headers: dict[str, str] | None = None,
+            path_parameters: Iterable[Iterable[str]] | None = None,
+            timeout: int = 0,
+            redirect: int = REQUEST_REDIRECT_COUNT,
+            retry: int = REQUEST_RETRY_COUNT) -> Response:
+        return await self.request_retry_wrapper(
+            url=url,
+            method="HEAD",
+            content=content,
+            headers=headers,
+            path_parameters=path_parameters,
+            timeout=timeout,
+            redirect=redirect + 1,
+            retry=retry + 1
+        )
+
+    async def patch(
+            self,
+            url: str,
+            content: str | bytearray | bytes = '',
+            headers: dict[str, str] | None = None,
+            path_parameters: Iterable[Iterable[str]] | None = None,
+            timeout: int = 0,
+            redirect: int = REQUEST_REDIRECT_COUNT,
+            retry: int = REQUEST_RETRY_COUNT) -> Response:
+        return await self.request_retry_wrapper(
+            url=url,
+            method="PATCH",
+            content=content,
+            headers=headers,
+            path_parameters=path_parameters,
+            timeout=timeout,
+            redirect=redirect + 1,
+            retry=retry + 1
+        )
+
+    async def send_request_directly(self,
+                                    request: Request,
+                                    timeout: int = 0):
+
+        splited_url = UrlParser.parse(request.host.strip('/') + request.path)
+        transport = await self._get_connection(splited_url)
+        coro = transport.send_http_request(request.get_raw_request())
+        raw_response, without_body_len = await wrap_errors(coro=coro, timeout=timeout)
+        return ResponseParser.body_len_parse(raw_response, without_body_len)
 
     async def _send_request(self,
                             url: str,
@@ -498,7 +618,6 @@ class Client(BaseClient):
                             content: str | bytearray | bytes = '',
                             path_parameters: Iterable[Iterable[str]] | None = None,
                             headers: None | dict[str, str] = None,
-                            obj_headers: Iterable[Header] | None = None,
                             timeout: int = 0) -> Response:
 
         """
@@ -512,25 +631,22 @@ class Client(BaseClient):
         :param method: Http message method
         :type method: str
         :param path_parameters:
-        :type path_parameters: Iterable[Header] or None
+        :type path_parameters: Iterable[BaseHeader] or None
         :param timeout: The request timeout
         :type timeout: int
-        :param obj_headers: Headers represented by simplified Header object
-        :type obj_headers: Header
         :returns: Response object which represents returned by server response
         :rtype: Response
         """
 
-        headers = HeaderDict(initial_headers=headers)
+        headers = Headers(initial_headers=headers)
 
         splitted_url = UrlParser.parse(url)
-        transport = await self.get_connection(splitted_url)
+        transport = await self._get_connection(splitted_url)
         request = Request(
+            url=url,
             method=method,
-            host=splitted_url.get_url_without_path(),
             headers=self.headers | headers,
-            path=splitted_url.path,
-            path_parameters=path_parameters,
+            params=path_parameters,
             content=content,
         )
         coro = transport.send_http_request(request.get_raw_request())
@@ -540,7 +656,7 @@ class Client(BaseClient):
     async def request_redirect_wrapper(self,
                                        *args: tuple[Any],
                                        redirect: int,
-                                       **kwargs
+                                       **kwargs,
                                        ) -> Response:
         """
         A wrapper method for send_request, also implements redirection if
@@ -550,17 +666,30 @@ class Client(BaseClient):
         :return: Response object
         :rtype: Response
         """
+        request = kwargs.get('request')
 
         redirect = max(1, redirect)  # minimum one request required
 
         while redirect != 0:
             redirect -= 1
-            result = await self._send_request(*args, **kwargs)
+            if request:
+                result = await self.send_request_directly(request)
+            else:
+                result = await self._send_request(*args, **kwargs)
+
             if (result.status // 100) == 3:
-                kwargs['url'] = result.headers['Location']
+                print(result.headers['Location'])
+
+                if not request:
+                    kwargs['url'] = result.headers['Location']
+                else:
+                    request.host = result.headers['Location']
+
                 if redirect < 1:
+                    logging.debug(result, 'last one')
                     return result
             else:
+                logging.debug(result)
                 return result
             log.info(f'Redirecting request with status code {result.status}')
 
@@ -592,7 +721,9 @@ class Client(BaseClient):
 
     async def send_request(self,
                            request: BaseRequest,
-                           timeout: int = 0) -> Response:
+                           timeout: int = 0,
+                           redirect: int = REQUEST_REDIRECT_COUNT,
+                           retry: int = REQUEST_RETRY_COUNT) -> Response:
         """
         Send request by giving Request object directly
         :param request: Request instance
@@ -600,11 +731,12 @@ class Client(BaseClient):
         :param timeout: Timeout for request
         :type timeout: int
         """
-        splited_url = UrlParser.parse(request.host + request.path)
-        transport = await self.get_connection(splited_url)
-        coro = transport.send_http_request(request.get_raw_request())
-        raw_response, without_body_len = await wrap_errors(coro=coro, timeout=timeout)
-        return ResponseParser.body_len_parse(raw_response, without_body_len)
+        return await self.request_retry_wrapper(
+            retry=retry,
+            redirect=redirect,
+            request=request,
+            timeout=timeout,
+        )
 
 
 class StreamClient(BaseClient):
@@ -618,17 +750,15 @@ class StreamClient(BaseClient):
                             content: str | bytearray | bytes = '',
                             path_parameters: Iterable[Iterable[str]] | None = None,
                             headers: None | dict[str, str] = None,
-                            obj_headers: Iterable[Header] | None = None,
                             timeout: int = 0) -> AsyncIterable:
-        headers = HeaderDict(initial_headers=headers)
+        headers = Headers(initial_headers=headers)
 
         splited_url = UrlParser.parse(url)
         request = Request(
+            url=url,
             method=method,
-            host=splited_url.get_url_without_path(),
             headers=self.headers | headers,
-            path=splited_url.path,
-            path_parameters=path_parameters,
+            params=path_parameters,
             content=content,
         )
         async for chunk in self.send_request(request):
@@ -640,7 +770,6 @@ class StreamClient(BaseClient):
             content: str | bytearray | bytes = '',
             headers: None | dict[str, str] = None,
             path_parameters: Iterable[Iterable[str]] | None = None,
-            obj_headers: Iterable[Header] | None = None,
             timeout: int = 0):
         async for chunk in self._send_request(
                 url=url,
@@ -648,7 +777,6 @@ class StreamClient(BaseClient):
                 content=content,
                 headers=headers,
                 path_parameters=path_parameters,
-                obj_headers=obj_headers,
                 timeout=timeout,
         ):
             yield chunk
@@ -659,7 +787,6 @@ class StreamClient(BaseClient):
             content: str | bytearray | bytes = '',
             headers: None | dict[str, str] = None,
             path_parameters: Iterable[Iterable[str]] | None = None,
-            obj_headers: Iterable[Header] | None = None,
             timeout: int = 0):
         async for chunk in self._send_request(
                 url=url,
@@ -667,7 +794,6 @@ class StreamClient(BaseClient):
                 content=content,
                 headers=headers,
                 path_parameters=path_parameters,
-                obj_headers=obj_headers,
                 timeout=timeout,
         ):
             yield chunk
@@ -675,7 +801,7 @@ class StreamClient(BaseClient):
     async def send_request(self,
                            request: BaseRequest) -> AsyncIterable:
         splited_url = UrlParser.parse(request.host + request.path)
-        transport = await self.get_connection(splited_url)
+        transport = await self._get_connection(splited_url)
         coro = transport.send_http_stream_request(request.get_raw_request())
         async for chunk in coro:
             yield chunk

@@ -7,6 +7,8 @@ from abc import abstractmethod
 from collections.abc import Collection
 from enum import Enum
 
+from typing import Tuple
+
 from .encodings import Encoding
 from .encodings import Encodings
 
@@ -29,7 +31,7 @@ class ServerHeader(ABC):
     def parse(self, value: str) -> str: ...
 
 
-class Header(ABC):
+class BaseHeader(ABC):
     key = 'NotImplemented'
 
     @property
@@ -37,7 +39,7 @@ class Header(ABC):
     def value(self) -> str: ...
 
 
-class AcceptEncoding(Header):
+class AcceptEncoding(BaseHeader):
     """
     RFC[2616] 14.3
         Accept-Encoding request-header field is similar to Accept, but
@@ -49,11 +51,12 @@ class AcceptEncoding(Header):
 
     def __init__(
             self,
-            codings: Collection[
-                tuple[Encodings, int]
-                | tuple[Encodings] | tuple[Encoding]
+            *codings: Tuple[
+                Tuple[Encoding, int]
+                | Tuple[Encoding]
                 ]):
         self._codings = {}
+        print(codings)
         for coding in codings:
             assert 0 < len(coding) < 3
             if len(coding) == 2:
@@ -79,7 +82,7 @@ class AcceptEncoding(Header):
         return text
 
 
-class Accept(Header):
+class Accept(BaseHeader):
     """
     RFC[2616] 14.1
         The Accept request-header field can be used to specify certain media
@@ -92,7 +95,7 @@ class Accept(Header):
 
     def __init__(
             self,
-            types=Collection[
+            *types: Tuple[
                 tuple[
                     MimeType,
                     int | None
