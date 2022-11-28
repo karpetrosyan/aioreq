@@ -37,6 +37,18 @@ async def test_moving_301(one_time_session):
 
 
 @pytest.mark.asyncio
+async def test_moving_301_with_directly_request(one_time_session):
+    url = 'http://google.com'
+    req = Request(
+        url=url,
+        method='GET',
+        headers={'accept-encoding': 'gzip'},
+    )
+    response = await one_time_session.send_request(request=req)
+    assert response.status == 200
+
+
+@pytest.mark.asyncio
 async def test_ping(one_time_session,
                     server):
     response = await one_time_session.get(server, timeout=3)
@@ -79,21 +91,19 @@ async def test_same_domain_requests_with_cache_connections(one_time_session_cach
 async def test_dirctly_requests_using(one_time_session,
                                       event_loop):
     req = Request(
-        host='https://google.com',
+        url='https://google.com/',
         method='GET',
         headers={},
-        path='/',
     )
 
     jsonreq = JsonRequest(
-        host='https://google.com',
+        url='https://google.com/',
         method='GET',
         headers={},
-        path='/',
     )
 
-    t1 = asyncio.create_task(one_time_session.send_request(req))
-    t2 = asyncio.create_task(one_time_session.send_request(jsonreq))
+    t1 = asyncio.create_task(one_time_session.send_request(req, redirect=0))
+    t2 = asyncio.create_task(one_time_session.send_request(jsonreq, redirect=0))
     result1, result2 = await asyncio.gather(t1, t2)
 
     assert result1.status == 301 == result2.status
