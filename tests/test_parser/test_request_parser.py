@@ -17,9 +17,8 @@ class TestRequestParser:
             argvalues=[
                 (
                     Request(
+                        url="http://youtube.com",
                         method="GET",
-                        host="http://youtube.com",
-                        path='/',
                         headers={},
                         ),
                     (
@@ -30,9 +29,8 @@ class TestRequestParser:
                 ),
                 (
                     Request(
+                        url="http://chxko.am/chxkopath",
                         method="POST",
-                        host="http://chxko.am",
-                        path='/chxkopath',
                         headers={
                             'testheader' : "testvalue",
                             'TEstchxko'  : "chxko"
@@ -49,9 +47,8 @@ class TestRequestParser:
                 ),
                 (
                     Request(
+                        url="http://chxko.am/chxkopath",
                         method="HEAD",
-                        host="http://chxko.am",
-                        path='/chxkopath',
                         headers={
                             'testheader' : "testvalue",
                             'testchxko'  : "chxko"
@@ -71,9 +68,8 @@ class TestRequestParser:
                     ),
                 (
                     JsonRequest(
+                        url="http://chxko.am/chxkopath",
                         method="LINK",
-                        host="http://chxko.am",
-                        path='/chxkopath',
                         headers={
                             'testheader' : "testvalue",
                             'testchxko'  : "chxko"
