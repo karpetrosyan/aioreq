@@ -1,8 +1,12 @@
 **Aioreq** is a Python low-level asynchronous HTTP client library. It is built on top of TCP sockets and implements the HTTP protocol entirely on his own.
 
 [mygit]: https://github.com/karosis88/aioreq
+[documentation]: https://karosis88.github.io/aioreq/
 
 ---
+
+## Documentation
+[Click here][documentation]
 
 ## Install
 ``` shell
