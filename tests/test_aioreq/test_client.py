@@ -75,19 +75,6 @@ async def test_https_request(one_time_session):
 
 
 @pytest.mark.asyncio
-async def test_same_domain_requests_with_cache_connections(one_time_session_cached,
-                                                           event_loop):
-    with pytest.raises(AsyncRequestsError):
-        loop = event_loop
-        t1 = loop.create_task(one_time_session_cached.get('https://www.youtube.com'))
-        t2 = loop.create_task(one_time_session_cached.get('https://www.youtube.com'))
-        results = await asyncio.gather(t1, t2, return_exceptions=True)
-        for result in results:
-            if isinstance(result, Exception):
-                raise result
-
-
-@pytest.mark.asyncio
 async def test_dirctly_requests_using(one_time_session,
                                       event_loop):
     req = Request(

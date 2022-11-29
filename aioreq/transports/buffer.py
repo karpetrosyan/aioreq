@@ -99,8 +99,15 @@ class ResponseParserStrategy(Enum):
 class BaseBuffer:
 
     @abstractmethod
+    def __init__(self):
+        ...
+
+    @abstractmethod
     def add_data(self, text: bytes) -> tuple[bytes, bool] | Tuple[bytes, int] | Tuple[None, None]:
         ...
+
+    def set_up(self) -> None:
+        self.__init__()
 
 
 class Buffer(BaseBuffer):
@@ -110,6 +117,7 @@ class Buffer(BaseBuffer):
     """
 
     def __init__(self) -> None:
+
         self.text = bytearray()
         self.__headers_done: bool = False
         self.body_receiving_strategy: ResponseParserStrategy | None = None

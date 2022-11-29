@@ -1,4 +1,4 @@
-**Aioreq** is a low level asynchronous HTTP client library for Python. It's built on top of non-blocking TCP sockets.
+**Aioreq** is a Python low-level asynchronous HTTP client library. It is built on top of TCP sockets and implements the HTTP protocol entirely on his own.
 
 [mygit]: https://github.com/karosis88/aioreq
 
@@ -33,7 +33,7 @@ $ pip install aioreq
 >>> body = resp.body # bytes object
 ```
 
-or using **Context manager** which is the best practice.
+Alternatively, the best practice is to use a **Context manager**.
 ``` python
 import aioreq
 import asyncio
@@ -45,7 +45,7 @@ async def main():
 ### More advanced usage
 ---
 
-This code will send 100 get requests to [`google.com`](https://www.google.com) asynchronously which is much faster then sync requests like [requests](https://github.com/psf/requests) library do.
+This code will asynchronously send 100 get requests to [`google.com`](https://www.google.com), which is much faster than synchronous libraries.
 
 ``` python
 >>> import asyncio
@@ -67,9 +67,9 @@ This code will send 100 get requests to [`google.com`](https://www.google.com) a
 
 ### Streams
 ---
-Sometimes we use HTTP protocol to download videos, photos and maybe some files. When downloading  very large files, it is necessary to use Stream instead of the default Client. A client gives us a response which contains all information including headers, status code, status message and full body, which can be very large when it downloads videos or files. So we can't store it in RAM. Stream gives just a chunk of the body each time, so we can write it onto the hard drive, then receive another chunk and solve the ram overflow problem.
+We occasionally use the HTTP protocol to download videos, photos, and possibly files. When downloading very large files, Stream must be used instead of the default Client. When a client downloads videos or files, the server responds with all information including headers, status code, status message, and full body, which can be very large. As a result, we cannot store it in RAM. Stream only returns a portion of the body per iteration, allowing us to write it to disk, then receive another portion and solve the ram overflow problem.
 
-There is some basic Stream usage
+There is some fundamental Stream usage.
 ``` python
 >>> import aioreq
 >>> import asyncio
@@ -85,18 +85,18 @@ There is some basic Stream usage
 ```
 
 ## Benchmarks
-**Aioreq** is a really fast library and to demonstrate the speed, we compared the same program with different python libraries.
+**Aioreq** is a very fast library, and we compared it to other Python libraries to demonstrate its speed.
 
 
 
 
-Libraries that i used to compare speed.
+I used these libraries to compare speed.
 * [httpx](https://github.com/encode/httpx)
 * [requests](https://github.com/psf/requests)
 ---
 ### Benchmark run
 
-Clone aioreq [repository][mygit] for first.
+First, clone aioreq [repository][mygit].
 
 Then...
 
