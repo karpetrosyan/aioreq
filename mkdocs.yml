@@ -1,0 +1,32 @@
+site_name: My Tests
+site_url: http://127.0.0.1:8000
+
+repo_url: https://github.com/karosis88/aioreq
+
+nav:
+    - Introduction: 'index.md'
+    - Usage: 'quickstart.md'
+    - Advanced Usage: 'advanced.md'
+
+theme:
+  name: material
+  palette: 
+
+    # Palette toggle for light mode
+    - scheme: default
+      toggle:
+        icon: material/brightness-7 
+        name: Switch to dark mode
+
+    # Palette toggle for dark mode
+    - scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
