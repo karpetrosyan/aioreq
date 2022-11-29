@@ -64,7 +64,7 @@ class Transport:
         self.message_manager: Buffer = Buffer()
         self.stream_message_manager: StreamBuffer = StreamBuffer()
 
-    async def send_data(self, raw_data: bytes) -> None:
+    async def _send_data(self, raw_data: bytes) -> None:
         """
         An asynchronous alternative for socket.send_all method
         :param raw_data: Data which should be sent
@@ -75,7 +75,7 @@ class Transport:
         self.writer.write(raw_data)
         await self.writer.drain()
 
-    async def receive_data(self) -> Tuple[None, None] | Tuple[bytes, int]:
+    async def _receive_data(self) -> Tuple[None, None] | Tuple[bytes, int]:
         """
         An asynchronous alternative for socket.recv() method.
         """
@@ -83,7 +83,7 @@ class Transport:
         resp, without_body_len = self.message_manager.add_data(data)
         return resp, without_body_len
 
-    async def receive_data_stream(self):
+    async def _receive_data_stream(self):
         data = await self.reader.read(20)
         headerless_data = self.stream_message_manager.add_data(data)
         return headerless_data
@@ -115,7 +115,7 @@ class Transport:
         self.reader = reader
         self.writer = writer
 
-    def check_used(self):
+    def _check_used(self):
         if self.used:
             raise AsyncRequestsError('Using transport which is already in use')
         self.used = True
@@ -129,11 +129,12 @@ class Transport:
         :returns: Response bytes and without data len
         :rtype: Tuple[bytes, int]
         """
-        self.check_used()
-        await self.send_data(raw_data)
+        self._check_used()
+        self.message_manager.set_up()
+        await self._send_data(raw_data)
         while True:
 
-            resp, without_body_len = await self.receive_data()
+            resp, without_body_len = await self._receive_data()
             if resp is not None:
                 self.used = False
                 return resp, without_body_len
@@ -142,11 +143,12 @@ class Transport:
             self,
             raw_data: bytes):
 
-        self.check_used()
-        await self.send_data(raw_data)
+        self._check_used()
+        self.stream_message_manager.set_up()
+        await self._send_data(raw_data)
 
         while True:
-            body, done = await self.receive_data_stream()
+            body, done = await self._receive_data_stream()
             if body:
                 yield body
             if done:
@@ -158,3 +160,6 @@ class Transport:
         Wraps transport is_closing
         """
         return self.writer.is_closing()
+
+    def __repr__(self):
+        return f"<Transport {'Closed' if self.is_closing() else 'Open'}>"

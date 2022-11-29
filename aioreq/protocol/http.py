@@ -2,6 +2,7 @@ import asyncio
 import logging
 from abc import ABCMeta, ABC
 from abc import abstractmethod
+from collections import defaultdict
 from typing import Any
 from typing import Iterable
 
@@ -180,6 +181,14 @@ class BaseRequest(HttpProtocol, metaclass=ABCMeta):
         self.path_parameters = params
         self._raw_request = raw_request
 
+    @property
+    def host(self):
+        return self._host
+
+    @host.setter
+    def host(self, new_value):
+        self._host = new_value.strip('/')
+
     def get_raw_request(self) -> bytes:
         """
         The Getter method for raw_request private attribute if
@@ -328,9 +337,9 @@ class BaseClient(metaclass=ABCMeta):
     @staticmethod
     def get_avaliable_encodings():
         return AcceptEncoding(
-            
-           *((encoding, 1) for encoding in Encoding.all_encodings)
-            
+
+            *((encoding, 1) for encoding in Encoding.all_encodings)
+
         )
 
     def __init__(self,
@@ -338,7 +347,7 @@ class BaseClient(metaclass=ABCMeta):
                  persistent_connections: bool = False,
                  enable_encodings: bool = True):
 
-        self.connection_mapper = {}
+        self.connection_mapper = defaultdict(list)
 
         headers = Headers(initial_headers=headers)
 
@@ -359,19 +368,18 @@ class BaseClient(metaclass=ABCMeta):
         :type splitted_url: Url
         :returns: Transport
         """
+        transport = None
         if self.persistent_connections:
             log.debug(f"{self.connection_mapper} searching into mapped connections")
-            transport = self.connection_mapper.get(
-                splitted_url.domain, None)
 
-            if transport:
-                if transport.is_closing():
-                    transport = None
-                elif transport.used:
-                    raise AsyncRequestsError("Can't use persistent connections in async mode without pipelining")
-
-        else:
-            transport = None
+            for transport in self.connection_mapper[splitted_url.get_url_for_dns()]:
+                if not transport.used:
+                    if transport.is_closing():
+                        del self.connection_mapper[splitted_url.get_url_for_dns()]
+                    else:
+                        break
+            else:
+                transport = None
 
         if not transport:
             if splitted_url.domain == TEST_SERVER_DOMAIN:  # server for tests
@@ -394,16 +402,8 @@ class BaseClient(metaclass=ABCMeta):
                 raise ConnectionTimeoutError('Socket connection timeout') from err
 
             if self.persistent_connections:
-                if splitted_url.get_url_for_dns() in self.connection_mapper:
-                    raise AsyncRequestsError(
-                        (
-                            'Seems you use persistent connections in async mode, which'
-                            'is impossible when you requesting the same domain concurrently'
-                        )
-                    )
-
                 self.connection_mapper[splitted_url.get_url_for_dns(
-                )] = transport
+                )].append(transport)
         else:
             log.info("Using already opened connection")
         return transport
