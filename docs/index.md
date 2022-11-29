@@ -100,7 +100,7 @@ First, clone aioreq [repository][mygit].
 
 Then...
 
-```shell
+``` shell
 $ cd aioreq
 $ python -m venv venv
 $ source ./venv/bin/activate
@@ -108,7 +108,9 @@ $ pip install '.[benchmarks]'
 $ cd benchmarks
 $ python run_tests_functions.py
 ```
+
 ---
+
 ### Benchmark results
 
 This is the **average** execution time of each library for **200 asynchronous requests** where responses was received without **chunked** transfer encoding.
