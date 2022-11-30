@@ -56,7 +56,6 @@ class AcceptEncoding(BaseHeader):
                 | Tuple[Encoding]
                 ]):
         self._codings = {}
-        print(codings)
         for coding in codings:
             assert 0 < len(coding) < 3
             if len(coding) == 2:

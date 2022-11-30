@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 from time import time
 from time import perf_counter
@@ -10,6 +11,7 @@ from threading import Lock
 from concurrent.futures import ThreadPoolExecutor
 from benchmark_settings import REQUESTS_COUNT
 from benchmark_settings import SYNC_REQUESTS_COUNT
+
 
 lock = Lock()
 
