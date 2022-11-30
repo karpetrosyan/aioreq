@@ -40,7 +40,6 @@ class deflate(Encoding):
     def decompress(cls, text: bytes) -> bytes:
         decoded_data = base64.b64decode(text)
         res = zlib.decompress(decoded_data, -15)
-        print(text, res)
         return res
 # class compress(Encoding):
 #
