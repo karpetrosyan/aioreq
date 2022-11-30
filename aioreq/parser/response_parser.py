@@ -68,8 +68,6 @@ class ResponseParser:
                 for encoding in encodings:
                     response.content = encoding.decompress(response.content)
 
-        response.content = response.content[1:-1]
-
     @classmethod
     @debug.timer
     def parse(cls, response: bytes) -> 'Response':  # type: ignore
