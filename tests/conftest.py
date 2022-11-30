@@ -11,7 +11,8 @@ SERVER_URL = 'http://testulik.com'
 # Server constants
 CONSTANTS = dict(
     GZIP_RESPONSE_TEXT="testgzip" * 10000,
-    STREAMING_RESPONSE_CHUNK_COUNT=30
+    STREAMING_RESPONSE_CHUNK_COUNT=30,
+    DEFLATE_RESPONSE_TEXT='testdeflate' * 10000,
 )
 
 
@@ -52,6 +53,11 @@ def server():
 @pytest.fixture(scope='session')
 def get_gzip_url(server):
     return SERVER_URL + '/gzip'
+
+
+@pytest.fixture(scope='session')
+def get_deflate_url(server):
+    return SERVER_URL + '/deflate'
 
 
 @pytest.fixture(scope='session')

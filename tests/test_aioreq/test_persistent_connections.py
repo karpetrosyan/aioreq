@@ -2,8 +2,8 @@ import asyncio
 
 import pytest
 
-from aioreq import AsyncRequestsError, UrlParser
-
+from aioreq import UrlParser
+from aioreq.errors.requests import AsyncRequestsError
 
 @pytest.mark.asyncio
 async def test_persistent_connections_base(one_time_session_cached,
