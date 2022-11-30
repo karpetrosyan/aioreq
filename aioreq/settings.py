@@ -51,8 +51,8 @@ DEFAULT_TIMEOUT = parser.getint('Aioreq', 'request_timeout')
 
 if any(
         (
-                (MAIN_LOGGER_LEVEL not in log_level_mapper),
-                (STREAM_HANDLER_LEVEL not in log_level_mapper)
+            (MAIN_LOGGER_LEVEL not in log_level_mapper),
+            (STREAM_HANDLER_LEVEL not in log_level_mapper)
         )
 ):
     raise ValueError('Setting.ini contains invalid value '
@@ -70,6 +70,7 @@ DEFAULT_CONNECTION_TIMEOUT = int(parser.getfloat('Connection', 'default_connecti
 DEFAULT_DNS_SERVER = parser['Connection']['default_dns_server']
 
 main_logger = logging.getLogger(LOGGER_NAME)
+main_logger.propagate = False
 main_logger.setLevel(MAIN_LOGGER_LEVEL)
 
 handler = logging.StreamHandler()

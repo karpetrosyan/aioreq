@@ -669,7 +669,6 @@ class Client(BaseClient):
                 result = await self._send_request(*args, **kwargs)
 
             if (result.status // 100) == 3:
-                print(result.headers['Location'])
 
                 if not request:
                     kwargs['url'] = result.headers['Location']
