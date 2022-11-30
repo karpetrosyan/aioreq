@@ -4,18 +4,19 @@ from abc import ABCMeta, ABC
 from abc import abstractmethod
 from collections import defaultdict
 from typing import Any
+from typing import AsyncIterable
 from typing import Iterable
+from typing import Union
 
 from .encodings import Encoding
 from .headers import AcceptEncoding
 from .headers import BaseHeader
-from ..errors.requests import AsyncRequestsError
 from ..errors.requests import ConnectionTimeoutError
-from ..parser.request_parser import RequestParser
 from ..parser.request_parser import JsonRequestParser
+from ..parser.request_parser import RequestParser
 from ..parser.response_parser import ResponseParser
-from ..parser.url_parser import UrlParser
 from ..parser.url_parser import Url
+from ..parser.url_parser import UrlParser
 from ..settings import LOGGER_NAME
 from ..settings import REQUEST_REDIRECT_COUNT
 from ..settings import REQUEST_RETRY_COUNT
@@ -24,7 +25,6 @@ from ..transports.connection import Transport
 from ..transports.connection import resolve_domain
 from ..utils import debug
 from ..utils.generic import wrap_errors
-from typing import AsyncIterable
 
 log = logging.getLogger(LOGGER_NAME)
 
@@ -62,7 +62,7 @@ class Headers(metaclass=MetaHeaders):
     """
 
     def __init__(self,
-                 initial_headers: dict[str, str] | None = None):
+                 initial_headers: Union[dict[str, str], None] = None):
         self._headers = {}
         self.cache = ''
 
@@ -156,11 +156,11 @@ class BaseRequest(HttpProtocol, metaclass=ABCMeta):
             self,
             url: str,
             *,
-            headers: Headers | dict[str, str] | None,
+            headers: Union[Headers, dict[str, str], None],
             method: str = 'GET',
-            raw_request: None | bytes = None,
-            content: str | bytearray | bytes = '',
-            params: Iterable[Iterable[str]] | None = None,
+            raw_request: Union[None, bytes] = None,
+            content: Union[str, bytearray, bytes] = '',
+            params: Union[Iterable[Iterable[str]], None] = None,
     ) -> None:
         """
         Request initialization method
@@ -276,7 +276,7 @@ class Response(BaseResponse):
             status_message: str,
             headers: dict[str, str],
             content: bytes,
-            request: Request | None = None):
+            request: Union[Request, None] = None):
         """
         Response initialization method
         """
@@ -323,9 +323,9 @@ class BaseClient(metaclass=ABCMeta):
     async def _send_request(self,
                             url: str,
                             method: str,
-                            content: str | bytearray | bytes = '',
-                            path_parameters: Iterable[Iterable[str]] | None = None,
-                            headers: None | dict[str, str] | Headers = None,
+                            content: Union[str, bytearray, bytes] = '',
+                            path_parameters: Union[Iterable[Iterable[str]], None] = None,
+                            headers: Union[None, dict[str, str], Headers] = None,
                             ) -> Response:
         ...
 
@@ -343,7 +343,7 @@ class BaseClient(metaclass=ABCMeta):
         )
 
     def __init__(self,
-                 headers: dict[str, str] | Headers | None = None,
+                 headers: Union[dict[str, str], Headers, None] = None,
                  persistent_connections: bool = False,
                  enable_encodings: bool = True):
 
@@ -456,9 +456,9 @@ class Client(BaseClient):
     async def get(
             self,
             url: str,
-            content: str | bytearray | bytes = '',
-            headers: dict[str, str] | None = None,
-            path_parameters: Iterable[Iterable[str]] | None = None,
+            content: Union[str, bytearray, bytes] = '',
+            headers: Union[dict[str, str], None] = None,
+            path_parameters: Union[Iterable[Iterable[str]], None] = None,
             timeout: int = 0,
             redirect: int = REQUEST_REDIRECT_COUNT,
             retry: int = REQUEST_RETRY_COUNT) -> Response:
@@ -476,9 +476,9 @@ class Client(BaseClient):
     async def post(
             self,
             url: str,
-            content: str | bytearray | bytes = '',
-            headers: dict[str, str] | None = None,
-            path_parameters: Iterable[Iterable[str]] | None = None,
+            content: Union[str, bytearray, bytes] = '',
+            headers: Union[dict[str, str], None] = None,
+            path_parameters: Union[Iterable[Iterable[str]], None] = None,
             timeout: int = 0,
             redirect: int = REQUEST_REDIRECT_COUNT,
             retry: int = REQUEST_RETRY_COUNT) -> Response:
@@ -496,9 +496,9 @@ class Client(BaseClient):
     async def put(
             self,
             url: str,
-            content: str | bytearray | bytes = '',
-            headers: dict[str, str] | None = None,
-            path_parameters: Iterable[Iterable[str]] | None = None,
+            content: Union[str, bytearray, bytes] = '',
+            headers: Union[dict[str, str], None] = None,
+            path_parameters: Union[Iterable[Iterable[str]], None] = None,
             timeout: int = 0,
             redirect: int = REQUEST_REDIRECT_COUNT,
             retry: int = REQUEST_RETRY_COUNT) -> Response:
@@ -516,9 +516,9 @@ class Client(BaseClient):
     async def delete(
             self,
             url: str,
-            content: str | bytearray | bytes = '',
-            headers: dict[str, str] | None = None,
-            path_parameters: Iterable[Iterable[str]] | None = None,
+            content: Union[str, bytearray, bytes] = '',
+            headers: Union[dict[str, str], None] = None,
+            path_parameters: Union[Iterable[Iterable[str]], None] = None,
             timeout: int = 0,
             redirect: int = REQUEST_REDIRECT_COUNT,
             retry: int = REQUEST_RETRY_COUNT) -> Response:
@@ -536,9 +536,9 @@ class Client(BaseClient):
     async def options(
             self,
             url: str,
-            content: str | bytearray | bytes = '',
-            headers: dict[str, str] | None = None,
-            path_parameters: Iterable[Iterable[str]] | None = None,
+            content: Union[str, bytearray, bytes] = '',
+            headers: Union[dict[str, str], None] = None,
+            path_parameters: Union[Iterable[Iterable[str]], None] = None,
             timeout: int = 0,
             redirect: int = REQUEST_REDIRECT_COUNT,
             retry: int = REQUEST_RETRY_COUNT) -> Response:
@@ -556,9 +556,9 @@ class Client(BaseClient):
     async def head(
             self,
             url: str,
-            content: str | bytearray | bytes = '',
-            headers: dict[str, str] | None = None,
-            path_parameters: Iterable[Iterable[str]] | None = None,
+            content: Union[str, bytearray, bytes] = '',
+            headers: Union[dict[str, str], None] = None,
+            path_parameters: Union[Iterable[Iterable[str]], None] = None,
             timeout: int = 0,
             redirect: int = REQUEST_REDIRECT_COUNT,
             retry: int = REQUEST_RETRY_COUNT) -> Response:
@@ -576,9 +576,9 @@ class Client(BaseClient):
     async def patch(
             self,
             url: str,
-            content: str | bytearray | bytes = '',
-            headers: dict[str, str] | None = None,
-            path_parameters: Iterable[Iterable[str]] | None = None,
+            content: Union[str, bytearray, bytes] = '',
+            headers: Union[dict[str, str], None] = None,
+            path_parameters: Union[Iterable[Iterable[str]], None] = None,
             timeout: int = 0,
             redirect: int = REQUEST_REDIRECT_COUNT,
             retry: int = REQUEST_RETRY_COUNT) -> Response:
@@ -606,9 +606,9 @@ class Client(BaseClient):
     async def _send_request(self,
                             url: str,
                             method: str,
-                            content: str | bytearray | bytes = '',
-                            path_parameters: Iterable[Iterable[str]] | None = None,
-                            headers: None | dict[str, str] = None,
+                            content: Union[str, bytearray, bytes] = '',
+                            path_parameters: Union[Iterable[Iterable[str]], None] = None,
+                            headers: Union[None, dict[str, str]] = None,
                             timeout: int = 0) -> Response:
 
         """
@@ -745,9 +745,9 @@ class StreamClient(BaseClient):
     async def _send_request(self,
                             url: str,
                             method: str,
-                            content: str | bytearray | bytes = '',
-                            path_parameters: Iterable[Iterable[str]] | None = None,
-                            headers: None | dict[str, str] = None,
+                            content: Union[str, bytearray, bytes] = '',
+                            path_parameters: Union[Iterable[Iterable[str]], None] = None,
+                            headers: Union[None, dict[str, str]] = None,
                             timeout: int = 0) -> AsyncIterable:
         headers = Headers(initial_headers=headers)
 
@@ -764,9 +764,9 @@ class StreamClient(BaseClient):
     async def post(
             self,
             url: str,
-            content: str | bytearray | bytes = '',
-            headers: None | dict[str, str] = None,
-            path_parameters: Iterable[Iterable[str]] | None = None,
+            content: Union[str, bytearray, bytes] = '',
+            headers: Union[None, dict[str, str]] = None,
+            path_parameters: Union[Iterable[Iterable[str]], None] = None,
             timeout: int = 0):
         async for chunk in self._send_request(
                 url=url,
@@ -781,9 +781,9 @@ class StreamClient(BaseClient):
     async def get(
             self,
             url: str,
-            content: str | bytearray | bytes = '',
-            headers: None | dict[str, str] = None,
-            path_parameters: Iterable[Iterable[str]] | None = None,
+            content: Union[str, bytearray, bytes] = '',
+            headers: Union[None, dict[str, str]] = None,
+            path_parameters: Union[Iterable[Iterable[str]], None] = None,
             timeout: int = 0):
         async for chunk in self._send_request(
                 url=url,
