@@ -63,7 +63,6 @@ async def test_gzip(one_time_session,
     response = await asyncio.wait_for(one_time_session.get(get_gzip_url), timeout=3)
     assert 'content-encoding' in response.headers
     # then server sent encoded message!
-    print(expected[:5], response.content[:5])
     assert len(response.content) == len(expected)
 
 
@@ -73,10 +72,8 @@ async def test_deflate(one_time_session,
                        get_deflate_url):
     expected = constants['DEFLATE_RESPONSE_TEXT'].encode()
     response = await asyncio.wait_for(one_time_session.get(get_deflate_url), timeout=3)
-    # assert 'content-encoding' in response.headers
+    assert 'content-encoding' in response.headers
     # then server sent encoded message!
-    # assert type(expected) == type(response.content)
-    print(response.content[:5], expected[:5])
     assert len(response.content) == len(expected)
 
 
