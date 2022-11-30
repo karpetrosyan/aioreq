@@ -1,8 +1,11 @@
+import zlib
+import base64
 import gzip as _gzip
 
 from enum import Enum
 from abc import ABC
 from abc import abstractmethod
+
 
 
 class Encoding(ABC):
@@ -31,6 +34,14 @@ class gzip(Encoding):
         return _gzip.decompress(text)
 
 
+class deflate(Encoding):
+
+    @classmethod
+    def decompress(cls, text: bytes) -> bytes:
+        decoded_data = base64.b64decode(text)
+        res = zlib.decompress(decoded_data, -15)
+        print(text, res)
+        return res
 # class compress(Encoding):
 #
 #     @classmethod
@@ -43,7 +54,7 @@ class gzip(Encoding):
 
 class Encodings(Enum):
     gzip = gzip
-    # compress = compress
+    deflate = deflate
 
     def decompress(self, text: bytes) -> bytes:
         return self.value.decompress(text)
