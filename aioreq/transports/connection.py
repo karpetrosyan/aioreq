@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import ssl
 from typing import Tuple
 
@@ -17,6 +18,7 @@ log = logging.getLogger(LOGGER_NAME)
 
 context = ssl.SSLContext(ssl.PROTOCOL_TLS)
 context.load_verify_locations(certifi.where())
+context.keylog_filename = os.getenv('SSLKEYLOGFILE')
 
 
 async def get_address(host):
