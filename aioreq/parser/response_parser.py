@@ -78,6 +78,8 @@ class ResponseParser:
         Response which contains all becoming response data as his attributes
         :param response: raw response text
         :type response: bytes
+
+        ..: todo: Remove
         """
 
         from ..protocol.http import Response
@@ -111,7 +113,7 @@ class ResponseParser:
 
         response = Response(
             status=status,
-            status_message=status_message,
+            status_message=status_message.decode(),
             headers=headers,
             content=body
         )

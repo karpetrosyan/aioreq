@@ -601,7 +601,9 @@ class Client(BaseClient):
         transport = await self._get_connection(splited_url)
         coro = transport.send_http_request(request.get_raw_request())
         raw_response, without_body_len = await wrap_errors(coro=coro, timeout=timeout)
-        return ResponseParser.body_len_parse(raw_response, without_body_len)
+        resp = ResponseParser.body_len_parse(raw_response, without_body_len)
+        resp.request = request
+        return resp
 
     async def _send_request(self,
                             url: str,
@@ -642,7 +644,9 @@ class Client(BaseClient):
         )
         coro = transport.send_http_request(request.get_raw_request())
         raw_response, without_body_len = await wrap_errors(coro=coro, timeout=timeout)
-        return ResponseParser.body_len_parse(raw_response, without_body_len)
+        resp = ResponseParser.body_len_parse(raw_response, without_body_len)
+        resp.request = request
+        return resp
 
     async def request_redirect_wrapper(self,
                                        *args: tuple[Any],
