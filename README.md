@@ -23,8 +23,8 @@ $ pip install aioreq
 >>> cl = aioreq.Client()
 >>>
 >>> resp = asyncio.run(
->>>	cl.get('https://www.google.com')
->>>	)
+...	cl.get('https://www.google.com')
+...	)
 >>> resp
 <Response 200 OK>
 >>> resp.status
@@ -34,18 +34,23 @@ $ pip install aioreq
 >>> resp.request
 <Request GET https://www.google.com>
 >>> headers = resp.headers # dict
->>> body = resp.body # bytes object
+>>> body = resp.content # bytes object
+
 ```
 
 Alternatively, the best practice is to use a **Context manager**.
 ``` python
-import aioreq
-import asyncio
+>>> import aioreq
+>>> import asyncio
+>>>
+>>> async def main():
+...     async with aioreq.Client() as cl:
+...         return await cl.get('https://google.com')
+>>> asyncio.run(main())
+<Response 200 OK>
 
-async def main():
-        async with aioreq.Client() as cl:
-                await cl.get('https://google.com')
 ```
+
 ### More advanced usage
 ---
 
@@ -56,17 +61,17 @@ This code will asynchronously send 100 get requests to [`google.com`](https://ww
 >>> import aioreq
 >>>
 >>> async def main():
->>>    async with aioreq.http.Client() as cl:
->>>        tasks = []
->>>        for j in range(100):
->>>            tasks.append(
->>>		            asyncio.create_task(
->>>		  	        cl.get('https://www.google.com/', )
->>>                             )
->>> 			    )
->>>        await asyncio.gather(*tasks)
->>>
+...     async with aioreq.http.Client() as cl:
+...         tasks = []
+...         for j in range(100):
+...             tasks.append(
+...                 asyncio.create_task(
+...                     cl.get('https://www.google.com/', )
+...                 )
+...             )
+...         await asyncio.gather(*tasks)
 >>> asyncio.run(main())
+
 ```
 
 ### Streams
@@ -79,12 +84,11 @@ There is some fundamental Stream usage.
 >>> import asyncio
 >>> 
 >>> async def main():
->>>        local_file = open('test', 'wb')
->>>        async with aioreq.StreamClient() as cl:
->>>                # This code iterates through the message and yields each received chunk separately.
->>>                async for chunk in cl.get('https://pathtoverybigfile.aioreq'):
->>>                        local_file.write(chunk)
-
+...        async with aioreq.StreamClient() as cl:
+...                # This code iterates through the message and yields each received chunk separately.
+...                async for chunk in cl.get('https://google.com'):
+...                        ...
+>>> asyncio.run(main())
 
 ```
 
@@ -104,7 +108,7 @@ First, clone aioreq [repository][mygit].
 
 Then...
 
-```shell
+``` shell
 $ cd aioreq
 $ python -m venv venv
 $ source ./venv/bin/activate
@@ -112,7 +116,9 @@ $ pip install '.[benchmarks]'
 $ cd benchmarks
 $ python run_tests_functions.py
 ```
+
 ---
+
 ### Benchmark results
 
 This is the **average** execution time of each library for **200 asynchronous requests** where responses was received without **chunked** transfer encoding.
