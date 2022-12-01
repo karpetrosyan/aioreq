@@ -110,7 +110,7 @@ class Headers(metaclass=MetaHeaders):
 
     def __repr__(self):
         return f"Headers:\n" + '\n'.join(
-            (f"\t{key}: {value}" for key, value in self._headers.items())
+            (f" {key}: {value}" for key, value in self._headers.items())
         )
 
 
@@ -156,7 +156,7 @@ class BaseRequest(HttpProtocol, metaclass=ABCMeta):
             self,
             url: str,
             *,
-            headers: Union[Headers, dict[str, str], None],
+            headers: Union[Headers, dict[str, str], None] = None,
             method: str = 'GET',
             raw_request: Union[None, bytes] = None,
             content: Union[str, bytearray, bytes] = '',
