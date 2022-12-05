@@ -28,9 +28,20 @@ async def deflate():
     compressed_string = zlibbed_str[2:-4]
     return Response(content=base64.b64encode(compressed_string), headers={'content-encoding': 'deflate'})
 
+
 @app.get('/ping')
 async def ping():
     return 'pong'
+
+
+@app.get('/redirect')
+async def redirect():
+    return Response(headers={'location': 'http://testulik.com/redirected'}, status_code=301)
+
+
+@app.get('/redirected')
+async def redirected():
+    return 200
 
 
 @app.get('/')
@@ -48,9 +59,11 @@ async def streaming_text():
 async def stream():
     return StreamingResponse(streaming_text())
 
+
 if __name__ == '__main__':
     from conftest import CONSTANTS
     import uvicorn
+
     uvicorn.run(app, port=7575)
 else:
     from .conftest import CONSTANTS
