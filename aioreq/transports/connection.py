@@ -16,7 +16,7 @@ res.nameservers = ['1.1.1.1', '8.8.8.8']
 
 log = logging.getLogger(LOGGER_NAME)
 
-context = ssl.SSLContext(ssl.PROTOCOL_TLS)
+context = ssl.create_default_context()
 context.load_verify_locations(certifi.where())
 context.keylog_filename = os.getenv('SSLKEYLOGFILE')
 
@@ -81,12 +81,12 @@ class Transport:
         """
         An asynchronous alternative for socket.recv() method.
         """
-        data = await self.reader.read(1000)
+        data = await self.reader.read(200)
         resp, without_body_len = self.message_manager.add_data(data)
         return resp, without_body_len
 
     async def _receive_data_stream(self):
-        data = await self.reader.read(20)
+        data = await self.reader.read(200)
         headerless_data = self.stream_message_manager.add_data(data)
         return headerless_data
 
@@ -105,7 +105,6 @@ class Transport:
         :type ssl: bool
         :returns: None
         """
-
         reader, writer = await \
             asyncio.wait_for(asyncio.open_connection(
                 host=ip,
