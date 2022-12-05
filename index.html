@@ -552,8 +552,8 @@
 <a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">cl</span> <span class="o">=</span> <span class="n">aioreq</span><span class="o">.</span><span class="n">Client</span><span class="p">()</span>
 <a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="o">&gt;&gt;&gt;</span>
 <a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">resp</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">cl</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;https://www.google.com&#39;</span><span class="p">)</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="o">&gt;&gt;&gt;</span> <span class="p">)</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="o">...</span> <span class="n">cl</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;https://www.google.com&#39;</span><span class="p">)</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="o">...</span> <span class="p">)</span>
 <a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">resp</span>
 <a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="o">&lt;</span><span class="n">Response</span> <span class="mi">200</span> <span class="n">OK</span><span class="o">&gt;</span>
 <a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">resp</span><span class="o">.</span><span class="n">status</span>
@@ -563,15 +563,17 @@
 <a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">resp</span><span class="o">.</span><span class="n">request</span>
 <a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="o">&lt;</span><span class="n">Request</span> <span class="n">GET</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">www</span><span class="o">.</span><span class="n">google</span><span class="o">.</span><span class="n">com</span><span class="o">&gt;</span>
 <a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">headers</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">headers</span> <span class="c1"># dict</span>
-<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">body</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">body</span> <span class="c1"># bytes object</span>
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">body</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">content</span> <span class="c1"># bytes object</span>
 </code></pre></div>
 <p>Alternatively, the best practice is to use a <strong>Context manager</strong>.
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">import</span> <span class="nn">aioreq</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">import</span> <span class="nn">asyncio</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="k">async</span> <span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>        <span class="k">async</span> <span class="k">with</span> <span class="n">aioreq</span><span class="o">.</span><span class="n">Client</span><span class="p">()</span> <span class="k">as</span> <span class="n">cl</span><span class="p">:</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>                <span class="k">await</span> <span class="n">cl</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;https://google.com&#39;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">aioreq</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">asyncio</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="o">&gt;&gt;&gt;</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="o">&gt;&gt;&gt;</span> <span class="k">async</span> <span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="o">...</span>     <span class="k">async</span> <span class="k">with</span> <span class="n">aioreq</span><span class="o">.</span><span class="n">Client</span><span class="p">()</span> <span class="k">as</span> <span class="n">cl</span><span class="p">:</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="o">...</span>         <span class="k">return</span> <span class="k">await</span> <span class="n">cl</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;https://google.com&#39;</span><span class="p">)</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="o">&lt;</span><span class="n">Response</span> <span class="mi">200</span> <span class="n">OK</span><span class="o">&gt;</span>
 </code></pre></div></p>
 <h3 id="more-advanced-usage">More advanced usage</h3>
 <hr />
@@ -580,17 +582,16 @@
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">aioreq</span>
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="o">&gt;&gt;&gt;</span>
 <a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="o">&gt;&gt;&gt;</span> <span class="k">async</span> <span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="o">&gt;&gt;&gt;</span>    <span class="k">async</span> <span class="k">with</span> <span class="n">aioreq</span><span class="o">.</span><span class="n">http</span><span class="o">.</span><span class="n">Client</span><span class="p">()</span> <span class="k">as</span> <span class="n">cl</span><span class="p">:</span>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="o">&gt;&gt;&gt;</span>        <span class="n">tasks</span> <span class="o">=</span> <span class="p">[]</span>
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="o">&gt;&gt;&gt;</span>        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="o">&gt;&gt;&gt;</span>            <span class="n">tasks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="o">&gt;&gt;&gt;</span>                       <span class="n">asyncio</span><span class="o">.</span><span class="n">create_task</span><span class="p">(</span>
-<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="o">&gt;&gt;&gt;</span>                           <span class="n">cl</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;https://www.google.com/&#39;</span><span class="p">,</span> <span class="p">)</span>
-<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="o">&gt;&gt;&gt;</span>                              <span class="p">)</span>
-<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="o">&gt;&gt;&gt;</span>                        <span class="p">)</span>
-<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="o">&gt;&gt;&gt;</span>        <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="n">tasks</span><span class="p">)</span>
-<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="o">&gt;&gt;&gt;</span>
-<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="o">...</span>     <span class="k">async</span> <span class="k">with</span> <span class="n">aioreq</span><span class="o">.</span><span class="n">http</span><span class="o">.</span><span class="n">Client</span><span class="p">()</span> <span class="k">as</span> <span class="n">cl</span><span class="p">:</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="o">...</span>         <span class="n">tasks</span> <span class="o">=</span> <span class="p">[]</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="o">...</span>         <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="o">...</span>             <span class="n">tasks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="o">...</span>                 <span class="n">asyncio</span><span class="o">.</span><span class="n">create_task</span><span class="p">(</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="o">...</span>                     <span class="n">cl</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;https://www.google.com/&#39;</span><span class="p">,</span> <span class="p">)</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="o">...</span>                 <span class="p">)</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="o">...</span>             <span class="p">)</span>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="o">...</span>         <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="n">tasks</span><span class="p">)</span>
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
 </code></pre></div>
 <h3 id="streams">Streams</h3>
 <hr />
@@ -600,17 +601,19 @@
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">asyncio</span>
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="o">&gt;&gt;&gt;</span> 
 <a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="o">&gt;&gt;&gt;</span> <span class="k">async</span> <span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="o">&gt;&gt;&gt;</span>        <span class="n">local_file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;test&#39;</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span>
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="o">&gt;&gt;&gt;</span>        <span class="k">async</span> <span class="k">with</span> <span class="n">aioreq</span><span class="o">.</span><span class="n">StreamClient</span><span class="p">()</span> <span class="k">as</span> <span class="n">cl</span><span class="p">:</span>
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="o">&gt;&gt;&gt;</span>                <span class="c1"># This code iterates through the message and yields each received chunk separately.</span>
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="o">&gt;&gt;&gt;</span>                <span class="k">async</span> <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">cl</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;https://pathtoverybigfile.aioreq&#39;</span><span class="p">):</span>
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="o">&gt;&gt;&gt;</span>                        <span class="n">local_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="o">...</span>        <span class="k">async</span> <span class="k">with</span> <span class="n">aioreq</span><span class="o">.</span><span class="n">StreamClient</span><span class="p">()</span> <span class="k">as</span> <span class="n">cl</span><span class="p">:</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="o">...</span>                <span class="c1"># This code iterates through the message and yields each received chunk separately.</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="o">...</span>                <span class="k">async</span> <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">cl</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;https://google.com&#39;</span><span class="p">):</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="o">...</span>                        <span class="o">...</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
 </code></pre></div></p>
 <h2 id="benchmarks">Benchmarks</h2>
 <p><strong>Aioreq</strong> is a very fast library, and we compared it to other Python libraries to demonstrate its speed.</p>
-<p>I used these libraries to compare speed.
-* <a href="https://github.com/encode/httpx">httpx</a>
-* <a href="https://github.com/psf/requests">requests</a></p>
+<p>I used these libraries to compare speed.</p>
+<ul>
+<li><a href="https://github.com/encode/httpx">httpx</a></li>
+<li><a href="https://github.com/psf/requests">requests</a></li>
+</ul>
 <hr />
 <h3 id="benchmark-run">Benchmark run</h3>
 <p>First, clone aioreq <a href="https://github.com/karosis88/aioreq">repository</a>.</p>
