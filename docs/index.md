@@ -95,6 +95,7 @@ There is some fundamental Stream usage.
 
 
 I used these libraries to compare speed.
+
 * [httpx](https://github.com/encode/httpx)
 * [requests](https://github.com/psf/requests)
 ---
