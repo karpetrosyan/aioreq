@@ -7,38 +7,43 @@ from aioreq.protocol.http import JsonRequest
 
 
 @pytest.mark.asyncio
-async def test_few_requests(one_time_session, event_loop):
-    t1 = one_time_session.get('https://www.facebook.com')
-    t2 = one_time_session.get('https://www.google.com')
-    t3 = one_time_session.get('https://www.youtube.com')
+async def test_few_requests(server,
+                            one_time_session,
+                            event_loop):
+    t1 = one_time_session.get('http://testulik.com')
+    t2 = one_time_session.get('http://testulik.com')
+    t3 = one_time_session.get('http://testulik.com')
     tasks = await asyncio.gather(t1, t2, t3)
     assert all([result.status == 200 for result in tasks])
 
 
 @pytest.mark.asyncio
-async def test_normal_request(one_time_session):
-    url = 'http://youtube.com'
+async def test_normal_request(server,
+                              one_time_session):
+    url = 'http://testulik.com'
     response = await one_time_session.get(url)
     assert response.status == 200
 
 
 @pytest.mark.asyncio
-async def test_moved_301(one_time_session):
-    url = 'http://google.com'
+async def test_moved_301(server,
+                         one_time_session):
+    url = 'http://testulik.com/redirect'
     response = await one_time_session.get(url, retry=0, redirect=0)
-    assert response.status in (301, 302)
+    assert response.status == 301
 
 
 @pytest.mark.asyncio
-async def test_moving_301(one_time_session):
-    url = 'http://google.com'
+async def test_moving_301(server,
+                          one_time_session):
+    url = 'http://testulik.com/redirect'
     response = await one_time_session.get(url, retry=0, redirect=1)
     assert response.status == 200
 
 
 @pytest.mark.asyncio
 async def test_moving_301_with_directly_request(one_time_session):
-    url = 'http://google.com'
+    url = 'http://testulik.com'
     req = Request(
         url=url,
         method='GET',
@@ -79,7 +84,7 @@ async def test_deflate(one_time_session,
 
 @pytest.mark.asyncio
 async def test_https_request(one_time_session):
-    url = 'https://google.com'
+    url = 'https://www.github.com'
     response = await one_time_session.get(url)
     assert response.status == 200
 
@@ -88,13 +93,13 @@ async def test_https_request(one_time_session):
 async def test_dirctly_requests_using(one_time_session,
                                       event_loop):
     req = Request(
-        url='https://google.com/',
+        url='http://testulik.com/',
         method='GET',
         headers={},
     )
 
     jsonreq = JsonRequest(
-        url='https://google.com/',
+        url='http://testulik.com/',
         method='GET',
         headers={},
     )
@@ -103,7 +108,7 @@ async def test_dirctly_requests_using(one_time_session,
     t2 = asyncio.create_task(one_time_session.send_request(jsonreq, redirect=0))
     result1, result2 = await asyncio.gather(t1, t2)
 
-    assert result1.status == 301 == result2.status
+    assert result1.status == 200 == result2.status
     assert 'content-type' in result1.headers
 
 

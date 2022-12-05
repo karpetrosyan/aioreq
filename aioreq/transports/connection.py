@@ -16,9 +16,14 @@ res.nameservers = ['1.1.1.1', '8.8.8.8']
 
 log = logging.getLogger(LOGGER_NAME)
 
-context = ssl.create_default_context()
+context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+context.minimum_version = ssl.TLSVersion.TLSv1_2
+context.maximum_version = ssl.TLSVersion.TLSv1_2
+
 context.load_verify_locations(certifi.where())
 context.keylog_filename = os.getenv('SSLKEYLOGFILE')
+
+context.check_hostname = False
 
 
 async def get_address(host):
