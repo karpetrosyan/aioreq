@@ -96,6 +96,7 @@ There is some fundamental Stream usage.
 
 I used these libraries to compare speed.
 
+
 * [httpx](https://github.com/encode/httpx)
 * [requests](https://github.com/psf/requests)
 ---
@@ -180,6 +181,7 @@ As you can see, the synchronous code lags far behind when we make many requests 
 ## Supported Features
 **Aioreq** support basic features to work with **HTTP/1.1**.<br />More functionality will be avaliable in future realeases.<br />
 This is the latest version features.
+
 * Keep-Alive (Persistent Connections)
 * Automatic accepting and decoding responses. Using `Accept-Encoding` header
 * HTTPS support, TLS/SSL Verification using [certifi](https://github.com/certifi/python-certifi) library
