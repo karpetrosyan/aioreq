@@ -3,7 +3,7 @@
 Continue = 100
 SWITCHING_PROTOCOLS = 101
 
-# Ok
+# 2xx Ok
 
 OK = 200
 CREATED = 201

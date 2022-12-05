@@ -444,10 +444,10 @@ class Client(BaseClient):
 
     >>> import aioreq
     >>> import asyncio
-    ...
+    >>>
     >>> async def main():
-    >>>     async with aioreq.http.Client() as cl:
-    >>>         return await cl.get('https://www.youtube.com')
+    ...     async with aioreq.http.Client() as cl:
+    ...         return await cl.get('https://www.youtube.com')
     >>> resp = asyncio.run(main())
 
     .. todo: Isolate clients utils.debug.timer logging system
@@ -792,6 +792,74 @@ class StreamClient(BaseClient):
         async for chunk in self._send_request(
                 url=url,
                 method="GET",
+                content=content,
+                headers=headers,
+                path_parameters=path_parameters,
+                timeout=timeout,
+        ):
+            yield chunk
+
+    async def delete(
+            self,
+            url: str,
+            content: Union[str, bytearray, bytes] = '',
+            headers: Union[None, dict[str, str]] = None,
+            path_parameters: Union[Iterable[Iterable[str]], None] = None,
+            timeout: int = 0):
+        async for chunk in self._send_request(
+                url=url,
+                method="DELETE",
+                content=content,
+                headers=headers,
+                path_parameters=path_parameters,
+                timeout=timeout,
+        ):
+            yield chunk
+
+    async def put(
+            self,
+            url: str,
+            content: Union[str, bytearray, bytes] = '',
+            headers: Union[None, dict[str, str]] = None,
+            path_parameters: Union[Iterable[Iterable[str]], None] = None,
+            timeout: int = 0):
+        async for chunk in self._send_request(
+                url=url,
+                method="PUT",
+                content=content,
+                headers=headers,
+                path_parameters=path_parameters,
+                timeout=timeout,
+        ):
+            yield chunk
+
+    async def options(
+            self,
+            url: str,
+            content: Union[str, bytearray, bytes] = '',
+            headers: Union[None, dict[str, str]] = None,
+            path_parameters: Union[Iterable[Iterable[str]], None] = None,
+            timeout: int = 0):
+        async for chunk in self._send_request(
+                url=url,
+                method="OPTIONS",
+                content=content,
+                headers=headers,
+                path_parameters=path_parameters,
+                timeout=timeout,
+        ):
+            yield chunk
+
+    async def patch(
+            self,
+            url: str,
+            content: Union[str, bytearray, bytes] = '',
+            headers: Union[None, dict[str, str]] = None,
+            path_parameters: Union[Iterable[Iterable[str]], None] = None,
+            timeout: int = 0):
+        async for chunk in self._send_request(
+                url=url,
+                method="PATCH",
                 content=content,
                 headers=headers,
                 path_parameters=path_parameters,

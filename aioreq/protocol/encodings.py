@@ -7,7 +7,6 @@ from abc import ABC
 from abc import abstractmethod
 
 
-
 class Encoding(ABC):
     all_encodings = []
 
@@ -41,19 +40,13 @@ class deflate(Encoding):
         decoded_data = base64.b64decode(text)
         res = zlib.decompress(decoded_data, -15)
         return res
-# class compress(Encoding):
-#
-#     @classmethod
-#     def decompress(cls, text: bytes) -> bytes:
-#         raise NotImplementedError
 
-
-# Enum for encodings
-# -------------
 
 class Encodings(Enum):
-    gzip = gzip
-    deflate = deflate
+    # Some meta programming :)
+    global cls
+    for cls in Encoding.all_encodings:
+        locals()[cls.__name__] = cls
 
     def decompress(self, text: bytes) -> bytes:
         return self.value.decompress(text)
