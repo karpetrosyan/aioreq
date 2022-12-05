@@ -180,6 +180,28 @@ Received statuses
 
 As you can see, the synchronous code lags far behind when we make many requests at the same time.<br />
 
+## Keylog
+
+If the **SSLKEYLOGFILE** environment variable is set, Aioreq will write keylogs to it.
+
+``` shell
+$ export SSLKEYLOGFILE=logs
+```
+
+Then just run python script.
+
+``` shell
+$ python aioreq_app.py
+$ ls -l
+total 8
+-rw-r--r-- 1 user user  94 Dec  5 17:19 aioreq_app.py
+-rw-r--r-- 1 user user 406 Dec  5 17:19 logs
+```
+Now, the 'logs' file contains keylogs that can be used to decrypt your TLS/SSL traffic with a tool such as 'wireshark'.
+
+
+
+
 ## Supported Features
 **Aioreq** support basic features to work with **HTTP/1.1**.<br />More functionality will be avaliable in future realeases.<br />
 This is the latest version features.
