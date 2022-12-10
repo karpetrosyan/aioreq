@@ -21,7 +21,6 @@ class BaseRequestParser:
 
 class RequestParser(BaseRequestParser):
     @classmethod
-    @debug.timer
     def parse(cls, request: 'Request') -> str:  # type: ignore
         """
         Parsing object type of request to string representing HTTP message
@@ -56,7 +55,6 @@ class RequestParser(BaseRequestParser):
 class JsonRequestParser(BaseRequestParser):
 
     @classmethod
-    @debug.timer
     def parse(cls, request: 'Request') -> str:  # type: ignore
         """
         Parsing object type of request to string representing HTTP message

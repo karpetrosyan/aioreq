@@ -46,11 +46,11 @@ async def resolve_domain(
     """
     if hostname in dns_cache:
         if not isinstance(dns_cache[hostname], str):
-            log.debug('Got cached dns query')
+            log.trace('Got cached dns query')
             return await dns_cache[hostname]
         return dns_cache[hostname]
 
-    log.debug(f"trying resolve {hostname=}")
+    log.trace(f"trying resolve {hostname=}")
     coro = asyncio.create_task(get_address(hostname))
     dns_cache[hostname] = coro
     host = await coro

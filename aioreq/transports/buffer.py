@@ -189,7 +189,7 @@ class Buffer(BaseBuffer):
             self.body_receiving_strategy = ResponseParserStrategy.content_length
         else:
             self.body_receiving_strategy = ResponseParserStrategy.chunked
-        log.debug(f"Strategy found: {self.body_receiving_strategy}")
+        log.trace(f"Strategy found: {self.body_receiving_strategy}")
 
     def fill_bytes(self, _bytes: bytes):
         """
