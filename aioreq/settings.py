@@ -9,13 +9,17 @@ ini_file_path = str(ini_file_path_posix.absolute())
 parser = ConfigParser()
 parser.read(ini_file_path)
 
+logging.TRACE = 5
+logging.addLevelName(logging.TRACE, "TRACE")
+
 log_level_mapper = {
     'notset': logging.NOTSET,
     'debug': logging.DEBUG,
     'info': logging.INFO,
     'warning': logging.WARNING,
     'error': logging.ERROR,
-    'critical': logging.CRITICAL
+    'critical': logging.CRITICAL,
+    'trace' : logging.TRACE
 }
 
 log_format_mapper = {
@@ -51,8 +55,8 @@ DEFAULT_TIMEOUT = parser.getint('Aioreq', 'request_timeout')
 
 if any(
         (
-            (MAIN_LOGGER_LEVEL not in log_level_mapper),
-            (STREAM_HANDLER_LEVEL not in log_level_mapper)
+                (MAIN_LOGGER_LEVEL not in log_level_mapper),
+                (STREAM_HANDLER_LEVEL not in log_level_mapper)
         )
 ):
     raise ValueError('Setting.ini contains invalid value '
@@ -69,7 +73,20 @@ for key, value in log_format_mapper.items():
 DEFAULT_CONNECTION_TIMEOUT = int(parser.getfloat('Connection', 'default_connection_timeout'))
 DEFAULT_DNS_SERVER = parser['Connection']['default_dns_server']
 
+
+class AioReqLogger:
+    ...
+
+
+def _trace(message, *args, **kwargs):
+    self = logging.getLogger(LOGGER_NAME)
+
+    if self.isEnabledFor(logging.TRACE):
+        self._log(logging.TRACE, message, args, **kwargs)
+
+
 main_logger = logging.getLogger(LOGGER_NAME)
+main_logger.trace = _trace
 main_logger.propagate = False
 main_logger.setLevel(MAIN_LOGGER_LEVEL)
 
@@ -80,3 +97,4 @@ formatter = logging.Formatter(FORMAT)
 
 handler.setFormatter(formatter)
 main_logger.addHandler(handler)
+

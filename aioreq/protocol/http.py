@@ -370,7 +370,7 @@ class BaseClient(metaclass=ABCMeta):
         """
         transport = None
         if self.persistent_connections:
-            log.debug(f"{self.connection_mapper} searching into mapped connections")
+            log.trace(f"{self.connection_mapper} searching into mapped connections")
 
             for transport in self.connection_mapper[splitted_url.get_url_for_dns()]:
                 if not transport.used:
@@ -405,7 +405,7 @@ class BaseClient(metaclass=ABCMeta):
                 self.connection_mapper[splitted_url.get_url_for_dns(
                 )].append(transport)
         else:
-            log.info("Using already opened connection")
+            log.debug("Using already opened connection")
         return transport
 
     async def __aenter__(self):
@@ -433,9 +433,10 @@ class BaseClient(metaclass=ABCMeta):
 
         for transport in self.transports:
             transport.writer.close()
-            log.debug('Trying to close')
+            log.trace('Trying to close the connection')
             tasks.append(transport.writer.wait_closed())
         await asyncio.gather(*tasks)
+        log.trace('All connections are closed')
 
 
 class Client(BaseClient):
@@ -450,7 +451,6 @@ class Client(BaseClient):
     ...         return await cl.get('https://www.youtube.com')
     >>> resp = asyncio.run(main())
 
-    .. todo: Isolate clients utils.debug.timer logging system
     """
 
     async def get(

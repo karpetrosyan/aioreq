@@ -108,7 +108,6 @@ class UrlParser:
     )
 
     @classmethod
-    @debug.timer
     def parse(cls, url: str) -> Url:
         """
         The main function for this class, which parse url string

@@ -1,6 +1,6 @@
 # Informational
 
-Continue = 100
+CONTINUE = 100
 SWITCHING_PROTOCOLS = 101
 
 # 2xx Ok

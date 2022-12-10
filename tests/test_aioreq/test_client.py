@@ -1,9 +1,9 @@
-import pytest
 import asyncio
 
-from aioreq.errors.requests import AsyncRequestsError
-from aioreq.protocol.http import Request
+import pytest
+
 from aioreq.protocol.http import JsonRequest
+from aioreq.protocol.http import Request
 
 
 @pytest.mark.asyncio

@@ -69,7 +69,6 @@ class ResponseParser:
                     response.content = encoding.decompress(response.content)
 
     @classmethod
-    @debug.timer
     def parse(cls, response: bytes) -> 'Response':  # type: ignore
         """
         The main method for this class which parse response
@@ -100,7 +99,6 @@ class ResponseParser:
         return response
 
     @classmethod
-    @debug.timer
     def body_len_parse(cls, text: bytes, without_body_len: int):
         from ..protocol.http import Response
 
@@ -122,7 +120,6 @@ class ResponseParser:
         return response
 
     @classmethod
-    @debug.timer
     def search_content_length(cls, text: bytes) -> int | None:
         """
         Search and returned content-length
@@ -142,7 +139,6 @@ class ResponseParser:
         return int(content_length)
 
     @classmethod
-    @debug.timer
     def get_without_body_length(cls, text: bytes) -> int:
         """
         Get body less response
@@ -161,7 +157,6 @@ class ResponseParser:
         return match.end() - match.start()
 
     @classmethod
-    @debug.timer
     def headers_done(cls, text: bytes) -> bool:
         """
         Return true if text contains headers done text,
