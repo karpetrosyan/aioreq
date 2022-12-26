@@ -23,10 +23,16 @@ async def gzip():
 
 @app.get("/deflate")
 async def deflate():
-    string_val = CONSTANTS['DEFLATE_RESPONSE_TEXT']
-    zlibbed_str = zlib.compress(string_val.encode())
-    compressed_string = zlibbed_str[2:-4]
-    return Response(content=base64.b64encode(compressed_string), headers={'content-encoding': 'deflate'})
+    compress = zlib.compressobj(
+        9,
+        zlib.DEFLATED,
+        -zlib.MAX_WBITS,
+        zlib.DEF_MEM_LEVEL,
+        0
+    )
+    deflated = compress.compress(CONSTANTS['DEFLATE_RESPONSE_TEXT'].encode())
+    deflated += compress.flush()
+    return Response(content=deflated, headers={'content-encoding': 'deflate'})
 
 
 @app.get('/ping')

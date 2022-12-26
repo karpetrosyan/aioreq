@@ -37,9 +37,10 @@ class deflate(Encoding):
 
     @classmethod
     def decompress(cls, text: bytes) -> bytes:
-        decoded_data = base64.b64decode(text)
-        res = zlib.decompress(decoded_data, -15)
-        return res
+        decompress = zlib.decompressobj(-zlib.MAX_WBITS)
+        inflated = decompress.decompress(text)
+        inflated += decompress.flush()
+        return inflated
 
 
 class Encodings(Enum):
