@@ -11,6 +11,10 @@ from typing import Union
 from .encodings import Encoding
 from .headers import AcceptEncoding
 from .headers import BaseHeader
+from .middlewares import default_middlewares
+from .middlewares import MiddleWare
+from .middlewares import RedirectMiddleWare
+from .middlewares import RetryMiddleWare
 from ..errors.requests import ConnectionTimeoutError
 from ..parser.request_parser import JsonRequestParser
 from ..parser.request_parser import RequestParser
@@ -319,6 +323,27 @@ class BaseClient(metaclass=ABCMeta):
        this is an easy way to use HTTP Headers through OOP
        """
 
+    def __init__(self,
+                 headers: Union[dict[str, str], Headers, None] = None,
+                 persistent_connections: bool = False,
+                 enable_encodings: bool = True,
+                 redirect_count: int = REQUEST_REDIRECT_COUNT,
+                 retry_count: int = REQUEST_RETRY_COUNT):
+        headers = Headers(initial_headers=headers)
+
+        RedirectMiddleWare.redirect_count = redirect_count
+        RetryMiddleWare.retry_count = retry_count
+
+        if enable_encodings and 'accept-encoding' not in headers:
+            accept_encoding_object = self.get_avaliable_encodings()
+            headers.add_header(accept_encoding_object)
+
+        self.connection_mapper = defaultdict(list)
+        self.middlewares = MiddleWare.build(default_middlewares)
+        self.headers = headers
+        self.transports = []
+        self.persistent_connections = persistent_connections
+
     @abstractmethod
     async def _send_request(self,
                             url: str,
@@ -337,27 +362,8 @@ class BaseClient(metaclass=ABCMeta):
     @staticmethod
     def get_avaliable_encodings():
         return AcceptEncoding(
-
             *((encoding, 1) for encoding in Encoding.all_encodings)
-
         )
-
-    def __init__(self,
-                 headers: Union[dict[str, str], Headers, None] = None,
-                 persistent_connections: bool = False,
-                 enable_encodings: bool = True):
-
-        self.connection_mapper = defaultdict(list)
-
-        headers = Headers(initial_headers=headers)
-
-        if enable_encodings and 'accept-encoding' not in headers:
-            accept_encoding_object = self.get_avaliable_encodings()
-            headers.add_header(accept_encoding_object)
-
-        self.headers = headers
-        self.transports = []
-        self.persistent_connections = persistent_connections
 
     async def _get_connection(self, splitted_url: Url):
         """
@@ -459,18 +465,13 @@ class Client(BaseClient):
             content: Union[str, bytearray, bytes] = '',
             headers: Union[dict[str, str], None] = None,
             path_parameters: Union[Iterable[Iterable[str]], None] = None,
-            timeout: int = 0,
-            redirect: int = REQUEST_REDIRECT_COUNT,
-            retry: int = REQUEST_RETRY_COUNT) -> Response:
-        return await self.request_retry_wrapper(
+    ) -> Response:
+        return await self._send_request(
             url=url,
             method="GET",
             content=content,
             headers=headers,
             path_parameters=path_parameters,
-            timeout=timeout,
-            redirect=redirect + 1,
-            retry=retry + 1
         )
 
     async def post(
@@ -479,18 +480,13 @@ class Client(BaseClient):
             content: Union[str, bytearray, bytes] = '',
             headers: Union[dict[str, str], None] = None,
             path_parameters: Union[Iterable[Iterable[str]], None] = None,
-            timeout: int = 0,
-            redirect: int = REQUEST_REDIRECT_COUNT,
-            retry: int = REQUEST_RETRY_COUNT) -> Response:
-        return await self.request_retry_wrapper(
+    ) -> Response:
+        return await self._send_request(
             url=url,
             method="POST",
             content=content,
             headers=headers,
             path_parameters=path_parameters,
-            timeout=timeout,
-            redirect=redirect + 1,
-            retry=retry + 1
         )
 
     async def put(
@@ -499,18 +495,13 @@ class Client(BaseClient):
             content: Union[str, bytearray, bytes] = '',
             headers: Union[dict[str, str], None] = None,
             path_parameters: Union[Iterable[Iterable[str]], None] = None,
-            timeout: int = 0,
-            redirect: int = REQUEST_REDIRECT_COUNT,
-            retry: int = REQUEST_RETRY_COUNT) -> Response:
-        return await self.request_retry_wrapper(
+    ) -> Response:
+        return await self._send_request(
             url=url,
             method="PUT",
             content=content,
             headers=headers,
             path_parameters=path_parameters,
-            timeout=timeout,
-            redirect=redirect + 1,
-            retry=retry + 1
         )
 
     async def delete(
@@ -519,18 +510,13 @@ class Client(BaseClient):
             content: Union[str, bytearray, bytes] = '',
             headers: Union[dict[str, str], None] = None,
             path_parameters: Union[Iterable[Iterable[str]], None] = None,
-            timeout: int = 0,
-            redirect: int = REQUEST_REDIRECT_COUNT,
-            retry: int = REQUEST_RETRY_COUNT) -> Response:
-        return await self.request_retry_wrapper(
+    ) -> Response:
+        return await self._send_request(
             url=url,
             method="DELETE",
             content=content,
             headers=headers,
             path_parameters=path_parameters,
-            timeout=timeout,
-            redirect=redirect + 1,
-            retry=retry + 1
         )
 
     async def options(
@@ -539,18 +525,13 @@ class Client(BaseClient):
             content: Union[str, bytearray, bytes] = '',
             headers: Union[dict[str, str], None] = None,
             path_parameters: Union[Iterable[Iterable[str]], None] = None,
-            timeout: int = 0,
-            redirect: int = REQUEST_REDIRECT_COUNT,
-            retry: int = REQUEST_RETRY_COUNT) -> Response:
-        return await self.request_retry_wrapper(
+    ) -> Response:
+        return await self._send_request(
             url=url,
             method="OPTIONS",
             content=content,
             headers=headers,
             path_parameters=path_parameters,
-            timeout=timeout,
-            redirect=redirect + 1,
-            retry=retry + 1
         )
 
     async def head(
@@ -559,18 +540,13 @@ class Client(BaseClient):
             content: Union[str, bytearray, bytes] = '',
             headers: Union[dict[str, str], None] = None,
             path_parameters: Union[Iterable[Iterable[str]], None] = None,
-            timeout: int = 0,
-            redirect: int = REQUEST_REDIRECT_COUNT,
-            retry: int = REQUEST_RETRY_COUNT) -> Response:
-        return await self.request_retry_wrapper(
+    ) -> Response:
+        return await self._send_request(
             url=url,
             method="HEAD",
             content=content,
             headers=headers,
             path_parameters=path_parameters,
-            timeout=timeout,
-            redirect=redirect + 1,
-            retry=retry + 1
         )
 
     async def patch(
@@ -579,31 +555,30 @@ class Client(BaseClient):
             content: Union[str, bytearray, bytes] = '',
             headers: Union[dict[str, str], None] = None,
             path_parameters: Union[Iterable[Iterable[str]], None] = None,
-            timeout: int = 0,
-            redirect: int = REQUEST_REDIRECT_COUNT,
-            retry: int = REQUEST_RETRY_COUNT) -> Response:
-        return await self.request_retry_wrapper(
+    ) -> Response:
+        return await self._send_request(
             url=url,
             method="PATCH",
             content=content,
             headers=headers,
             path_parameters=path_parameters,
-            timeout=timeout,
-            redirect=redirect + 1,
-            retry=retry + 1
         )
 
     async def send_request_directly(self,
-                                    request: Request,
-                                    timeout: int = 0):
+                                    request: Request):
 
         splited_url = UrlParser.parse(request.host.strip('/') + request.path)
         transport = await self._get_connection(splited_url)
         coro = transport.send_http_request(request.get_raw_request())
-        raw_response, without_body_len = await wrap_errors(coro=coro, timeout=timeout)
+        raw_response, without_body_len = await wrap_errors(coro=coro)
         resp = ResponseParser.body_len_parse(raw_response, without_body_len)
         resp.request = request
         return resp
+
+    async def _send_request_via_middleware(self,
+                                           request: Request):
+        response = await self.middlewares.process(request, client=self)
+        return response
 
     async def _send_request(self,
                             url: str,
@@ -611,7 +586,7 @@ class Client(BaseClient):
                             content: Union[str, bytearray, bytes] = '',
                             path_parameters: Union[Iterable[Iterable[str]], None] = None,
                             headers: Union[None, dict[str, str]] = None,
-                            timeout: int = 0) -> Response:
+                            ) -> Response:
 
         """
         Simulates a http request
@@ -633,8 +608,6 @@ class Client(BaseClient):
 
         headers = Headers(initial_headers=headers)
 
-        splitted_url = UrlParser.parse(url)
-        transport = await self._get_connection(splitted_url)
         request = Request(
             url=url,
             method=method,
@@ -642,11 +615,7 @@ class Client(BaseClient):
             params=path_parameters,
             content=content,
         )
-        coro = transport.send_http_request(request.get_raw_request())
-        raw_response, without_body_len = await wrap_errors(coro=coro, timeout=timeout)
-        resp = ResponseParser.body_len_parse(raw_response, without_body_len)
-        resp.request = request
-        return resp
+        return await self._send_request_via_middleware(request)
 
     async def request_redirect_wrapper(self,
                                        *args: tuple[Any],
