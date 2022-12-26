@@ -95,7 +95,7 @@ class ResponseParser:
             content=body
         )
 
-        cls.decode_response_body(response)
+        # cls.decode_response_body(response)
         return response
 
     @classmethod
@@ -116,7 +116,7 @@ class ResponseParser:
             content=body
         )
 
-        cls.decode_response_body(response)
+        # cls.decode_response_body(response)
         return response
 
     @classmethod
@@ -125,7 +125,7 @@ class ResponseParser:
         Search and returned content-length
 
         Search content-length header and return value if header exists
-        using rexeg_content_length compiled regex
+        using regex_content_length compiled regex
         :param text: text where content-length maybe exists
         :type text: bytes
         :returns: content_lenth | None
