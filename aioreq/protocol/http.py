@@ -334,10 +334,6 @@ class BaseClient(metaclass=ABCMeta):
         RedirectMiddleWare.redirect_count = redirect_count
         RetryMiddleWare.retry_count = retry_count
 
-        if enable_encodings and 'accept-encoding' not in headers:
-            accept_encoding_object = self.get_avaliable_encodings()
-            headers.add_header(accept_encoding_object)
-
         self.connection_mapper = defaultdict(list)
         self.middlewares = MiddleWare.build(default_middlewares)
         self.headers = headers
