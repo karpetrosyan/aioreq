@@ -84,6 +84,9 @@ class DecodeMiddleWare(MiddleWare):
 
     async def process(self, request, client):
 
+        if 'content-encoding' not in request.headers:
+            request.headers.add_header(client.get_avaliable_encodings())
+
         response = await self.next_middleware.process(request, client)
         self.decode(response)
         return response
