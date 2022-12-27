@@ -27,9 +27,9 @@ async def test_normal_request(server,
 
 @pytest.mark.asyncio
 async def test_moved_301(server,
-                         one_time_session):
+                         one_time_session_redirect_0):
     url = 'http://testulik.com/redirect'
-    response = await one_time_session.get(url, retry=0, redirect=0)
+    response = await one_time_session_redirect_0.get(url)
     assert response.status == 301
 
 
@@ -37,7 +37,7 @@ async def test_moved_301(server,
 async def test_moving_301(server,
                           one_time_session):
     url = 'http://testulik.com/redirect'
-    response = await one_time_session.get(url, retry=0, redirect=1)
+    response = await one_time_session.get(url)
     assert response.status == 200
 
 
@@ -53,11 +53,11 @@ async def test_moving_301_with_directly_request(one_time_session):
     assert response.status == 200
 
 
-@pytest.mark.asyncio
-async def test_ping(one_time_session,
-                    server):
-    response = await one_time_session.get(server, timeout=3)
-    assert response.status == 200
+# @pytest.mark.asyncio
+# async def test_ping(one_time_session,
+#                     server):
+#     response = await one_time_session.get(server, timeout=3)
+#     assert response.status == 200
 
 
 @pytest.mark.asyncio
@@ -104,8 +104,8 @@ async def test_dirctly_requests_using(one_time_session,
         headers={},
     )
 
-    t1 = asyncio.create_task(one_time_session.send_request(req, redirect=0))
-    t2 = asyncio.create_task(one_time_session.send_request(jsonreq, redirect=0))
+    t1 = asyncio.create_task(one_time_session.send_request(req))
+    t2 = asyncio.create_task(one_time_session.send_request(jsonreq))
     result1, result2 = await asyncio.gather(t1, t2)
 
     assert result1.status == 200 == result2.status

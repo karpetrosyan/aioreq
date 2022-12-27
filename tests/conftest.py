@@ -23,13 +23,16 @@ def event_loop():
     loop.close()
 
 
-def temp_function(persistent_connections=False, stream=False):
+def temp_function(persistent_connections=False, stream=False, kwargs=None):
+    if kwargs is None:
+        kwargs = {}
+
     async def inner():
         if stream:
-            async with aioreq.StreamClient(persistent_connections=persistent_connections) as s:
+            async with aioreq.StreamClient(persistent_connections=persistent_connections, **kwargs) as s:
                 yield s
         else:
-            async with aioreq.http.Client(persistent_connections=persistent_connections) as s:
+            async with aioreq.http.Client(persistent_connections=persistent_connections, **kwargs) as s:
                 yield s
 
     return inner
@@ -74,3 +77,4 @@ one_time_session = SCOPE_FUNCTION(temp_function())
 session = SCOPE_SESSION(temp_function())
 one_time_session_cached = SCOPE_SESSION(temp_function(persistent_connections=True))
 one_time_session_stream = SCOPE_SESSION(temp_function(persistent_connections=False, stream=True))
+one_time_session_redirect_0 = SCOPE_SESSION(temp_function(kwargs=dict(redirect_count=0, retry_count=0)))
