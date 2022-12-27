@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from typing import Iterable, Union
 
 from .headers import TransferEncoding, ContentEncoding
+from .encodings import get_avaliable_encodings
 from ..settings import LOGGER_NAME
 
 log = logging.getLogger(LOGGER_NAME)
@@ -36,7 +37,8 @@ class MiddleWare(ABC):
 class RequestMiddleWare(MiddleWare):
 
     async def process(self, request, client):
-        return await client.send_request_directly(request)
+        resp = await client.send_request_directly(request)
+        return resp
 
 
 class RedirectMiddleWare(MiddleWare):
@@ -85,7 +87,7 @@ class DecodeMiddleWare(MiddleWare):
     async def process(self, request, client):
 
         if 'content-encoding' not in request.headers:
-            request.headers.add_header(client.get_avaliable_encodings())
+            request.headers.add_header(get_avaliable_encodings())
 
         response = await self.next_middleware.process(request, client)
         self.decode(response)
@@ -111,5 +113,4 @@ class RetryMiddleWare(MiddleWare):
                 log.info(f"Retrying cause of error : {e}")
                 if retry_count == -1:
                     raise e
-
         return response

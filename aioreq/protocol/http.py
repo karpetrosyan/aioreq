@@ -151,9 +151,9 @@ class BaseRequest(HttpProtocol, metaclass=ABCMeta):
         '_host',
         'headers',
         'path',
-        'raw_request',
         'content',
         'path_parameters',
+        '_raw_request',
     )
 
     def __init__(
@@ -162,7 +162,6 @@ class BaseRequest(HttpProtocol, metaclass=ABCMeta):
             *,
             headers: Union[Headers, dict[str, str], None] = None,
             method: str = 'GET',
-            raw_request: Union[None, bytes] = None,
             content: Union[str, bytearray, bytes] = '',
             params: Union[Iterable[Iterable[str]], None] = None,
     ) -> None:
@@ -183,7 +182,7 @@ class BaseRequest(HttpProtocol, metaclass=ABCMeta):
         self.method = method
         self.content = content
         self.path_parameters = params
-        self._raw_request = raw_request
+        self._raw_request = None
 
     @property
     def host(self):
@@ -191,7 +190,10 @@ class BaseRequest(HttpProtocol, metaclass=ABCMeta):
 
     @host.setter
     def host(self, new_value):
-        self._host = new_value.strip('/')
+        parsed_url = UrlParser.parse(new_value)
+        self.path = parsed_url.path
+        self._host = parsed_url.get_url_without_path()
+
 
     def get_raw_request(self) -> bytes:
         """
@@ -214,8 +216,9 @@ class BaseRequest(HttpProtocol, metaclass=ABCMeta):
         return f"<Request {self.method} {self.host}>"
 
     def __getattribute__(self, item):
-        self._raw_request = None  # Clear cache
+        self._raw_request = None
         return super().__getattribute__(item)
+
 
 
 class BaseResponse(HttpProtocol, metaclass=ABCMeta):
@@ -326,7 +329,6 @@ class BaseClient(metaclass=ABCMeta):
     def __init__(self,
                  headers: Union[dict[str, str], Headers, None] = None,
                  persistent_connections: bool = False,
-                 enable_encodings: bool = True,
                  redirect_count: int = REQUEST_REDIRECT_COUNT,
                  retry_count: int = REQUEST_RETRY_COUNT):
         headers = Headers(initial_headers=headers)
@@ -334,32 +336,13 @@ class BaseClient(metaclass=ABCMeta):
         RedirectMiddleWare.redirect_count = redirect_count
         RetryMiddleWare.retry_count = retry_count
 
+        self.redirect = redirect_count
+        self.retry = retry_count
         self.connection_mapper = defaultdict(list)
         self.middlewares = MiddleWare.build(default_middlewares)
         self.headers = headers
         self.transports = []
         self.persistent_connections = persistent_connections
-
-    @abstractmethod
-    async def _send_request(self,
-                            url: str,
-                            method: str,
-                            content: Union[str, bytearray, bytes] = '',
-                            path_parameters: Union[Iterable[Iterable[str]], None] = None,
-                            headers: Union[None, dict[str, str], Headers] = None,
-                            ) -> Response:
-        ...
-
-    @abstractmethod
-    async def send_request(self,
-                           request: Request, ) -> Response:
-        ...
-
-    @staticmethod
-    def get_avaliable_encodings():
-        return AcceptEncoding(
-            *((encoding, 1) for encoding in Encoding.all_encodings)
-        )
 
     async def _get_connection(self, splitted_url: Url):
         """
@@ -420,6 +403,14 @@ class BaseClient(metaclass=ABCMeta):
         """
         return self
 
+    def __str__(self):
+        return (
+            f'{self.headers}'
+            f'\n{self.persistent_connections=}'
+            f'\n{self.retry=} | {self.redirect=}'
+
+        )
+
     async def __aexit__(self, *args, **kwargs):
         """
         Closes using recourses
@@ -454,6 +445,69 @@ class Client(BaseClient):
     >>> resp = asyncio.run(main())
 
     """
+
+    async def send_request_directly(self,
+                                    request: Request):
+        splited_url = UrlParser.parse(request.host.strip('/') + request.path)
+        transport = await self._get_connection(splited_url)
+        coro = transport.send_http_request(request.get_raw_request())
+        raw_response, without_body_len = await wrap_errors(coro=coro)
+        resp = ResponseParser.body_len_parse(raw_response, without_body_len)
+        resp.request = request
+        return resp
+
+    async def _send_request_via_middleware(self,
+                                           request: Request):
+        response = await self.middlewares.process(request, client=self)
+        return response
+
+    async def _send_request(self,
+                            url: str,
+                            method: str,
+                            content: Union[str, bytearray, bytes] = '',
+                            path_parameters: Union[Iterable[Iterable[str]], None] = None,
+                            headers: Union[None, dict[str, str]] = None,
+                            ) -> Response:
+        """
+        Simulates a http request
+        :param url: Url where should be request send
+        :type url: str
+        :param headers: Http headers which should be used in this GET request
+        :type headers: Dict[str, str]
+        :param content: Http body part
+        :type content: str or bytearray or bytes
+        :param method: Http message method
+        :type method: str
+        :param path_parameters:
+        :type path_parameters: Iterable[BaseHeader] or None
+        :returns: Response object which represents returned by server response
+        :rtype: Response
+        """
+
+        headers = Headers(initial_headers=headers)
+
+        request = Request(
+            url=url,
+            method=method,
+            headers=self.headers | headers,
+            params=path_parameters,
+            content=content,
+        )
+        return await self._send_request_via_middleware(request)
+
+    async def send_request(self, request: Request) -> Response:
+        """
+        Send request by giving Request object directly
+        :param request: Request instance
+        :type request: Request
+
+        :returns: Response
+        :rtype Response:
+
+        """
+        return await self._send_request_via_middleware(
+            request=request,
+        )
 
     async def get(
             self,
@@ -560,164 +614,16 @@ class Client(BaseClient):
             path_parameters=path_parameters,
         )
 
-    async def send_request_directly(self,
-                                    request: Request):
-
-        splited_url = UrlParser.parse(request.host.strip('/') + request.path)
-        transport = await self._get_connection(splited_url)
-        coro = transport.send_http_request(request.get_raw_request())
-        raw_response, without_body_len = await wrap_errors(coro=coro)
-        resp = ResponseParser.body_len_parse(raw_response, without_body_len)
-        resp.request = request
-        return resp
-
-    async def _send_request_via_middleware(self,
-                                           request: Request):
-        response = await self.middlewares.process(request, client=self)
-        return response
-
-    async def _send_request(self,
-                            url: str,
-                            method: str,
-                            content: Union[str, bytearray, bytes] = '',
-                            path_parameters: Union[Iterable[Iterable[str]], None] = None,
-                            headers: Union[None, dict[str, str]] = None,
-                            ) -> Response:
-
-        """
-        Simulates a http request
-        :param url: Url where should be request send
-        :type url: str
-        :param headers: Http headers which should be used in this GET request
-        :type headers: Dict[str, str]
-        :param content: Http body part
-        :type content: str or bytearray or bytes
-        :param method: Http message method
-        :type method: str
-        :param path_parameters:
-        :type path_parameters: Iterable[BaseHeader] or None
-        :param timeout: The request timeout
-        :type timeout: int
-        :returns: Response object which represents returned by server response
-        :rtype: Response
-        """
-
-        headers = Headers(initial_headers=headers)
-
-        request = Request(
-            url=url,
-            method=method,
-            headers=self.headers | headers,
-            params=path_parameters,
-            content=content,
-        )
-        return await self._send_request_via_middleware(request)
-
-    async def request_redirect_wrapper(self,
-                                       *args: tuple[Any],
-                                       redirect: int,
-                                       **kwargs,
-                                       ) -> Response:
-        """
-        A wrapper method for send_request, also implements redirection if
-        3xx status code received
-        :param redirect: Maximum request sending counts
-        :type redirect: int
-        :return: Response object
-        :rtype: Response
-        """
-        request = kwargs.get('request')
-
-        redirect = max(1, redirect)  # minimum one request required
-
-        while redirect != 0:
-            redirect -= 1
-            if request:
-                result = await self.send_request_directly(request)
-            else:
-                result = await self._send_request(*args, **kwargs)
-
-            if (result.status // 100) == 3:
-
-                if not request:
-                    kwargs['url'] = result.headers['Location']
-                else:
-                    request.host = result.headers['Location']
-
-                if redirect < 1:
-                    logging.debug(result, 'last one')
-                    return result
-            else:
-                logging.debug(result)
-                return result
-            log.info(f'Redirecting request with status code {result.status}')
-
-    async def request_retry_wrapper(self,
-                                    *args: tuple[Any],
-                                    retry: int,
-                                    **kwargs
-                                    ) -> Response:
-        """
-        A wrapper method for request_redirect_wrapper, also implements retrying
-        for the requests if they were failed
-        :param retry: Maximum request sending count
-        :type retry: int
-        :return: Response object
-        :rtype: Response
-        """
-
-        retry = max(1, retry)  # minimum one request required
-
-        while retry != 0:
-            retry -= 1
-            try:
-                result = await self.request_redirect_wrapper(*args, **kwargs)
-                return result
-            except BaseException as e:
-                if retry < 1:
-                    raise e
-                log.info(f'Retrying request cause of {e}')
-
-    async def send_request(self,
-                           request: BaseRequest,
-                           timeout: int = 0,
-                           redirect: int = REQUEST_REDIRECT_COUNT,
-                           retry: int = REQUEST_RETRY_COUNT) -> Response:
-        """
-        Send request by giving Request object directly
-        :param request: Request instance
-        :type request: Request
-        :param timeout: Request timeout
-        :type timeout: int
-        :param redirect: Request maximum redirect count
-        :type redirect: int
-        :param retry: Request retry count
-        :type retry: int
-
-        :returns: Response
-        :rtype Response:
-
-        """
-        return await self.request_retry_wrapper(
-            retry=retry,
-            redirect=redirect,
-            request=request,
-            timeout=timeout,
-        )
-
 
 class StreamClient(BaseClient):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs, enable_encodings=False)
-
     async def _send_request(self,
                             url: str,
                             method: str,
                             content: Union[str, bytearray, bytes] = '',
                             path_parameters: Union[Iterable[Iterable[str]], None] = None,
                             headers: Union[None, dict[str, str]] = None,
-                            timeout: int = 0) -> AsyncIterable:
+                            ) -> AsyncIterable:
         headers = Headers(initial_headers=headers)
 
         request = Request(
@@ -743,7 +649,6 @@ class StreamClient(BaseClient):
                 content=content,
                 headers=headers,
                 path_parameters=path_parameters,
-                timeout=timeout,
         ):
             yield chunk
 
@@ -760,7 +665,6 @@ class StreamClient(BaseClient):
                 content=content,
                 headers=headers,
                 path_parameters=path_parameters,
-                timeout=timeout,
         ):
             yield chunk
 
@@ -777,7 +681,6 @@ class StreamClient(BaseClient):
                 content=content,
                 headers=headers,
                 path_parameters=path_parameters,
-                timeout=timeout,
         ):
             yield chunk
 
@@ -794,7 +697,6 @@ class StreamClient(BaseClient):
                 content=content,
                 headers=headers,
                 path_parameters=path_parameters,
-                timeout=timeout,
         ):
             yield chunk
 
@@ -811,7 +713,6 @@ class StreamClient(BaseClient):
                 content=content,
                 headers=headers,
                 path_parameters=path_parameters,
-                timeout=timeout,
         ):
             yield chunk
 
@@ -828,7 +729,6 @@ class StreamClient(BaseClient):
                 content=content,
                 headers=headers,
                 path_parameters=path_parameters,
-                timeout=timeout,
         ):
             yield chunk
 

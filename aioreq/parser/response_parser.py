@@ -44,7 +44,6 @@ class ResponseParser:
     regex_find_chunk = re.compile("^(?P<content_size>[0-9abcdefABCDEF]+)\r\n".encode())
     regex_end_chunk = re.compile(r'^0\r\n\r\n'.encode())
 
-
     @classmethod
     def parse_and_fill_headers(cls, binary_headers: bytes):
         headers = {}
@@ -69,36 +68,6 @@ class ResponseParser:
                     response.content = encoding.decompress(response.content)
 
     @classmethod
-    def parse(cls, response: bytes) -> 'Response':  # type: ignore
-        """
-        The main method for this class which parse response
-
-        Parsing the raw response object and returning object type of
-        Response which contains all becoming response data as his attributes
-        :param response: raw response text
-        :type response: bytes
-
-        ..: todo: Remove
-        """
-
-        from ..protocol.http import Response
-        match = cls.regex.search(response)
-        scheme_and_version, status, status_message, unparsed_headers, body = match.groups()  # type: ignore
-        headers = cls.parse_and_fill_headers(unparsed_headers)
-        status = int(status)
-        status_message = status_message.decode()
-
-        response = Response(
-            status=status,
-            status_message=status_message,
-            headers=headers,
-            content=body
-        )
-
-        # cls.decode_response_body(response)
-        return response
-
-    @classmethod
     def body_len_parse(cls, text: bytes, without_body_len: int):
         from ..protocol.http import Response
 
@@ -116,7 +85,6 @@ class ResponseParser:
             content=body
         )
 
-        # cls.decode_response_body(response)
         return response
 
     @classmethod
@@ -168,5 +136,3 @@ class ResponseParser:
         if match:
             assert match.start() == 0, f"Got unexpected {match.start=}"  # type: ignore
         return match is not None
-
-

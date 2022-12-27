@@ -1,5 +1,4 @@
 import zlib
-import base64
 import gzip as _gzip
 
 from enum import Enum
@@ -51,3 +50,9 @@ class Encodings(Enum):
 
     def decompress(self, text: bytes) -> bytes:
         return self.value.decompress(text)
+
+def get_avaliable_encodings():
+    from .headers import AcceptEncoding
+    return AcceptEncoding(
+        *((encoding, 1) for encoding in Encoding.all_encodings)
+    )
