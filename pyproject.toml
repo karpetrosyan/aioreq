@@ -12,6 +12,7 @@ license-files = { paths = ["LICENSE"]}
 dependencies = [
     "certifi",
     "dnspython",
+    "lark"
 ]
 classifiers = [
   "Development Status :: 2 - Pre-Alpha",
