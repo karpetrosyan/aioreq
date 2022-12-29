@@ -5,6 +5,7 @@
 ### Added
 
 * Middlewares support.
+* Basic authentication.
 
 ### Fixed
 
