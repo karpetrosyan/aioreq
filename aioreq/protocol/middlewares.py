@@ -2,16 +2,18 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Iterable, Union
 
-from .headers import TransferEncoding, ContentEncoding
+from .headers import TransferEncoding, ContentEncoding, AuthenticationWWW
 from .encodings import get_avaliable_encodings
 from ..settings import LOGGER_NAME
+from .auth import parse_auth_header
 
 log = logging.getLogger(LOGGER_NAME)
 
 default_middlewares = [
     'RetryMiddleWare',
     'RedirectMiddleWare',
-    'DecodeMiddleWare'
+    'DecodeMiddleWare',
+    'AuthenticationMiddleWare',
 ]
 
 
@@ -27,7 +29,7 @@ class MiddleWare(ABC):
     @staticmethod
     def build(middlewares_: Iterable[Union[str, type]]):
         result = RequestMiddleWare(next_middleware=None)
-        for middleware in middlewares_:
+        for middleware in reversed(middlewares_):
             if isinstance(middleware, str):
                 middleware = globals()[middleware]
             result = middleware(next_middleware=result)
@@ -114,3 +116,21 @@ class RetryMiddleWare(MiddleWare):
                 if retry_count == -1:
                     raise e
         return response
+
+
+class AuthenticationMiddleWare(MiddleWare):
+
+    async def process(self, request, client):
+
+        resp = await self.next_middleware.process(request, client)
+        if resp.status != 401:
+            return resp
+        if 'www-authenticate' not in resp.headers:
+            raise ValueError('401 status code received without `www-authenticate` header')
+        header_obj = AuthenticationWWW.parse(resp.headers['www-authenticate'])
+        for authentication_header in parse_auth_header(header_obj, request):
+            request.headers['authorization'] = authentication_header
+            resp = await self.next_middleware.process(request, client)
+            if resp.status != 401:
+                break
+        return resp
