@@ -164,6 +164,7 @@ class BaseRequest(HttpProtocol, metaclass=ABCMeta):
             method: str = 'GET',
             content: Union[str, bytearray, bytes] = '',
             params: Union[Iterable[Iterable[str]], None] = None,
+            auth: Union[tuple[str, str], None] = None
     ) -> None:
         """
         Request initialization method
@@ -176,7 +177,7 @@ class BaseRequest(HttpProtocol, metaclass=ABCMeta):
 
         self._host = splited_url.get_url_without_path()
         self.path = splited_url.path
-
+        self.auth = auth
         self.headers = Headers(headers)
 
         self.method = method
@@ -193,7 +194,6 @@ class BaseRequest(HttpProtocol, metaclass=ABCMeta):
         parsed_url = UrlParser.parse(new_value)
         self.path = parsed_url.path
         self._host = parsed_url.get_url_without_path()
-
 
     def get_raw_request(self) -> bytes:
         """
@@ -218,7 +218,6 @@ class BaseRequest(HttpProtocol, metaclass=ABCMeta):
     def __getattribute__(self, item):
         self._raw_request = None
         return super().__getattribute__(item)
-
 
 
 class BaseResponse(HttpProtocol, metaclass=ABCMeta):
@@ -330,16 +329,24 @@ class BaseClient(metaclass=ABCMeta):
                  headers: Union[dict[str, str], Headers, None] = None,
                  persistent_connections: bool = False,
                  redirect_count: int = REQUEST_REDIRECT_COUNT,
-                 retry_count: int = REQUEST_RETRY_COUNT):
+                 retry_count: int = REQUEST_RETRY_COUNT,
+                 auth: Union[tuple[str, str], None] = None,
+                 middlewares: Union[list[str], None] = None):
+
         headers = Headers(initial_headers=headers)
 
         RedirectMiddleWare.redirect_count = redirect_count
         RetryMiddleWare.retry_count = retry_count
 
+        if middlewares is None:
+            self.middlewares = MiddleWare.build(default_middlewares)
+        else:
+            self.middlewares = MiddleWare.build(middlewares)
+
         self.redirect = redirect_count
         self.retry = retry_count
+        self.auth = auth
         self.connection_mapper = defaultdict(list)
-        self.middlewares = MiddleWare.build(default_middlewares)
         self.headers = headers
         self.transports = []
         self.persistent_connections = persistent_connections
@@ -408,7 +415,6 @@ class BaseClient(metaclass=ABCMeta):
             f'{self.headers}'
             f'\n{self.persistent_connections=}'
             f'\n{self.retry=} | {self.redirect=}'
-
         )
 
     async def __aexit__(self, *args, **kwargs):
@@ -467,6 +473,7 @@ class Client(BaseClient):
                             content: Union[str, bytearray, bytes] = '',
                             path_parameters: Union[Iterable[Iterable[str]], None] = None,
                             headers: Union[None, dict[str, str]] = None,
+                            auth: Union[tuple[str, str], None] = None
                             ) -> Response:
         """
         Simulates a http request
@@ -492,6 +499,7 @@ class Client(BaseClient):
             headers=self.headers | headers,
             params=path_parameters,
             content=content,
+            auth=auth
         )
         return await self._send_request_via_middleware(request)
 
@@ -515,6 +523,7 @@ class Client(BaseClient):
             content: Union[str, bytearray, bytes] = '',
             headers: Union[dict[str, str], None] = None,
             path_parameters: Union[Iterable[Iterable[str]], None] = None,
+            auth: Union[tuple[str, str], None] = None
     ) -> Response:
         return await self._send_request(
             url=url,
@@ -522,6 +531,7 @@ class Client(BaseClient):
             content=content,
             headers=headers,
             path_parameters=path_parameters,
+            auth=auth
         )
 
     async def post(
@@ -530,6 +540,7 @@ class Client(BaseClient):
             content: Union[str, bytearray, bytes] = '',
             headers: Union[dict[str, str], None] = None,
             path_parameters: Union[Iterable[Iterable[str]], None] = None,
+            auth: Union[tuple[str, str], None] = None
     ) -> Response:
         return await self._send_request(
             url=url,
@@ -537,6 +548,7 @@ class Client(BaseClient):
             content=content,
             headers=headers,
             path_parameters=path_parameters,
+            auth=auth
         )
 
     async def put(
@@ -545,6 +557,7 @@ class Client(BaseClient):
             content: Union[str, bytearray, bytes] = '',
             headers: Union[dict[str, str], None] = None,
             path_parameters: Union[Iterable[Iterable[str]], None] = None,
+            auth: Union[tuple[str, str], None] = None
     ) -> Response:
         return await self._send_request(
             url=url,
@@ -552,6 +565,7 @@ class Client(BaseClient):
             content=content,
             headers=headers,
             path_parameters=path_parameters,
+            auth=auth
         )
 
     async def delete(
@@ -560,6 +574,7 @@ class Client(BaseClient):
             content: Union[str, bytearray, bytes] = '',
             headers: Union[dict[str, str], None] = None,
             path_parameters: Union[Iterable[Iterable[str]], None] = None,
+            auth: Union[tuple[str, str], None] = None
     ) -> Response:
         return await self._send_request(
             url=url,
@@ -567,6 +582,7 @@ class Client(BaseClient):
             content=content,
             headers=headers,
             path_parameters=path_parameters,
+            auth=auth,
         )
 
     async def options(
@@ -575,6 +591,7 @@ class Client(BaseClient):
             content: Union[str, bytearray, bytes] = '',
             headers: Union[dict[str, str], None] = None,
             path_parameters: Union[Iterable[Iterable[str]], None] = None,
+            auth: Union[tuple[str, str], None] = None
     ) -> Response:
         return await self._send_request(
             url=url,
@@ -582,6 +599,7 @@ class Client(BaseClient):
             content=content,
             headers=headers,
             path_parameters=path_parameters,
+            auth=auth
         )
 
     async def head(
@@ -590,6 +608,7 @@ class Client(BaseClient):
             content: Union[str, bytearray, bytes] = '',
             headers: Union[dict[str, str], None] = None,
             path_parameters: Union[Iterable[Iterable[str]], None] = None,
+            auth: Union[tuple[str, str], None] = None
     ) -> Response:
         return await self._send_request(
             url=url,
@@ -597,6 +616,7 @@ class Client(BaseClient):
             content=content,
             headers=headers,
             path_parameters=path_parameters,
+            auth=auth
         )
 
     async def patch(
@@ -605,6 +625,7 @@ class Client(BaseClient):
             content: Union[str, bytearray, bytes] = '',
             headers: Union[dict[str, str], None] = None,
             path_parameters: Union[Iterable[Iterable[str]], None] = None,
+            auth: Union[tuple[str, str], None] = None
     ) -> Response:
         return await self._send_request(
             url=url,
@@ -612,6 +633,7 @@ class Client(BaseClient):
             content=content,
             headers=headers,
             path_parameters=path_parameters,
+            auth=auth
         )
 
 
@@ -642,7 +664,7 @@ class StreamClient(BaseClient):
             content: Union[str, bytearray, bytes] = '',
             headers: Union[None, dict[str, str]] = None,
             path_parameters: Union[Iterable[Iterable[str]], None] = None,
-            timeout: int = 0):
+    ):
         async for chunk in self._send_request(
                 url=url,
                 method="POST",
@@ -657,8 +679,7 @@ class StreamClient(BaseClient):
             url: str,
             content: Union[str, bytearray, bytes] = '',
             headers: Union[None, dict[str, str]] = None,
-            path_parameters: Union[Iterable[Iterable[str]], None] = None,
-            timeout: int = 0):
+            path_parameters: Union[Iterable[Iterable[str]], None] = None):
         async for chunk in self._send_request(
                 url=url,
                 method="GET",
@@ -673,8 +694,7 @@ class StreamClient(BaseClient):
             url: str,
             content: Union[str, bytearray, bytes] = '',
             headers: Union[None, dict[str, str]] = None,
-            path_parameters: Union[Iterable[Iterable[str]], None] = None,
-            timeout: int = 0):
+            path_parameters: Union[Iterable[Iterable[str]], None] = None):
         async for chunk in self._send_request(
                 url=url,
                 method="DELETE",
@@ -689,8 +709,7 @@ class StreamClient(BaseClient):
             url: str,
             content: Union[str, bytearray, bytes] = '',
             headers: Union[None, dict[str, str]] = None,
-            path_parameters: Union[Iterable[Iterable[str]], None] = None,
-            timeout: int = 0):
+            path_parameters: Union[Iterable[Iterable[str]], None] = None, ):
         async for chunk in self._send_request(
                 url=url,
                 method="PUT",
@@ -705,8 +724,7 @@ class StreamClient(BaseClient):
             url: str,
             content: Union[str, bytearray, bytes] = '',
             headers: Union[None, dict[str, str]] = None,
-            path_parameters: Union[Iterable[Iterable[str]], None] = None,
-            timeout: int = 0):
+            path_parameters: Union[Iterable[Iterable[str]], None] = None, ):
         async for chunk in self._send_request(
                 url=url,
                 method="OPTIONS",
@@ -721,8 +739,7 @@ class StreamClient(BaseClient):
             url: str,
             content: Union[str, bytearray, bytes] = '',
             headers: Union[None, dict[str, str]] = None,
-            path_parameters: Union[Iterable[Iterable[str]], None] = None,
-            timeout: int = 0):
+            path_parameters: Union[Iterable[Iterable[str]], None] = None):
         async for chunk in self._send_request(
                 url=url,
                 method="PATCH",
