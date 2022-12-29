@@ -3,6 +3,7 @@ import asyncio
 import aioreq
 import subprocess
 import pytest_asyncio
+from aioreq.protocol.middlewares import default_middlewares
 
 SCOPE_SESSION = pytest_asyncio.fixture(scope='session')
 SCOPE_FUNCTION = pytest_asyncio.fixture(scope='function')
@@ -78,3 +79,5 @@ session = SCOPE_SESSION(temp_function())
 one_time_session_cached = SCOPE_SESSION(temp_function(persistent_connections=True))
 one_time_session_stream = SCOPE_SESSION(temp_function(persistent_connections=False, stream=True))
 one_time_session_redirect_0 = SCOPE_SESSION(temp_function(kwargs=dict(redirect_count=0, retry_count=0)))
+one_time_session_without_authorization = SCOPE_SESSION(temp_function(kwargs=dict(
+    middlewares=[middleware for middleware in default_middlewares if middleware != 'AuthenticationMiddleWare'])))

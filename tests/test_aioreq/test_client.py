@@ -131,3 +131,13 @@ async def test_root_with_stream(one_time_session_stream,
         for byte in chunk:
             t2.append(byte)
     assert t2 == bytearray(b'"Hello World"')
+
+
+@pytest.mark.asyncio
+async def test_basic_authentication(one_time_session,
+                                    one_time_session_without_authorization):
+    woauth_resp = one_time_session_without_authorization.get(
+        'http://httpbin.org/basic-auth/foo/bar', auth=('foo', 'bar'))
+    resp = one_time_session.get('http://httpbin.org/basic-auth/foo/bar', auth=('foo', 'bar'))
+    woauth_resp, resp = await asyncio.gather(woauth_resp, resp)
+    assert resp.status == 200 and woauth_resp.status == 401

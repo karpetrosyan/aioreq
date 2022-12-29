@@ -1,11 +1,10 @@
 import asyncio
-import base64
 import zlib
 
 from fastapi import FastAPI
+from fastapi import Response
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import StreamingResponse
-from fastapi import Response
 
 app = FastAPI()
 app.add_middleware(GZipMiddleware, minimum_size=1000)
