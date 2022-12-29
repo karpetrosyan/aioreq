@@ -1,13 +1,12 @@
 """
 Contains Header classes to simplify header sending
 """
-
 from abc import ABC
 from abc import abstractmethod
-from collections.abc import Collection
 from enum import Enum
-
 from typing import Tuple
+
+from lark import Lark
 
 from .encodings import Encoding
 from .encodings import Encodings
@@ -156,3 +155,40 @@ class TransferEncoding(ServerEncoding): ...
 
 
 class ContentEncoding(ServerEncoding): ...
+
+
+class AuthenticationWWW(ServerHeader):
+
+    def __init__(self, auth_schemes: dict[str, dict] = {}):
+        self.auth_schemes = auth_schemes
+
+    @classmethod
+    def parse(cls, value: str):
+        self = cls()
+        p = Lark(r"""
+            challenge: auth_scheme params
+            !auth_scheme: "Basic" | "Digest"
+            params: (param COL)* param?
+            param: key EQ value
+            key: /[^=\s]+/
+            value: /\"[^\"]+\"/
+            EQ: "="
+            COL: ","
+
+
+            %ignore /\s/
+            """, parser='lalr', start='challenge')
+
+        parsed = p.parse(value)
+
+        params = {}
+        scheme = parsed.children[0].children[0].value
+
+        for param in parsed.children[1].children:
+            if type(param) != type(parsed):
+                continue
+            key = param.children[0].children[0].value
+            value = param.children[2].children[0].value
+            params[key] = value
+        self.auth_schemes[scheme] = params
+        return self
