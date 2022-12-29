@@ -2,7 +2,6 @@ import json as _json
 
 from abc import abstractmethod
 from typing import Iterable
-from ..utils import debug
 
 
 class BaseRequestParser:
@@ -29,26 +28,23 @@ class RequestParser(BaseRequestParser):
         :rtype: str
         """
 
+        if isinstance(request.content, bytearray) or isinstance(request.content, bytes):
+            request.content = request.content.decode()
+
         if request.path_parameters:
-            request.path += '?' + \
-                            cls.sum_path_parameters(request.path_parameters)
+            request.path += '?' + cls.sum_path_parameters(request.path_parameters)
 
         if request.content:
             request.headers['Content-Length'] = len(request.content)
 
         message = (
                 '\r\n'.join(
-                    (
-                        f'{request.method} {request.path} {request.scheme_and_version}',
-                        f'host:  {request.host.split("://", 1)[1]}',
-                        *request.headers.get_parsed(),
-                    )
+                    (f'{request.method} {request.path} {request.scheme_and_version}',
+                     f'host:  {request.host.split("://", 1)[1]}',
+                     *request.headers.get_parsed())
                 ) + '\r\n\r\n')
 
-        if type(request.content) in (bytes, bytearray):
-            request.content = request.content.decode()
         message += request.content or ''
-
         return message
 
 
@@ -63,12 +59,11 @@ class JsonRequestParser(BaseRequestParser):
         :rtype: str
         """
 
-        if type(request.content) in (bytes, bytearray):
+        if isinstance(request.content, bytearray) or isinstance(request.content, bytes):
             request.content = request.content.decode()
 
         if request.path_parameters:
-            request.path += '?' + \
-                            cls.sum_path_parameters(request.path_parameters)
+            request.path += '?' + cls.sum_path_parameters(request.path_parameters)
 
         if request.content:
             request.content = _json.dumps(request.content)[1:-1]

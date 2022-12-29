@@ -46,6 +46,8 @@ class ResponseParser:
 
     @classmethod
     def parse_and_fill_headers(cls, binary_headers: bytes):
+        from .. import Headers
+        headers = Headers()
         headers = {}
         string_headers = binary_headers.decode()
 
