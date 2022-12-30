@@ -450,7 +450,10 @@ resources by reusing connections rather than creating new ones.</p>
 </code></pre></div>
 <p>In order to improve request performance, 'Aioreq' instructs the server to encode HTTP messages if possible.</p>
 <p>This feature is very useful, but you can disable it for specific 'Client' objects if you want.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">client</span> <span class="o">=</span> <span class="n">aioreq</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">enable_encodings</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">aioreq</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">defaults</span> <span class="o">=</span> <span class="n">aioreq</span><span class="o">.</span><span class="n">middlewares</span><span class="o">.</span><span class="n">default_middlewares</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">custom_middlewares</span> <span class="o">=</span> <span class="p">[</span><span class="n">md</span> <span class="k">for</span> <span class="n">md</span> <span class="ow">in</span> <span class="n">defaults</span> <span class="k">if</span> <span class="n">md</span> <span class="o">!=</span> <span class="s1">&#39;DecodeMiddleWare&#39;</span><span class="p">]</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">client</span> <span class="o">=</span> <span class="n">aioreq</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">middlewares</span><span class="o">=</span><span class="n">custom_middlewares</span><span class="p">)</span>
 </code></pre></div>
 
 

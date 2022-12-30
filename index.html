@@ -68,7 +68,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#install" class="md-skip">
+        <a href="#documentation" class="md-skip">
           Skip to content
         </a>
       
@@ -265,6 +265,13 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#documentation" class="md-nav__link">
+    Documentation
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#install" class="md-nav__link">
     Install
   </a>
@@ -296,6 +303,33 @@
           <li class="md-nav__item">
   <a href="#streams" class="md-nav__link">
     Streams
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#middlewares" class="md-nav__link">
+    Middlewares
+  </a>
+  
+    <nav class="md-nav" aria-label="Middlewares">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-first-steps-with-middleware" class="md-nav__link">
+    The first steps with middleware
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#create-your-own-middlewares" class="md-nav__link">
+    Create your own middlewares!
   </a>
   
 </li>
@@ -349,6 +383,20 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#keylog" class="md-nav__link">
+    Keylog
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#authentication" class="md-nav__link">
+    Authentication
+  </a>
   
 </li>
       
@@ -422,6 +470,13 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#documentation" class="md-nav__link">
+    Documentation
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#install" class="md-nav__link">
     Install
   </a>
@@ -453,6 +508,33 @@
           <li class="md-nav__item">
   <a href="#streams" class="md-nav__link">
     Streams
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#middlewares" class="md-nav__link">
+    Middlewares
+  </a>
+  
+    <nav class="md-nav" aria-label="Middlewares">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-first-steps-with-middleware" class="md-nav__link">
+    The first steps with middleware
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#create-your-own-middlewares" class="md-nav__link">
+    Create your own middlewares!
   </a>
   
 </li>
@@ -510,6 +592,20 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#keylog" class="md-nav__link">
+    Keylog
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#authentication" class="md-nav__link">
+    Authentication
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#supported-features" class="md-nav__link">
     Supported Features
   </a>
@@ -540,6 +636,8 @@
 
 <p><strong>Aioreq</strong> is a Python low-level asynchronous HTTP client library. It is built on top of TCP sockets and implements the HTTP protocol entirely on his own.</p>
 <hr />
+<h2 id="documentation">Documentation</h2>
+<p><a href="https://karosis88.github.io/aioreq/">Click here</a></p>
 <h2 id="install">Install</h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>$ pip install aioreq
 </code></pre></div>
@@ -577,12 +675,13 @@
 </code></pre></div></p>
 <h3 id="more-advanced-usage">More advanced usage</h3>
 <hr />
-<p>This code will asynchronously send 100 get requests to <a href="https://www.google.com"><code>google.com</code></a>, which is much faster than synchronous libraries.</p>
+<p>This code will asynchronously send 100 get requests to <a href="https://www.google.com"><code>google.com</code></a>, which is much faster than synchronous libraries.
+Also, the client persistent connection mechanism was disabled, so that a connection would be opened for each request.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">asyncio</span>
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">aioreq</span>
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="o">&gt;&gt;&gt;</span>
 <a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="o">&gt;&gt;&gt;</span> <span class="k">async</span> <span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="o">...</span>     <span class="k">async</span> <span class="k">with</span> <span class="n">aioreq</span><span class="o">.</span><span class="n">http</span><span class="o">.</span><span class="n">Client</span><span class="p">()</span> <span class="k">as</span> <span class="n">cl</span><span class="p">:</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="o">...</span>     <span class="k">async</span> <span class="k">with</span> <span class="n">aioreq</span><span class="o">.</span><span class="n">http</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">persistent_connections</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="k">as</span> <span class="n">cl</span><span class="p">:</span>
 <a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="o">...</span>         <span class="n">tasks</span> <span class="o">=</span> <span class="p">[]</span>
 <a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="o">...</span>         <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
 <a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="o">...</span>             <span class="n">tasks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
@@ -607,23 +706,71 @@
 <a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="o">...</span>                        <span class="o">...</span>
 <a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
 </code></pre></div></p>
+<h2 id="middlewares">Middlewares</h2>
+<p><strong>Aioreq</strong> now supports 'middleware' power.</p>
+<h3 id="the-first-steps-with-middleware">The first steps with middleware</h3>
+<p>Aioreq provides default middlewares to each client.
+We can see that middlewares by importing 'default_middlewares'  variable.
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">aioreq</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">aioreq</span><span class="o">.</span><span class="n">middlewares</span><span class="o">.</span><span class="n">default_middlewares</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="p">[</span><span class="s1">&#39;RetryMiddleWare&#39;</span><span class="p">,</span> <span class="s1">&#39;RedirectMiddleWare&#39;</span><span class="p">,</span> <span class="s1">&#39;DecodeMiddleWare&#39;</span><span class="p">,</span> <span class="s1">&#39;AuthenticationMiddleWare&#39;</span><span class="p">]</span>
+</code></pre></div>
+The first item on this list represents the first middleware that should handle our request (i.e. the closest middleware to our client), while the last index represents the closest middleware to the server.</p>
+<p>To override the default middlewares, we can pass our middlewares to the Client.
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">client</span> <span class="o">=</span> <span class="n">aioreq</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">middlewares</span><span class="o">=</span><span class="n">aioreq</span><span class="o">.</span><span class="n">middlewares</span><span class="o">.</span><span class="n">default_middlewares</span><span class="p">[</span><span class="mi">2</span><span class="p">:])</span>
+</code></pre></div></p>
+<p>This client will no longer redirect or retry responses.</p>
+<p>Also, because aioreq stores middlewares in Client objects as linked lists, we can simply change the head of that linked list to skip the first middleware.
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">client</span> <span class="o">=</span> <span class="n">aioreq</span><span class="o">.</span><span class="n">Client</span><span class="p">()</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">client</span><span class="o">.</span><span class="n">middlewares</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="s1">&#39;RetryMiddleWare&#39;</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="o">&gt;&gt;&gt;</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">client</span><span class="o">.</span><span class="n">middlewares</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">middlewares</span><span class="o">.</span><span class="n">next_middleware</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">client</span><span class="o">.</span><span class="n">middlewares</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="s1">&#39;RedirectMiddleWare&#39;</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="o">&gt;&gt;&gt;</span> 
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">client</span><span class="o">.</span><span class="n">middlewares</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">middlewares</span><span class="o">.</span><span class="n">next_middleware</span>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">client</span><span class="o">.</span><span class="n">middlewares</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="s1">&#39;DecodeMiddleWare&#39;</span>
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="o">&gt;&gt;&gt;</span> <span class="c1"># It&#39;s like &#39;list = list.next.next&#39;,</span>
+</code></pre></div></p>
+<p>or 
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">client</span> <span class="o">=</span> <span class="n">aioreq</span><span class="o">.</span><span class="n">Client</span><span class="p">()</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">client</span><span class="o">.</span><span class="n">middlewares</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">middlewares</span><span class="o">.</span><span class="n">next_middleware</span><span class="o">.</span><span class="n">next_middleware</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="o">&gt;&gt;&gt;</span> <span class="c1"># alternative for client = aioreq.Client(middlewares=aioreq.middlewares.default_middlewares[2:])</span>
+</code></pre></div></p>
+<h3 id="create-your-own-middlewares">Create your own middlewares!</h3>
+<p>All 'aioreq' middlewares must be subclasses of the class 'middlewares.MiddleWare'</p>
+<p>MiddleWare below would add 'test-md' header if request domain is 'www.example.com'
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">aioreq</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="o">&gt;&gt;&gt;</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="o">&gt;&gt;&gt;</span> <span class="k">class</span> <span class="nc">CustomMiddleWare</span><span class="p">(</span><span class="n">aioreq</span><span class="o">.</span><span class="n">middlewares</span><span class="o">.</span><span class="n">MiddleWare</span><span class="p">):</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="o">...</span>     <span class="k">async</span> <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">client</span><span class="p">):</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="o">...</span>         <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">host</span> <span class="o">==</span> <span class="s1">&#39;www.example.com&#39;</span><span class="p">:</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="o">...</span>             <span class="n">request</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s1">&#39;test_md&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;test&#39;</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="o">...</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">client</span> <span class="o">=</span> <span class="n">aioreq</span><span class="o">.</span><span class="n">Client</span><span class="p">()</span>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">client</span><span class="o">.</span><span class="n">middlewares</span> <span class="o">=</span> <span class="n">CustomMiddleWare</span><span class="p">(</span><span class="n">next_middleware</span><span class="o">=</span><span class="n">client</span><span class="o">.</span><span class="n">middlewares</span><span class="p">)</span>
+</code></pre></div>
+Our CustomMiddleWare will now be the first middleware (i.e. closest to the client). Because 'aioreq' middlewares are stored as linked lists, this pattern works (i.e. same as linked list insert method).</p>
+<p>Alternatively, we can alter the list of middlewares that the client receives.
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">client</span> <span class="o">=</span> <span class="n">aioreq</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">middlewares</span> <span class="o">=</span> <span class="p">[</span><span class="n">CustomMiddleWare</span><span class="p">]</span> <span class="o">+</span> <span class="n">aioreq</span><span class="o">.</span><span class="n">middlewares</span><span class="o">.</span><span class="n">default_middlewares</span><span class="p">)</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">client</span><span class="o">.</span><span class="n">middlewares</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="s1">&#39;CustomMiddleWare&#39;</span>
+</code></pre></div></p>
 <h2 id="benchmarks">Benchmarks</h2>
 <p><strong>Aioreq</strong> is a very fast library, and we compared it to other Python libraries to demonstrate its speed.</p>
-<p>I used these libraries to compare speed.</p>
-<ul>
-<li><a href="https://github.com/encode/httpx">httpx</a></li>
-<li><a href="https://github.com/psf/requests">requests</a></li>
-</ul>
+<p>I used <a href="https://github.com/encode/httpx">httpx</a> to compare speed.</p>
 <hr />
 <h3 id="benchmark-run">Benchmark run</h3>
 <p>First, clone aioreq <a href="https://github.com/karosis88/aioreq">repository</a>.</p>
 <p>Then...</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>$ <span class="nb">cd</span> aioreq
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>$ python -m venv venv
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>$ <span class="nb">source</span> ./venv/bin/activate
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>$ pip install <span class="s1">&#39;.[benchmarks]&#39;</span>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>$ <span class="nb">cd</span> benchmarks
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>$ python run_tests_functions.py
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>$ <span class="nb">cd</span> aioreq
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>$ python -m venv venv
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>$ <span class="nb">source</span> ./venv/bin/activate
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>$ pip install <span class="s1">&#39;.[benchmarks]&#39;</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>$ <span class="nb">cd</span> benchmarks
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>$ python run_tests_functions.py
 </code></pre></div>
 <hr />
 <h3 id="benchmark-results">Benchmark results</h3>
@@ -631,58 +778,84 @@
 <br/></p>
 <p>Benchmark settings.</p>
 <ul>
-<li><strong>Url</strong> - https://www.github.com</li>
-<li><strong>Requests count</strong> - 200 for async and 5 for sync libs</li>
+<li><strong>Url</strong> - http://www.google.com</li>
+<li><strong>Requests count</strong> - 200</li>
 </ul>
 <h4 id="with-content-length">With <code>Content-Length</code></h4>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>$ <span class="nb">cd</span> becnhmarks
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>$ python run_tests_functions.py
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="o">========================</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>Benchmark settings
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>        Async lib <span class="nb">test</span> requests count : <span class="m">200</span>
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>        Sync lib <span class="nb">test</span> requests count  : <span class="nv">5</span>
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="o">=======================</span>
-<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>Function <span class="nb">test</span> <span class="k">for</span> aioreq completed. Total time: <span class="m">1</span>.2442591340004583
-<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>Received statuses
-<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>        <span class="o">{</span><span class="m">301</span>: <span class="m">200</span><span class="o">}</span>
-<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>Function <span class="nb">test</span> <span class="k">for</span> requests completed. Total time: <span class="m">1</span>.6835168350007734
-<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>Received statuses
-<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>        <span class="o">{</span><span class="m">200</span>: <span class="m">5</span><span class="o">}</span>
-<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>Function <span class="nb">test</span> <span class="k">for</span> httpx completed. Total time: <span class="m">1</span>.691718664000291
-<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>Received statuses
-<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>        <span class="o">{</span><span class="m">301</span>: <span class="m">200</span><span class="o">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>$ <span class="nb">cd</span> becnhmarks
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>$ ./run_tests
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>Tests with module loading
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>---------------------------
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>aioreq benchmark
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>real    0m1.893s
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>user    0m0.777s
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>sys     0m0.063s
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>---------------------------
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>httpx benchmark
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>real    0m2.448s
+<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>user    0m0.840s
+<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a>sys     0m0.151s
 </code></pre></div>
 <h4 id="with-transfer-encoding-chunked">With <code>Transfer-Encoding: Chunked</code></h4>
-<p>This is the <strong>average</strong> execution time of each library for <strong>100 asynchronous requests</strong> where responses was received with <strong>chunked</strong> transfer encoding.
+<p>This is the <strong>average</strong> execution time of each library for <strong>200 asynchronous requests</strong> where responses was received with <strong>chunked</strong> transfer encoding.
 <br/></p>
 <p>Benchmark settings.</p>
 <ul>
 <li><strong>Url</strong> - https://www.youtube.com</li>
-<li><strong>Requests count</strong> - 100 for async and 5 for sync libs</li>
+<li><strong>Requests count</strong> - 200</li>
 </ul>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>$ <span class="nb">cd</span> benchmarks
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>$ python run_tests_functions.py
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="o">========================</span>
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>Benchmark settings
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>        Async lib <span class="nb">test</span> requests count : <span class="m">100</span>
-<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>        Sync lib <span class="nb">test</span> requests count  : <span class="nv">5</span>
-<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="o">=======================</span>
-<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>Function <span class="nb">test</span> <span class="k">for</span> aioreq completed. Total time: <span class="m">3</span>.837283965000097
-<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>Received statuses
-<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>        <span class="o">{</span><span class="m">200</span>: <span class="m">100</span><span class="o">}</span>
-<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>Function <span class="nb">test</span> <span class="k">for</span> requests completed. Total time: <span class="m">6</span>.098562907998712
-<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>Received statuses
-<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>        <span class="o">{</span><span class="m">200</span>: <span class="m">5</span><span class="o">}</span>
-<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>Function <span class="nb">test</span> <span class="k">for</span> httpx completed. Total time: <span class="m">6</span>.467480723000335
-<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>Received statuses
-<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>        <span class="o">{</span><span class="m">200</span>: <span class="m">100</span><span class="o">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>$ <span class="nb">cd</span> benchmarks
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>$ ./run_tests
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>Tests with module loading
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>---------------------------
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>aioreq benchmark
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>real    0m2.444s
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>user    0m1.090s
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>sys     0m0.089s
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>---------------------------
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>httpx benchmark
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>real    0m2.990s
+<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>user    0m1.254s
+<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>sys     0m0.127s
 </code></pre></div>
 <p>As you can see, the synchronous code lags far behind when we make many requests at the same time.<br /></p>
+<h2 id="keylog">Keylog</h2>
+<p>If the <strong>SSLKEYLOGFILE</strong> environment variable is set, Aioreq will write keylogs to it.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>$ <span class="nb">export</span> <span class="nv">SSLKEYLOGFILE</span><span class="o">=</span>logs
+</code></pre></div>
+<p>Then just run python script.</p>
+<p><div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>$ python aioreq_app.py
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>$ ls -l
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>total <span class="m">8</span>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>-rw-r--r-- <span class="m">1</span> user user  <span class="m">94</span> Dec  <span class="m">5</span> <span class="m">17</span>:19 aioreq_app.py
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>-rw-r--r-- <span class="m">1</span> user user <span class="m">406</span> Dec  <span class="m">5</span> <span class="m">17</span>:19 logs
+</code></pre></div>
+Now, the 'logs' file contains keylogs that can be used to decrypt your TLS/SSL traffic with a tool such as 'wireshark'.</p>
+<h2 id="authentication">Authentication</h2>
+<p>If the auth parameter is included in the request, Aioreq will handle authentication.
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">aioreq</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">asyncio</span>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="o">&gt;&gt;&gt;</span> <span class="k">async</span> <span class="k">def</span> <span class="nf">send_req</span><span class="p">():</span>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="o">...</span>     <span class="k">async</span> <span class="k">with</span> <span class="n">aioreq</span><span class="o">.</span><span class="n">Client</span><span class="p">()</span> <span class="k">as</span> <span class="n">cl</span><span class="p">:</span>
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="o">...</span>         <span class="k">return</span> <span class="k">await</span> <span class="n">cl</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;http://httpbin.org/basic-auth/foo/bar&#39;</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;foo&#39;</span><span class="p">,</span> <span class="s1">&#39;bar&#39;</span><span class="p">))</span>
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">resp</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">send_req</span><span class="p">())</span>
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">resp</span><span class="o">.</span><span class="n">status</span>
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a><span class="mi">200</span>
+</code></pre></div>
+Auth should be a tuple with two elements: password and login.</p>
+<p>Authentication is enabled by 'AuthenticationMiddleWare,' so exercise caution when managing middlewares manually.</p>
 <h2 id="supported-features">Supported Features</h2>
 <p><strong>Aioreq</strong> support basic features to work with <strong>HTTP/1.1</strong>.<br />More functionality will be avaliable in future realeases.<br />
 This is the latest version features.</p>
 <ul>
-<li>Keep-Alive (Persistent Connections)</li>
+<li><a href="#more-advanced-usage">Keep-Alive (Persistent Connections)</a></li>
+<li><a href="#middlewares">Middlewares</a></li>
+<li><a href="#keylog">Keylogs</a></li>
+<li><a href="#authentication">Authentication</a></li>
 <li>Automatic accepting and decoding responses. Using <code>Accept-Encoding</code> header</li>
 <li>HTTPS support, TLS/SSL Verification using <a href="https://github.com/certifi/python-certifi">certifi</a> library</li>
 <li>Request Timeouts</li>
