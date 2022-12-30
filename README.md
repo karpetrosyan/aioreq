@@ -55,13 +55,14 @@ Alternatively, the best practice is to use a **Context manager**.
 ---
 
 This code will asynchronously send 100 get requests to [`google.com`](https://www.google.com), which is much faster than synchronous libraries.
+Also, the client persistent connection mechanism was disabled, so that a connection would be opened for each request.
 
 ``` python
 >>> import asyncio
 >>> import aioreq
 >>>
 >>> async def main():
-...     async with aioreq.http.Client() as cl:
+...     async with aioreq.http.Client(persistent_connections=False) as cl:
 ...         tasks = []
 ...         for j in range(100):
 ...             tasks.append(
@@ -92,16 +93,91 @@ There is some fundamental Stream usage.
 
 ```
 
+## Middlewares
+**Aioreq** now supports 'middleware' power.
+
+### The first steps with middleware
+
+Aioreq provides default middlewares to each client.
+We can see that middlewares by importing 'default_middlewares'  variable.
+``` py
+>>> import aioreq
+>>> aioreq.middlewares.default_middlewares
+['RetryMiddleWare', 'RedirectMiddleWare', 'DecodeMiddleWare', 'AuthenticationMiddleWare']
+
+```
+The first item on this list represents the first middleware that should handle our request (i.e. the closest middleware to our client), while the last index represents the closest middleware to the server.
+
+
+To override the default middlewares, we can pass our middlewares to the Client.
+``` py
+>>> client = aioreq.Client(middlewares=aioreq.middlewares.default_middlewares[2:])
+
+```
+
+This client will no longer redirect or retry responses.
+
+Also, because aioreq stores middlewares in Client objects as linked lists, we can simply change the head of that linked list to skip the first middleware.
+``` py
+>>> client = aioreq.Client()
+>>> client.middlewares.__class__.__name__
+'RetryMiddleWare'
+>>>
+>>> client.middlewares = client.middlewares.next_middleware
+>>> client.middlewares.__class__.__name__
+'RedirectMiddleWare'
+>>> 
+>>> client.middlewares = client.middlewares.next_middleware
+>>> client.middlewares.__class__.__name__
+'DecodeMiddleWare'
+>>> # It's like 'list = list.next.next',
+
+```
+
+or 
+``` py
+>>> client = aioreq.Client()
+>>> client.middlewares = client.middlewares.next_middleware.next_middleware
+>>> # alternative for client = aioreq.Client(middlewares=aioreq.middlewares.default_middlewares[2:])
+
+```
+
+### Create your own middlewares!
+
+All 'aioreq' middlewares must be subclasses of the class 'middlewares.MiddleWare'
+
+MiddleWare below would add 'test-md' header if request domain is 'www.example.com'
+``` py
+>>> import aioreq
+>>>
+>>> class CustomMiddleWare(aioreq.middlewares.MiddleWare):
+...     async def process(self, request, client):
+...         if request.host == 'www.example.com':
+...             request.headers['test_md'] = 'test'
+...
+>>> client = aioreq.Client()
+>>> client.middlewares = CustomMiddleWare(next_middleware=client.middlewares)
+
+```
+Our CustomMiddleWare will now be the first middleware (i.e. closest to the client). Because 'aioreq' middlewares are stored as linked lists, this pattern works (i.e. same as linked list insert method).
+
+Alternatively, we can alter the list of middlewares that the client receives.
+``` py
+>>> client = aioreq.Client(middlewares = [CustomMiddleWare] + aioreq.middlewares.default_middlewares)
+>>> client.middlewares.__class__.__name__
+'CustomMiddleWare'
+
+```
+
+
 ## Benchmarks
 **Aioreq** is a very fast library, and we compared it to other Python libraries to demonstrate its speed.
 
 
 
 
-I used these libraries to compare speed.
+I used [httpx](https://github.com/encode/httpx) to compare speed.
 
-* [httpx](https://github.com/encode/httpx)
-* [requests](https://github.com/psf/requests)
 ---
 ### Benchmark run
 
@@ -128,55 +204,52 @@ This is the **average** execution time of each library for **200 asynchronous re
 
 Benchmark settings.
 
-* **Url** - https://www.github.com
-* **Requests count** - 200 for async and 5 for sync libs
-
+* **Url** - http://www.google.com
+* **Requests count** - 200
 #### With `Content-Length`
 ``` shell
 $ cd becnhmarks
-$ python run_tests_functions.py
-========================
-Benchmark settings
-        Async lib test requests count : 200
-        Sync lib test requests count  : 5
-=======================
-Function test for aioreq completed. Total time: 1.2442591340004583
-Received statuses
-        {301: 200}
-Function test for requests completed. Total time: 1.6835168350007734
-Received statuses
-        {200: 5}
-Function test for httpx completed. Total time: 1.691718664000291
-Received statuses
-        {301: 200}
+$ ./run_tests
+Tests with module loading
+---------------------------
+aioreq benchmark
+
+real    0m1.893s
+user    0m0.777s
+sys     0m0.063s
+---------------------------
+httpx benchmark
+
+real    0m2.448s
+user    0m0.840s
+sys     0m0.151s
 ```
 
 #### With `Transfer-Encoding: Chunked`
-This is the **average** execution time of each library for **100 asynchronous requests** where responses was received with **chunked** transfer encoding.
+This is the **average** execution time of each library for **200 asynchronous requests** where responses was received with **chunked** transfer encoding.
 <br/>
 
 Benchmark settings.
 
 * **Url** - https://www.youtube.com
-* **Requests count** - 100 for async and 5 for sync libs
+* **Requests count** - 200
 
 ```shell
 $ cd benchmarks
-$ python run_tests_functions.py
-========================
-Benchmark settings
-        Async lib test requests count : 100
-        Sync lib test requests count  : 5
-=======================
-Function test for aioreq completed. Total time: 3.837283965000097
-Received statuses
-        {200: 100}
-Function test for requests completed. Total time: 6.098562907998712
-Received statuses
-        {200: 5}
-Function test for httpx completed. Total time: 6.467480723000335
-Received statuses
-        {200: 100}
+$ ./run_tests
+Tests with module loading
+---------------------------
+aioreq benchmark
+
+real    0m2.444s
+user    0m1.090s
+sys     0m0.089s
+---------------------------
+httpx benchmark
+
+real    0m2.990s
+user    0m1.254s
+sys     0m0.127s
 ```
 
 As you can see, the synchronous code lags far behind when we make many requests at the same time.<br />
@@ -200,14 +273,33 @@ total 8
 ```
 Now, the 'logs' file contains keylogs that can be used to decrypt your TLS/SSL traffic with a tool such as 'wireshark'.
 
+## Authentication
 
+If the auth parameter is included in the request, Aioreq will handle authentication.
+``` py
+>>> import aioreq
+>>> import asyncio
+>>> async def send_req():
+...     async with aioreq.Client() as cl:
+...         return await cl.get('http://httpbin.org/basic-auth/foo/bar', auth=('foo', 'bar'))
+>>> resp = asyncio.run(send_req())
+>>> resp.status
+200
+
+```
+Auth should be a tuple with two elements: password and login.
+
+Authentication is enabled by 'AuthenticationMiddleWare,' so exercise caution when managing middlewares manually.
 
 
 ## Supported Features
 **Aioreq** support basic features to work with **HTTP/1.1**.<br />More functionality will be avaliable in future realeases.<br />
 This is the latest version features.
 
-* Keep-Alive (Persistent Connections)
+* [Keep-Alive (Persistent Connections)](#more-advanced-usage)
+* [Middlewares](#middlewares)
+* [Keylogs](#keylog)
+* [Authentication](#authentication)
 * Automatic accepting and decoding responses. Using `Accept-Encoding` header
 * HTTPS support, TLS/SSL Verification using [certifi](https://github.com/certifi/python-certifi) library
 * Request Timeouts
