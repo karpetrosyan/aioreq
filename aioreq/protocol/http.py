@@ -1,20 +1,17 @@
 import asyncio
 import logging
 from abc import ABCMeta, ABC
-from abc import abstractmethod
 from collections import defaultdict
-from typing import Any
 from typing import AsyncIterable
 from typing import Iterable
 from typing import Union
 
-from .encodings import Encoding
-from .headers import AcceptEncoding
 from .headers import BaseHeader
-from .middlewares import default_middlewares
 from .middlewares import MiddleWare
 from .middlewares import RedirectMiddleWare
 from .middlewares import RetryMiddleWare
+from .middlewares import TimeoutMiddleWare
+from .middlewares import default_middlewares
 from ..errors.requests import ConnectionTimeoutError
 from ..parser.request_parser import JsonRequestParser
 from ..parser.request_parser import RequestParser
@@ -25,6 +22,7 @@ from ..settings import LOGGER_NAME
 from ..settings import REQUEST_REDIRECT_COUNT
 from ..settings import REQUEST_RETRY_COUNT
 from ..settings import TEST_SERVER_DOMAIN
+from ..settings import DEFAULT_TIMEOUT as REQUEST_TIMEOUT
 from ..transports.connection import Transport
 from ..transports.connection import resolve_domain
 from ..utils import debug
@@ -38,6 +36,8 @@ class HttpProtocol(ABC):
     An abstract class for all Http units representing HTTP/1.1 protocol
     with the general attributes
     """
+
+    __slots__ = tuple()
 
     safe_methods = (
         "GET",
@@ -53,7 +53,8 @@ class MetaHeaders(type):
 
     def __call__(cls, initial_headers=None):
         """
-        If headers is a Header object, then don't create a new one.
+        If 'initial headers' passed through 'Headers' is already an instance of 'Headers,'
+        return it rather than creating a new one.
         """
         if isinstance(initial_headers, Headers):
             return initial_headers
@@ -62,7 +63,14 @@ class MetaHeaders(type):
 
 class Headers(metaclass=MetaHeaders):
     """
-    Dict like object used to represent the HTTP headers.
+    The non-case sensitive dictionary.
+
+    :Example:
+
+    >>> from aioreq import Headers
+    >>> headers = Headers({'TEST':"TEST"})
+    >>> headers['test'] == 'TEST'
+    True
     """
 
     def __init__(self,
@@ -75,6 +83,16 @@ class Headers(metaclass=MetaHeaders):
                 self[key] = value
 
     def __setitem__(self, key: str, value: str):
+        """
+        :Example:
+        >>> headers = Headers({"test": "TEST"})
+        >>> parsed = headers.get_parsed()
+        >>> bool(headers.cache)
+        True
+        >>> headers['test'] = "TEST"
+        >>> bool(headers.cache)
+        False
+        """
         self.cache = None
         self._headers[key.lower()] = value
 
@@ -98,6 +116,9 @@ class Headers(metaclass=MetaHeaders):
     def get(self, name, default=None):
         return self._headers.get(name.lower(), default)
 
+    def dict(self):
+        return self._headers
+
     def __contains__(self, item):
         return item.lower() in self._headers
 
@@ -108,6 +129,16 @@ class Headers(metaclass=MetaHeaders):
         return Headers(
             initial_headers=self._headers | other._headers
         )
+
+    def __eq__(self, other):
+        if type(self) != type(other):
+            return False
+        if len(self._headers) != len(other.dict()):
+            return False
+        for header in self._headers:
+            if header not in other.dict() or (header and other.dict()[header] != self._headers[header]):
+                return False
+        return True
 
     def __len__(self):
         return len(self._headers)
@@ -120,41 +151,25 @@ class Headers(metaclass=MetaHeaders):
 
 class BaseRequest(HttpProtocol, metaclass=ABCMeta):
     """
-    An abstract class for all HTTP request classes
+    An abstract class for all 'HttpRequest' classes.
 
-    This is a low level Request abstraction class which used by Client by default,
-    but can be used directly.
-    By default, used by 'aioreq.protocol.http.Client.send_request'
-    :param method: HTTP method (GET, POST, PUT, PATCH),
-    see also RFC[2616] 5.1.1 Method
+    :param url: Represents the URL as defined in RFC[1738].
+    :type url: str
+    :param method: Represents the HTTP method as defined in RFC[2616] 5.1.1.
     :type method: str
-    :param headers: HTTP headers paired by (key, value) where 'key'= header name
-    and 'value'= header value
-    :type headers: dict[str, str]
-
-    :Example:
-
-    >>> from aioreq.protocol.http import Request
-    >>> req = Request(
-    ...              method='GET',
-    ...              host='https://google.com',
-    ...              path='/',
-    ...              headers={})
-    >>> print(req)
-    "Request(GET, https://google/com)"
+    :param headers: Represents HTTP headers as described in RFC[2616] 4.2.
+    :type headers: dict[str, str] | Headers | None
+    :param content: Represents HTTP message body as described in RFC[2616] 4.3.
+    :type content: str | bytearray | bytes
+    :param params: Represents URL path component as described in RFC[2396] 3.3.
+    :type params: Iterable[Iterable[str]] | None
+    :param auth: Represents HTTP authentication credentials as described in RFC[7235] 6.2.
+    :type auth: Tuple[str, str] | None
     """
 
     parser = None
 
-    __slots__ = (
-        'method',
-        '_host',
-        'headers',
-        'path',
-        'content',
-        'path_parameters',
-        '_raw_request',
-    )
+    __slots__ = tuple()
 
     def __init__(
             self,
@@ -164,7 +179,8 @@ class BaseRequest(HttpProtocol, metaclass=ABCMeta):
             method: str = 'GET',
             content: Union[str, bytearray, bytes] = '',
             params: Union[Iterable[Iterable[str]], None] = None,
-            auth: Union[tuple[str, str], None] = None
+            auth: Union[tuple[str, str], None] = None,
+            timeout: Union[int, float, None] = None
     ) -> None:
         """
         Request initialization method
@@ -175,10 +191,13 @@ class BaseRequest(HttpProtocol, metaclass=ABCMeta):
 
         splited_url = UrlParser.parse(url)
 
+
+
         self._host = splited_url.get_url_without_path()
         self.path = splited_url.path
         self.auth = auth
         self.headers = Headers(headers)
+        self.timeout = timeout
 
         self.method = method
         self.content = content
@@ -197,11 +216,7 @@ class BaseRequest(HttpProtocol, metaclass=ABCMeta):
 
     def get_raw_request(self) -> bytes:
         """
-        The Getter method for raw_request private attribute if
-        request has been pares once, otherwise parse and return
-
-        :returns: raw request for this Request abstraction
-        :rtype: bytes
+        Returns raw bytes that describe the HTTP request to be sent over the network.
         """
 
         if self._raw_request:
@@ -213,7 +228,7 @@ class BaseRequest(HttpProtocol, metaclass=ABCMeta):
         return enc_message
 
     def __repr__(self) -> str:
-        return f"<Request {self.method} {self.host}>"
+        return f"<{type(self).__name__} {self.method} {self.host}>"
 
     def __getattribute__(self, item):
         self._raw_request = None
@@ -222,44 +237,85 @@ class BaseRequest(HttpProtocol, metaclass=ABCMeta):
 
 class BaseResponse(HttpProtocol, metaclass=ABCMeta):
     """
-    An abstract Response class
+    An abstract class for all 'HttpResponse' classes.
     """
 
-    __slots__ = (
-        'status',
-        'status_message',
-        'headers',
-        'content',
-        'request'
-    )
+    __slots__ = tuple()
 
 
 class Request(BaseRequest):
+    """
+    An HTTP response class.
+
+    :Example:
+
+    >>> from aioreq.protocol.http import Request
+    >>> req = Request(
+    ...              method='GET',
+    ...              url='https://google.com/',
+    ...              headers={})
+    >>> print(req)
+    <Request GET https://google.com>
+    """
+
+    __slots__ = (
+        'method',
+        '_host',
+        'headers',
+        'path',
+        'content',
+        'auth',
+        'path_parameters',
+        '_raw_request',
+        'timeout'
+    )
+
     parser = RequestParser
 
 
 class JsonRequest(BaseRequest):
+
+    """
+    :Example:
+
+    >>> from aioreq.protocol.http import Request
+    >>> req = JsonRequest(
+    ...              method='GET',
+    ...              url='https://google.com/',
+    ...              headers={})
+    >>> print(req)
+    <JsonRequest GET https://google.com>
+    """
+
+    __slots__ = (
+        'method',
+        '_host',
+        'headers',
+        'path',
+        'content',
+        'auth',
+        'path_parameters',
+        '_raw_request',
+        'timeout'
+    )
+
     parser = JsonRequestParser
 
 
 class Response(BaseResponse):
     """
-    An HTTP response asbtraction
+    An HTTP response class.
 
-    This is a Response abstraction class used by 'aioreq.parser.response_parser.ResponseParser.parse'
-    by default to make response binary data more friendly and not reccommended to use directly
-    :param status: response code returned with response,
-    see also RFC[2616] 6.1.1 Status Code and Reason Pharse
+    :param status: Represents the HTTP status code as defined in RFC[2616] 6.1.1.
     :type status: int
-    :param status_message: description for :status: in the status line
+    :param status_message: Represents the HTTP reason phrase as defined in RFC[2616] 6.1.1.
     :type status_message: str
-    :param headers: HTTP headers sent by the server, see also RFC[2616] 6.2
-    Response Headers Fields
-    :type headers: dict[str, str]
-    :param content: response body
+    :param headers: Represents HTTP headers as described in RFC[2616] 4.2.
+    :type headers: Headers
+    :param content: Represents HTTP message body as described in RFC[2616] 4.3.
     :type content: bytes
-    :param request: Request for this response 
-    :type request: Request
+    :param request: Http request, instance of BaseRequest
+    :type request: BaseRequest | None
 
     :Example:
 
@@ -273,14 +329,22 @@ class Response(BaseResponse):
     ...          content=b'Test message',
     ...          request=None)
     >>> print(a)
-    "Response(200, OK)" 
+    <Response 200 OK>
     """
+
+    __slots__ = (
+        'status',
+        'status_message',
+        'headers',
+        'content',
+        'request'
+    )
 
     def __init__(
             self,
             status: int,
             status_message: str,
-            headers: dict[str, str],
+            headers: Headers | dict[str, str],
             content: bytes,
             request: Union[Request, None] = None):
         """
@@ -295,16 +359,41 @@ class Response(BaseResponse):
 
     def __eq__(self, value: 'Response') -> bool:
         """
-        Check if two Response objects have the same attributes or not
+        Checks if two Response objects have the same attributes or not
         :param value: right side value of equal
         :type value: Response 
         :returns: True if values are equal
         :rtype: bool
+
+        :Example:
+
+        >>> a = Response(
+        ...          status=200,
+        ...          status_message='OK',
+        ...          headers={},
+        ...          content=b'Test message',
+        ...          request=None)
+        >>> b = Response(
+        ...          status=200,
+        ...          status_message='OK',
+        ...          headers={'test': 'test'},
+        ...          content=b'Test message')
+        >>> a == b
+        False
+        >>> c = Response(
+        ...          status=200,
+        ...          status_message='OK',
+        ...          headers={},
+        ...          content=b'Test message',
+        ...          request=None)
+        >>> a == c
+        True
         """
 
         if type(self) != type(value):
-            return False
-        return self.__dict__ == value.__dict__
+            raise False
+        return self.status == value.status and self.status_message == value.status_message and \
+            self.headers == value.headers and self.content == value.content and self.request == value.request
 
     def __repr__(self) -> str:
         return f"<Response {self.status} {self.status_message}>"
@@ -312,24 +401,31 @@ class Response(BaseResponse):
 
 class BaseClient(metaclass=ABCMeta):
     """
-       A session like class Client used to make requests
+    The client's base class.
 
-       This is a Client abstraction used to communicate with the
-       HTTP protocol, send requests, receive responses and so on
-       :param headers: HTTP protocol headers
-       :type headers: dict[str, str], None
-       :param persistent_connections: Persistent connections support for our client
-       see also RFC[2616] 8.1 Persistent Connections
-       :type persistent_connections: bool
-       Header objects defined in 'aioreq.protocol.headers',
-       this is an easy way to use HTTP Headers through OOP
-       """
+    :param headers: Represents HTTP headers as described in RFC[2616] 4.2.
+    :type headers: Headers | None | dict[str, str]
+    :param persistent_connections: Represents HTTP persistent connections described in RFC[2616] 8.1
+    :type persistent_connections: bool
+    :param redirect_count: Default redirect count for the request.
+    :type redirect_count: int
+    :param retry_count: Default retry count for the request.
+    :type retry_count: int
+    :param auth: Represents HTTP authentication credentials as described in RFC[7235] 6.2.
+    :type auth: Tuple[str, str] | None
+    :param middlewares: A collection of 'aioreq' middlewares.
+    :type middlewares: Tuple[str] | None
+
+    Header objects defined in 'aioreq.protocol.headers',
+    this is an easy way to use HTTP Headers through OOP
+    """
 
     def __init__(self,
                  headers: Union[dict[str, str], Headers, None] = None,
                  persistent_connections: bool = False,
                  redirect_count: int = REQUEST_REDIRECT_COUNT,
                  retry_count: int = REQUEST_RETRY_COUNT,
+                 timeout: Union[int, float, None] = None,
                  auth: Union[tuple[str, str], None] = None,
                  middlewares: Union[list[str], None] = None):
 
@@ -342,7 +438,10 @@ class BaseClient(metaclass=ABCMeta):
             self.middlewares = MiddleWare.build(default_middlewares)
         else:
             self.middlewares = MiddleWare.build(middlewares)
+        if timeout is None:
+            timeout = REQUEST_TIMEOUT
 
+        self.timeout = timeout
         self.redirect = redirect_count
         self.retry = retry_count
         self.auth = auth
@@ -351,40 +450,39 @@ class BaseClient(metaclass=ABCMeta):
         self.transports = []
         self.persistent_connections = persistent_connections
 
-    async def _get_connection(self, splitted_url: Url):
+    async def _get_connection(self, url: Url):
         """
-        Getting connection from already opened connections, to perform Keep-Alive logic,
-        if these connections exists or create the new one and save into connection pool
-        :param splitted_url: Url object which contains all url parts
-        (protocol, version, subdomain, domain, ...)
-        :type splitted_url: Url
-        :returns: Transport
+        Gets connections from previously opened connections in order to perform Keep-Alive logic 
+        if these connections exist, or creates new ones and saves them to the connection pool.
+        
+        :param url: Represents the URL as defined in RFC[1738].
+        :type url: str
         """
         transport = None
         if self.persistent_connections:
             log.trace(f"{self.connection_mapper} searching into mapped connections")
 
-            for transport in self.connection_mapper[splitted_url.get_url_for_dns()]:
+            for transport in self.connection_mapper[url.get_url_for_dns()]:
                 if not transport.used:
                     if transport.is_closing():
-                        del self.connection_mapper[splitted_url.get_url_for_dns()]
+                        del self.connection_mapper[url.get_url_for_dns()]
                     else:
                         break
             else:
                 transport = None
 
         if not transport:
-            if splitted_url.domain == TEST_SERVER_DOMAIN:  # server for tests
+            if url.domain == TEST_SERVER_DOMAIN:  # server for tests
                 ip, port = 'localhost', 7575
             else:
-                ip = await resolve_domain(splitted_url.get_url_for_dns())
-                port = 443 if splitted_url.protocol == 'https' else 80
+                ip = await resolve_domain(url.get_url_for_dns())
+                port = 443 if url.protocol == 'https' else 80
 
             transport = Transport()
             connection_coroutine = transport.make_connection(
                 ip,
                 port,
-                ssl=splitted_url.protocol == 'https'
+                ssl=url.protocol == 'https'
             )
             try:
                 await connection_coroutine
@@ -394,7 +492,7 @@ class BaseClient(metaclass=ABCMeta):
                 raise ConnectionTimeoutError('Socket connection timeout') from err
 
             if self.persistent_connections:
-                self.connection_mapper[splitted_url.get_url_for_dns(
+                self.connection_mapper[url.get_url_for_dns(
                 )].append(transport)
         else:
             log.debug("Using already opened connection")
@@ -402,11 +500,7 @@ class BaseClient(metaclass=ABCMeta):
 
     async def __aenter__(self):
         """
-        Implements 'with', closes transports after
-        session ends
-
-        :returns: Client object
-        :type: Client
+        Implements 'with', closes transports after session ends
         """
         return self
 
@@ -420,8 +514,6 @@ class BaseClient(metaclass=ABCMeta):
     async def __aexit__(self, *args, **kwargs):
         """
         Closes using recourses
-
-        :returns: None
         """
         for fnc, log_data in debug.function_logs.items():
             time = log_data['time']
@@ -440,6 +532,8 @@ class BaseClient(metaclass=ABCMeta):
 
 class Client(BaseClient):
     """
+    An HTTP client class.
+
     :Example:
 
     >>> import aioreq
@@ -471,23 +565,25 @@ class Client(BaseClient):
                             url: str,
                             method: str,
                             content: Union[str, bytearray, bytes] = '',
-                            path_parameters: Union[Iterable[Iterable[str]], None] = None,
+                            params: Union[Iterable[Iterable[str]], None] = None,
                             headers: Union[None, dict[str, str]] = None,
-                            auth: Union[tuple[str, str], None] = None
+                            auth: Union[tuple[str, str], None] = None,
+                            timeout: Union[int, float, None] = None
                             ) -> Response:
         """
         Simulates a http request
-        :param url: Url where should be request send
+        :param url: Represents the URL as defined in RFC[1738].
         :type url: str
-        :param headers: Http headers which should be used in this GET request
-        :type headers: Dict[str, str]
-        :param content: Http body part
-        :type content: str or bytearray or bytes
-        :param method: Http message method
+        :param method: Represents the HTTP method as defined in RFC[2616] 5.1.1.
         :type method: str
-        :param path_parameters:
-        :type path_parameters: Iterable[BaseHeader] or None
-        :returns: Response object which represents returned by server response
+        :param content: Represents HTTP message body as described in RFC[2616] 4.3.
+        :type content: str | bytearray | bytes
+        :param params: Represents URL path component as described in RFC[2396] 3.3.
+        :type params: Iterable[Iterable[str]] | None
+        :param headers: Represents HTTP headers as described in RFC[2616] 4.2.
+        :type headers: dict[str, str] | Headers | None
+        :param params:
+        :returns: An HTTP response instance
         :rtype: Response
         """
 
@@ -497,19 +593,20 @@ class Client(BaseClient):
             url=url,
             method=method,
             headers=self.headers | headers,
-            params=path_parameters,
+            params=params,
             content=content,
-            auth=auth
+            auth=auth,
+            timeout=timeout
         )
         return await self._send_request_via_middleware(request)
 
     async def send_request(self, request: Request) -> Response:
         """
-        Send request by giving Request object directly
-        :param request: Request instance
-        :type request: Request
+        Sends request by giving Request object via middleware.
 
-        :returns: Response
+        :param request: An HTTP request instance
+        :type request: Request
+        :returns: An HTTP response instance
         :rtype Response:
 
         """
@@ -523,15 +620,17 @@ class Client(BaseClient):
             content: Union[str, bytearray, bytes] = '',
             headers: Union[dict[str, str], None] = None,
             path_parameters: Union[Iterable[Iterable[str]], None] = None,
-            auth: Union[tuple[str, str], None] = None
+            auth: Union[tuple[str, str], None] = None,
+            timeout: Union[int, float, None] = None
     ) -> Response:
         return await self._send_request(
             url=url,
             method="GET",
             content=content,
             headers=headers,
-            path_parameters=path_parameters,
-            auth=auth
+            params=path_parameters,
+            auth=auth,
+            timeout=timeout
         )
 
     async def post(
@@ -540,15 +639,17 @@ class Client(BaseClient):
             content: Union[str, bytearray, bytes] = '',
             headers: Union[dict[str, str], None] = None,
             path_parameters: Union[Iterable[Iterable[str]], None] = None,
-            auth: Union[tuple[str, str], None] = None
+            auth: Union[tuple[str, str], None] = None,
+            timeout: Union[int, float, None] = None
     ) -> Response:
         return await self._send_request(
             url=url,
             method="POST",
             content=content,
             headers=headers,
-            path_parameters=path_parameters,
-            auth=auth
+            params=path_parameters,
+            auth=auth,
+            timeout=timeout
         )
 
     async def put(
@@ -557,15 +658,17 @@ class Client(BaseClient):
             content: Union[str, bytearray, bytes] = '',
             headers: Union[dict[str, str], None] = None,
             path_parameters: Union[Iterable[Iterable[str]], None] = None,
-            auth: Union[tuple[str, str], None] = None
+            auth: Union[tuple[str, str], None] = None,
+            timeout: Union[int, float, None] = None
     ) -> Response:
         return await self._send_request(
             url=url,
             method="PUT",
             content=content,
             headers=headers,
-            path_parameters=path_parameters,
-            auth=auth
+            params=path_parameters,
+            auth=auth,
+            timeout=timeout
         )
 
     async def delete(
@@ -574,15 +677,17 @@ class Client(BaseClient):
             content: Union[str, bytearray, bytes] = '',
             headers: Union[dict[str, str], None] = None,
             path_parameters: Union[Iterable[Iterable[str]], None] = None,
-            auth: Union[tuple[str, str], None] = None
+            auth: Union[tuple[str, str], None] = None,
+            timeout: Union[int, float, None] = None
     ) -> Response:
         return await self._send_request(
             url=url,
             method="DELETE",
             content=content,
             headers=headers,
-            path_parameters=path_parameters,
+            params=path_parameters,
             auth=auth,
+            timeout=timeout
         )
 
     async def options(
@@ -591,15 +696,17 @@ class Client(BaseClient):
             content: Union[str, bytearray, bytes] = '',
             headers: Union[dict[str, str], None] = None,
             path_parameters: Union[Iterable[Iterable[str]], None] = None,
-            auth: Union[tuple[str, str], None] = None
+            auth: Union[tuple[str, str], None] = None,
+            timeout: Union[int, float, None] = None
     ) -> Response:
         return await self._send_request(
             url=url,
             method="OPTIONS",
             content=content,
             headers=headers,
-            path_parameters=path_parameters,
-            auth=auth
+            params=path_parameters,
+            auth=auth,
+            timeout=timeout
         )
 
     async def head(
@@ -608,15 +715,17 @@ class Client(BaseClient):
             content: Union[str, bytearray, bytes] = '',
             headers: Union[dict[str, str], None] = None,
             path_parameters: Union[Iterable[Iterable[str]], None] = None,
-            auth: Union[tuple[str, str], None] = None
+            auth: Union[tuple[str, str], None] = None,
+            timeout: Union[int, float, None] = None
     ) -> Response:
         return await self._send_request(
             url=url,
             method="HEAD",
             content=content,
             headers=headers,
-            path_parameters=path_parameters,
-            auth=auth
+            params=path_parameters,
+            auth=auth,
+            timeout=timeout
         )
 
     async def patch(
@@ -625,15 +734,17 @@ class Client(BaseClient):
             content: Union[str, bytearray, bytes] = '',
             headers: Union[dict[str, str], None] = None,
             path_parameters: Union[Iterable[Iterable[str]], None] = None,
-            auth: Union[tuple[str, str], None] = None
+            auth: Union[tuple[str, str], None] = None,
+            timeout: Union[int, float, None] = None
     ) -> Response:
         return await self._send_request(
             url=url,
             method="PATCH",
             content=content,
             headers=headers,
-            path_parameters=path_parameters,
-            auth=auth
+            params=path_parameters,
+            auth=auth,
+            timeout=timeout
         )
 
 
