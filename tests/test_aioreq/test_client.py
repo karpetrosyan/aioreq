@@ -4,6 +4,8 @@ import pytest
 
 from aioreq.protocol.http import JsonRequest
 from aioreq.protocol.http import Request
+from aioreq.protocol.middlewares import MiddleWare
+from aioreq.errors.requests import RequestTimeoutError
 
 
 @pytest.mark.asyncio
@@ -53,11 +55,11 @@ async def test_moving_301_with_directly_request(one_time_session):
     assert response.status == 200
 
 
-# @pytest.mark.asyncio
-# async def test_ping(one_time_session,
-#                     server):
-#     response = await one_time_session.get(server, timeout=3)
-#     assert response.status == 200
+@pytest.mark.asyncio
+async def test_timeout(one_time_session,
+                       server):
+    with pytest.raises(RequestTimeoutError):
+        await one_time_session.get(server, timeout=0.00001)
 
 
 @pytest.mark.asyncio
@@ -84,7 +86,7 @@ async def test_deflate(one_time_session,
 
 @pytest.mark.asyncio
 async def test_https_request(one_time_session):
-    url = 'https://www.github.com'
+    url = 'http://www.testulik.com'
     response = await one_time_session.get(url)
     assert response.status == 200
 
@@ -141,3 +143,15 @@ async def test_basic_authentication(one_time_session,
     resp = one_time_session.get('http://httpbin.org/basic-auth/foo/bar', auth=('foo', 'bar'))
     woauth_resp, resp = await asyncio.gather(woauth_resp, resp)
     assert resp.status == 200 and woauth_resp.status == 401
+
+
+@pytest.mark.asyncio
+async def test_add_custom_middleware(one_time_session):
+    class CustomMiddleWare(MiddleWare):
+
+        async def process(self, request, client):
+            return 'TEST'
+
+    one_time_session.middlewares = CustomMiddleWare(next_middleware=one_time_session.middlewares)
+    resp = await one_time_session.get('http://test.test')
+    assert resp == "TEST"
