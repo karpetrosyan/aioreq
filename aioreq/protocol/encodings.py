@@ -51,6 +51,7 @@ class Encodings(Enum):
     def decompress(self, text: bytes) -> bytes:
         return self.value.decompress(text)
 
+
 def get_avaliable_encodings():
     from .headers import AcceptEncoding
     return AcceptEncoding(

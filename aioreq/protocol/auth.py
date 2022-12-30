@@ -7,7 +7,7 @@ def authenticate_basic(params, request) -> str:
     return 'Basic ' + b64encode(f"{request.auth[0]}:{request.auth[1]}".encode()).decode()
 
 
-def authenticate_digest(self, params, request) -> str:
+def authenticate_digest(params, request) -> str:
     raise NotImplementedError()
 
 
