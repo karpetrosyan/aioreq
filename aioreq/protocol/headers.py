@@ -13,14 +13,26 @@ from .encodings import Encodings
 
 
 def qvalue_validate(qvalue: int) -> bool:
-    if 0 <= qvalue <= 1:
-        return True
-    return False
+    return 0 <= qvalue <= 1
 
 
 class MimeType(Enum):
     json = 'application/json'
     html = 'application/html'
+    audio = 'audio/aac'
+    abiword = 'application/x-abiword'
+    archive = 'application/x-freearc'
+    avif = 'image/avif'
+    avl = 'video/x-msvideo'
+    kindle_ebook = 'application/vnd.amazon.ebook'
+    binary = 'application/octet-stream'
+    bmp = 'image/bmp'
+    css = 'text/css'
+    csv = 'text/csv'
+    gzip = 'application/gzip'
+    gif = 'image/gif'
+    js = 'text/javascript'
+    png = 'image/png'
 
 
 class ServerHeader(ABC):
@@ -158,6 +170,20 @@ class ContentEncoding(ServerEncoding): ...
 
 
 class AuthenticationWWW(ServerHeader):
+
+    """
+    RFC[7235] 4.1
+        The "WWW-Authenticate" header field indicates the authentication
+        scheme(s) and parameters applicable to the target resource.
+
+        WWW-Authenticate = 1#challenge
+
+        A server generating a 401 (Unauthorized) response MUST send a
+        WWW-Authenticate header field containing at least one challenge.  A
+        server MAY generate a WWW-Authenticate header field in other response
+        messages to indicate that supplying credentials (or different
+        credentials) might affect the response.
+    """
 
     def __init__(self, auth_schemes: dict[str, dict] = {}):
         self.auth_schemes = auth_schemes
