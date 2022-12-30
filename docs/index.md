@@ -275,7 +275,7 @@ Now, the 'logs' file contains keylogs that can be used to decrypt your TLS/SSL t
 
 ## Authentication
 
-If the auth parameter is included in the request, Aioreq will handle authentication.
+If the `auth` parameter is included in the request, Aioreq will handle authentication.
 ``` py
 >>> import aioreq
 >>> import asyncio
