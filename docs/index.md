@@ -100,7 +100,7 @@ There is some fundamental Stream usage.
 
 Aioreq provides default middlewares to each client.
 We can see that middlewares by importing 'default_middlewares'  variable.
-``` py
+``` python
 >>> import aioreq
 >>> aioreq.middlewares.default_middlewares
 ['RetryMiddleWare', 'RedirectMiddleWare', 'DecodeMiddleWare', 'AuthenticationMiddleWare']
@@ -110,7 +110,7 @@ The first item on this list represents the first middleware that should handle o
 
 
 To override the default middlewares, we can pass our middlewares to the Client.
-``` py
+``` python
 >>> client = aioreq.Client(middlewares=aioreq.middlewares.default_middlewares[2:])
 
 ```
@@ -118,7 +118,7 @@ To override the default middlewares, we can pass our middlewares to the Client.
 This client will no longer redirect or retry responses.
 
 Also, because aioreq stores middlewares in Client objects as linked lists, we can simply change the head of that linked list to skip the first middleware.
-``` py
+``` python
 >>> client = aioreq.Client()
 >>> client.middlewares.__class__.__name__
 'RetryMiddleWare'
@@ -135,7 +135,7 @@ Also, because aioreq stores middlewares in Client objects as linked lists, we ca
 ```
 
 or 
-``` py
+``` python
 >>> client = aioreq.Client()
 >>> client.middlewares = client.middlewares.next_middleware.next_middleware
 >>> # alternative for client = aioreq.Client(middlewares=aioreq.middlewares.default_middlewares[2:])
@@ -147,7 +147,7 @@ or
 All 'aioreq' middlewares must be subclasses of the class 'middlewares.MiddleWare'
 
 MiddleWare below would add 'test-md' header if request domain is 'www.example.com'
-``` py
+``` python
 >>> import aioreq
 >>>
 >>> class CustomMiddleWare(aioreq.middlewares.MiddleWare):
@@ -162,7 +162,7 @@ MiddleWare below would add 'test-md' header if request domain is 'www.example.co
 Our CustomMiddleWare will now be the first middleware (i.e. closest to the client). Because 'aioreq' middlewares are stored as linked lists, this pattern works (i.e. same as linked list insert method).
 
 Alternatively, we can alter the list of middlewares that the client receives.
-``` py
+``` python
 >>> client = aioreq.Client(middlewares = [CustomMiddleWare] + aioreq.middlewares.default_middlewares)
 >>> client.middlewares.__class__.__name__
 'CustomMiddleWare'
@@ -276,7 +276,7 @@ Now, the 'logs' file contains keylogs that can be used to decrypt your TLS/SSL t
 ## Authentication
 
 If the `auth` parameter is included in the request, Aioreq will handle authentication.
-``` py
+``` python
 >>> import aioreq
 >>> import asyncio
 >>> async def send_req():
@@ -287,7 +287,7 @@ If the `auth` parameter is included in the request, Aioreq will handle authentic
 200
 
 ```
-Auth should be a tuple with two elements: password and login.
+Parameter 'auth' should be a tuple with two elements: password and login.
 
 Authentication is enabled by 'AuthenticationMiddleWare,' so exercise caution when managing middlewares manually.
 
