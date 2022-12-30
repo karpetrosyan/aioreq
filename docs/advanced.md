@@ -118,7 +118,10 @@ In order to improve request performance, 'Aioreq' instructs the server to encode
 This feature is very useful, but you can disable it for specific 'Client' objects if you want.
 
 ``` py
->>> client = aioreq.Client(enable_encodings=False)
+>>> import aioreq
+>>> defaults = aioreq.middlewares.default_middlewares
+>>> custom_middlewares = [md for md in defaults if md != 'DecodeMiddleWare']
+>>> client = aioreq.Client(middlewares=custom_middlewares)
 
 ```
 
