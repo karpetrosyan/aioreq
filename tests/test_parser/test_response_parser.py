@@ -42,8 +42,8 @@ class TestResponseParser:
                    wbl,
                    expected_result: Response):
         result = ResponseParser.body_len_parse(response_raw, wbl)
-        assert result.__dict__ == expected_result.__dict__
-
+        is_same = result == expected_result
+        assert is_same
     @pytest.mark.parametrize(
         argnames=('response_raw', 'expected_result'),
         argvalues=[
