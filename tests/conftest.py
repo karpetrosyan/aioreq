@@ -74,6 +74,10 @@ def constants():
     return CONSTANTS
 
 
+def test_turn_server_on(server):
+    ...
+
+
 one_time_session = SCOPE_FUNCTION(temp_function())
 session = SCOPE_SESSION(temp_function())
 one_time_session_cached = SCOPE_SESSION(temp_function(persistent_connections=True))
