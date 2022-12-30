@@ -11,7 +11,7 @@ async def send_req(cl):
 
 
 async def main():
-    async with httpx.AsyncClient(follow_redirects=False) as cl:
+    async with httpx.AsyncClient(follow_redirects=True) as cl:
         tasks = []
         for j in range(REQUESTS_COUNT):
             tasks.append(send_req(cl, ))

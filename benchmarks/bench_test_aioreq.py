@@ -5,7 +5,7 @@ from benchmark_settings import REQUESTS_COUNT
 from benchmark_settings import REQUESTS_URL
 
 async def send_req(cl):
-    resp = await cl.get(REQUESTS_URL, retry=0, redirect=0)
+    resp = await cl.get(REQUESTS_URL)
     return resp.status
 
 async def main():
