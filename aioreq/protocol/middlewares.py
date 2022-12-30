@@ -1,10 +1,15 @@
+import asyncio
 import logging
+import importlib
+
 from abc import ABC, abstractmethod
 from typing import Iterable, Union
 
 from .headers import TransferEncoding, ContentEncoding, AuthenticationWWW
 from .encodings import get_avaliable_encodings
+from ..errors.requests import RequestTimeoutError
 from ..settings import LOGGER_NAME
+from . import codes
 from .auth import parse_auth_header
 
 log = logging.getLogger(LOGGER_NAME)
@@ -15,6 +20,16 @@ default_middlewares = [
     'DecodeMiddleWare',
     'AuthenticationMiddleWare',
 ]
+
+
+def load_class(name):
+    if '.' not in name:
+        return globals()[name]
+    components = name.split('.')
+    mod = __import__(components[0])
+    for comp in components[1:]:
+        mod = getattr(mod, comp)
+    return mod
 
 
 class MiddleWare(ABC):
@@ -29,9 +44,10 @@ class MiddleWare(ABC):
     @staticmethod
     def build(middlewares_: Iterable[Union[str, type]]):
         result = RequestMiddleWare(next_middleware=None)
+        result = TimeoutMiddleWare(next_middleware=result)
         for middleware in reversed(middlewares_):
             if isinstance(middleware, str):
-                middleware = globals()[middleware]
+                middleware = load_class(middleware)
             result = middleware(next_middleware=result)
         return result
 
@@ -123,14 +139,26 @@ class AuthenticationMiddleWare(MiddleWare):
     async def process(self, request, client):
 
         resp = await self.next_middleware.process(request, client)
-        if resp.status != 401:
-            return resp
-        if 'www-authenticate' not in resp.headers:
-            raise ValueError('401 status code received without `www-authenticate` header')
-        header_obj = AuthenticationWWW.parse(resp.headers['www-authenticate'])
-        for authentication_header in parse_auth_header(header_obj, request):
-            request.headers['authorization'] = authentication_header
-            resp = await self.next_middleware.process(request, client)
-            if resp.status != 401:
-                break
+        if request.auth:
+            if resp.status != codes.UNAUTHORIZED:
+                return resp
+            if 'www-authenticate' not in resp.headers:
+                raise ValueError(f'{codes.UNAUTHORIZED} status code received without `www-authenticate` header')
+            header_obj = AuthenticationWWW.parse(resp.headers['www-authenticate'])
+            for authentication_header in parse_auth_header(header_obj, request):
+                request.headers['authorization'] = authentication_header
+                resp = await self.next_middleware.process(request, client)
+                if resp.status != codes.UNAUTHORIZED:
+                    break
         return resp
+
+
+class TimeoutMiddleWare(MiddleWare):
+
+    async def process(self, request, client):
+
+        try:
+            return await asyncio.wait_for(self.next_middleware.process(request, client),
+                                          timeout=request.timeout or client.timeout)
+        except asyncio.TimeoutError:
+            raise RequestTimeoutError from None
