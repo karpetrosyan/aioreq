@@ -836,7 +836,7 @@ Our CustomMiddleWare will now be the first middleware (i.e. closest to the clien
 </code></pre></div>
 Now, the 'logs' file contains keylogs that can be used to decrypt your TLS/SSL traffic with a tool such as 'wireshark'.</p>
 <h2 id="authentication">Authentication</h2>
-<p>If the auth parameter is included in the request, Aioreq will handle authentication.
+<p>If the <code>auth</code> parameter is included in the request, Aioreq will handle authentication.
 <div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">aioreq</span>
 <a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">asyncio</span>
 <a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="o">&gt;&gt;&gt;</span> <span class="k">async</span> <span class="k">def</span> <span class="nf">send_req</span><span class="p">():</span>
