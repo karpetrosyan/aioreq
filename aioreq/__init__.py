@@ -3,6 +3,7 @@ __version__ = '1.0.1b0'
 import asyncio
 
 from .protocol import http
+from .protocol import middlewares
 from .protocol.http import *
 from .protocol import headers
 

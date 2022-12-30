@@ -51,7 +51,7 @@ REQUEST_RETRY_COUNT = parser.getint('Aioreq', 'request_retry_count')
 
 TEST_SERVER_DOMAIN = parser.get('Tests', 'test_server_domain')
 
-DEFAULT_TIMEOUT = parser.getint('Aioreq', 'request_timeout')
+DEFAULT_TIMEOUT = parser.getfloat('Aioreq', 'request_timeout')
 
 if any(
         (
