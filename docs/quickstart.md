@@ -67,8 +67,8 @@ This is how accessing the body message works.
 >>> body = response.content
 >>> type(body) == bytes
 True
->>> len(body)
-50021
+>>> type(len(body)) == int
+True
 
 ```
 As you can see, the 'content-length' header has the value '16622,' indicating that the incoming data length should be 
@@ -194,7 +194,7 @@ Each response object contains his request.
 The 'request' field provides access to the Request object.
 ``` py
 >>> response.request
-<Request GET https://www.google.com>
+<Request GET http://www.google.com>
 
 ```
 
@@ -220,6 +220,7 @@ The client employs his headers in all of his requests.
 
 ``` py
 >>> client = aioreq.Client(headers={'Accept': 'application/json'})
+
 ```
 
 The initialization interface for StreamClient is the same, but the request sending logic is different.
