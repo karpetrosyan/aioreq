@@ -191,7 +191,7 @@ $ python -m venv venv
 $ source ./venv/bin/activate
 $ pip install '.[benchmarks]'
 $ cd benchmarks
-$ python run_tests_functions.py
+$ ./run_tests
 ```
 
 ---
