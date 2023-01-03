@@ -170,7 +170,6 @@ class ContentEncoding(ServerEncoding): ...
 
 
 class AuthenticationWWW(ServerHeader):
-
     """
     RFC[7235] 4.1
         The "WWW-Authenticate" header field indicates the authentication
@@ -185,13 +184,7 @@ class AuthenticationWWW(ServerHeader):
         credentials) might affect the response.
     """
 
-    def __init__(self, auth_schemes: dict[str, dict] = {}):
-        self.auth_schemes = auth_schemes
-
-    @classmethod
-    def parse(cls, value: str):
-        self = cls()
-        p = Lark(r"""
+    parser = Lark(r"""
             challenge: auth_scheme params
             !auth_scheme: "Basic" | "Digest"
             params: (param COL)* param?
@@ -205,7 +198,24 @@ class AuthenticationWWW(ServerHeader):
             %ignore /\s/
             """, parser='lalr', start='challenge')
 
-        parsed = p.parse(value)
+    def __init__(self, auth_schemes: dict[str, dict] = {}):
+        self.auth_schemes = auth_schemes
+
+    @classmethod
+    def parse(cls, value: str):
+        """
+        :Example:
+
+        >>> from aioreq.protocol.headers import AuthenticationWWW
+        >>> AuthenticationWWW.parse('Basic realm="test"')
+        <AuthenticationWWW {'Basic': {'realm': '"test"'}}>
+        >>> AuthenticationWWW.parse('Basic realm="test1", arg1="test2"')
+        <AuthenticationWWW {'Basic': {'realm': '"test1"', 'arg1': '"test2"'}}>
+        """
+
+        self = cls()
+
+        parsed = self.parser.parse(value)
 
         params = {}
         scheme = parsed.children[0].children[0].value
@@ -218,3 +228,6 @@ class AuthenticationWWW(ServerHeader):
             params[key] = value
         self.auth_schemes[scheme] = params
         return self
+
+    def __repr__(self):
+        return f"<AuthenticationWWW {self.auth_schemes}>"
