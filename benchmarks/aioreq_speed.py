@@ -5,7 +5,6 @@ import asyncio
 
 from time import perf_counter
 
-url, count = sys.argv[1:3]
 
 
 async def main():
@@ -19,5 +18,6 @@ async def main():
         text = f"Url: {url} | Requests: {count} | Time spent: {time_spent}"
         print(text)
 
-
-asyncio.run(main())
+if __name__ == '__main__':
+    url, count = sys.argv[1:3]
+    asyncio.run(main())
