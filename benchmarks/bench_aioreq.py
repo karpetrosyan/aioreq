@@ -15,7 +15,9 @@ async def main():
         tasks = []
         for j in range(REQUESTS_COUNT):
             tasks.append(send_req(cl))
-        return await asyncio.gather(*tasks)
+        a = await asyncio.gather(*tasks)
+        print(a)
+        return a
 
 
 if __name__ == '__main__':

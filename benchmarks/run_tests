@@ -3,8 +3,8 @@ echo "Tests with module loading"
 
 echo "---------------------------"
 echo "aioreq benchmark"
-time python bench_test_aioreq.py
+time python bench_aioreq.py
 
 echo "---------------------------"
 echo "httpx benchmark"
-time python bench_test_httpx.py
+time python bench_httpx.py
