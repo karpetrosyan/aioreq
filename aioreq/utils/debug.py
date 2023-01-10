@@ -1,8 +1,8 @@
 import logging
+from functools import wraps
+from time import perf_counter
 
 from ..settings import LOGGER_NAME
-from time import perf_counter
-from functools import wraps
 
 log = logging.getLogger(LOGGER_NAME)
 function_logs = {}

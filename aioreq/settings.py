@@ -1,7 +1,6 @@
 import logging
-
-from pathlib import Path
 from configparser import ConfigParser
+from pathlib import Path
 
 ini_file_path_posix = Path(__file__).parent / 'settings.ini'
 ini_file_path = str(ini_file_path_posix.absolute())
@@ -9,8 +8,8 @@ ini_file_path = str(ini_file_path_posix.absolute())
 parser = ConfigParser()
 parser.read(ini_file_path)
 
-logging.TRACE = 5
-logging.addLevelName(logging.TRACE, "TRACE")
+LOGGER_TRACE = 5
+logging.addLevelName(LOGGER_TRACE, "TRACE")
 
 log_level_mapper = {
     'notset': logging.NOTSET,
@@ -19,7 +18,7 @@ log_level_mapper = {
     'warning': logging.WARNING,
     'error': logging.ERROR,
     'critical': logging.CRITICAL,
-    'trace' : logging.TRACE
+    'trace': LOGGER_TRACE
 }
 
 log_format_mapper = {
@@ -74,19 +73,15 @@ DEFAULT_CONNECTION_TIMEOUT = int(parser.getfloat('Connection', 'default_connecti
 DEFAULT_DNS_SERVER = parser['Connection']['default_dns_server']
 
 
-class AioReqLogger:
-    ...
-
-
 def _trace(message, *args, **kwargs):
     self = logging.getLogger(LOGGER_NAME)
 
-    if self.isEnabledFor(logging.TRACE):
-        self._log(logging.TRACE, message, args, **kwargs)
+    if self.isEnabledFor(LOGGER_TRACE):
+        self._log(LOGGER_TRACE, message, args, **kwargs)
 
 
 main_logger = logging.getLogger(LOGGER_NAME)
-main_logger.trace = _trace
+main_logger.trace = _trace  # type: ignore
 main_logger.propagate = False
 main_logger.setLevel(MAIN_LOGGER_LEVEL)
 
@@ -97,4 +92,3 @@ formatter = logging.Formatter(FORMAT)
 
 handler.setFormatter(formatter)
 main_logger.addHandler(handler)
-

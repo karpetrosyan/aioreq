@@ -2,7 +2,10 @@ import asyncio
 import logging
 import os
 import ssl
+from typing import Coroutine, Awaitable, Optional
+from typing import Dict
 from typing import Tuple
+from typing import Union
 
 import certifi
 from dns import asyncresolver
@@ -21,7 +24,7 @@ context.minimum_version = ssl.TLSVersion.TLSv1_2
 context.maximum_version = ssl.TLSVersion.TLSv1_2
 
 context.load_verify_locations(certifi.where())
-context.keylog_filename = os.getenv('SSLKEYLOGFILE')
+context.keylog_filename = os.getenv('SSLKEYLOGFILE')  # type: ignore
 
 context.check_hostname = False
 
@@ -31,7 +34,7 @@ async def get_address(host):
     return answers.rrset[0].address
 
 
-dns_cache = dict()
+dns_cache: Dict[str, Union[str, Awaitable]] = dict()
 
 
 async def resolve_domain(
@@ -45,12 +48,13 @@ async def resolve_domain(
     :rtype: [str, int]
     """
     if hostname in dns_cache:
-        if not isinstance(dns_cache[hostname], str):
-            log.trace('Got cached dns query')
-            return await dns_cache[hostname]
-        return dns_cache[hostname]
+        memo = dns_cache[hostname]
+        if isinstance(memo, str):
+            return memo
+        else:
+            return await memo
 
-    log.trace(f"trying resolve {hostname=}")
+    log.trace(f"trying resolve {hostname=}")  # type: ignore
     coro = asyncio.create_task(get_address(hostname))
     dns_cache[hostname] = coro
     host = await coro
@@ -79,18 +83,21 @@ class Transport:
 
         :returns: None
         """
+        assert self.writer
         self.writer.write(raw_data)
         await self.writer.drain()
 
-    async def _receive_data(self) -> Tuple[None, None] | Tuple[bytes, int]:
+    async def _receive_data(self) -> Tuple[Optional[bytes], Optional[int]]:
         """
         An asynchronous alternative for socket.recv() method.
         """
+        assert self.reader
         data = await self.reader.read(200)
         resp, without_body_len = self.message_manager.add_data(data)
         return resp, without_body_len
 
     async def _receive_data_stream(self):
+        assert self.reader
         data = await self.reader.read(200)
         headerless_data = self.stream_message_manager.add_data(data)
         return headerless_data
@@ -143,6 +150,7 @@ class Transport:
             resp, without_body_len = await self._receive_data()
             if resp is not None:
                 self.used = False
+                assert without_body_len
                 return resp, without_body_len
 
     async def send_http_stream_request(
@@ -165,7 +173,9 @@ class Transport:
         """
         Wraps transport is_closing
         """
-        return self.writer.is_closing()
+        if self.writer:
+            return self.writer.is_closing()
+        raise TypeError("`is_closing` method called on unconnected transport")
 
     def __repr__(self):
         return f"<Transport {'Closed' if self.is_closing() else 'Open'}>"

@@ -1,10 +1,8 @@
-import re
 import logging
-
+import re
 from dataclasses import dataclass
-from ..errors.parser import UrlParsingError
 
-from ..utils import debug
+from ..errors.parser import UrlParsingError
 
 log = logging.getLogger('aioreq')
 

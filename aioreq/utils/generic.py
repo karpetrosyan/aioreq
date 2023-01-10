@@ -1,8 +1,8 @@
 import asyncio
 import logging
+from typing import Awaitable
 
 from ..errors.requests import RequestTimeoutError
-from typing import Awaitable
 from ..settings import LOGGER_NAME
 
 log = logging.getLogger(LOGGER_NAME)

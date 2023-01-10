@@ -1,25 +1,26 @@
 import asyncio
 import logging
-import importlib
-
 from abc import ABC, abstractmethod
-from typing import Iterable, Union
+from typing import Union, Tuple
 
-from .headers import TransferEncoding, ContentEncoding, AuthenticationWWW
-from .encodings import get_avaliable_encodings
-from ..errors.requests import RequestTimeoutError
-from ..settings import LOGGER_NAME
 from . import codes
 from .auth import parse_auth_header
+from .encodings import get_avaliable_encodings
+from .headers import AuthenticationWWW
+from .headers import ContentEncoding
+from .headers import TransferEncoding
+from ..errors.requests import RequestTimeoutError
+from ..settings import LOGGER_NAME
 
 log = logging.getLogger(LOGGER_NAME)
 
-default_middlewares = [
+
+default_middlewares = (
     'RetryMiddleWare',
     'RedirectMiddleWare',
     'DecodeMiddleWare',
     'AuthenticationMiddleWare',
-]
+)
 
 
 def load_class(name):
@@ -42,13 +43,15 @@ class MiddleWare(ABC):
         ...
 
     @staticmethod
-    def build(middlewares_: Iterable[Union[str, type]]):
-        result = RequestMiddleWare(next_middleware=None)
-        result = TimeoutMiddleWare(next_middleware=result)
+    def build(middlewares_: Union[
+                                    Tuple[Union[str, type], ...],
+                                ]):
+        result = TimeoutMiddleWare(RequestMiddleWare(next_middleware=None))
         for middleware in reversed(middlewares_):
             if isinstance(middleware, str):
-                middleware = load_class(middleware)
-            result = middleware(next_middleware=result)
+                result = load_class(middleware)(next_middleware=result)
+            else:
+                result = middleware(next_middleware=result)
         return result
 
 

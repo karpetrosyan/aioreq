@@ -1,11 +1,9 @@
-import re
 import logging
+import re
 
-from ..settings import LOGGER_NAME
-from ..protocol.headers import TransferEncoding
 from ..protocol.headers import ContentEncoding
-
-from ..utils import debug
+from ..protocol.headers import TransferEncoding
+from ..settings import LOGGER_NAME
 
 log = logging.getLogger(LOGGER_NAME)
 
@@ -75,6 +73,7 @@ class ResponseParser:
         withoutbody, body = text[:without_body_len], text[without_body_len:]
 
         match = cls.regex_without_body.search(withoutbody)
+        assert match
         scheme_and_version, status, status_message, unparsed_headers = match.groups()
         status = int(status)
         headers = cls.parse_and_fill_headers(unparsed_headers)

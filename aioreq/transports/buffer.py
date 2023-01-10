@@ -5,7 +5,7 @@ from enum import Enum
 from ..settings import LOGGER_NAME
 from ..parser.response_parser import ResponseParser
 
-from typing import Tuple
+from typing import Tuple, Optional
 
 log = logging.getLogger(LOGGER_NAME)
 
@@ -24,14 +24,15 @@ class ResponseParserStrategy(Enum):
         Parse incoming `BaseBuffer` object receiving data on which body length by `content-length` header.
 
         RFC[2616] 14.13 Content-Length:
-            The Content-Lenght entity-header field indicates the size of the entity-body,
-            in decimal number of OCTETs, sent to the recipent or, in the case of the HEAD method,
+            The Content-Length entity-header field indicates the size of the entity-body,
+            in decimal number of OCTETs, sent to the recipient or, in the case of the HEAD method,
             the size of the entity-body that would have been sent had the request been a GET
         :param buffer: A buffer which data should be parsed
         :type buffer: BaseBuffer
         :return: Parsed and verified HTTP response or `NoneType` object
         """
 
+        assert isinstance(buffer.content_length, int)
         if len(buffer.text) >= buffer.content_length:
             buffer.switch_data(buffer.content_length)
             return buffer.message_verify()
@@ -79,6 +80,7 @@ class ResponseParserStrategy(Enum):
                 size = int(match.group('content_size'), 16)
                 buffer.bytes_should_receive_and_save = size
                 buffer.ignore_data(match.end() - match.start())
+        return None
 
     def parse(self, buffer: 'Buffer') -> bytes | None:
         """
@@ -103,11 +105,11 @@ class BaseBuffer:
         ...
 
     @abstractmethod
-    def add_data(self, text: bytes) -> tuple[bytes, bool] | Tuple[bytes, int] | Tuple[None, None]:
+    def add_data(self, text: bytes):
         ...
 
     def set_up(self) -> None:
-        self.__init__()
+        self.__init__()  # type: ignore
 
 
 class Buffer(BaseBuffer):
@@ -189,7 +191,7 @@ class Buffer(BaseBuffer):
             self.body_receiving_strategy = ResponseParserStrategy.content_length
         else:
             self.body_receiving_strategy = ResponseParserStrategy.chunked
-        log.trace(f"Strategy found: {self.body_receiving_strategy}")
+        log.trace(f"Strategy found: {self.body_receiving_strategy}")  # type: ignore
 
     def fill_bytes(self, _bytes: bytes):
         """
@@ -218,6 +220,7 @@ class Buffer(BaseBuffer):
 
             result = self.body_receiving_strategy.parse(self)  # type: ignore
             if result:
+                assert self.without_body_len
                 return result, self.without_body_len
         return None, None
 
@@ -235,7 +238,7 @@ class StreamBuffer(BaseBuffer, ABC):
         self.headers_skipped = False
 
     def add_data(self,
-                 text: bytes) -> tuple[bytes, bool]:
+                 text: bytes) -> Tuple[Optional[bytes], int]:
         """
         Adds new bytes into the buffer and gets parsed result if possible, otherwise returns `None`
         """
@@ -245,6 +248,7 @@ class StreamBuffer(BaseBuffer, ABC):
         if self.buffer.verified:
             if self.headers_skipped:
                 return done[0], True
+            assert done[0]
             return done[0][self.buffer.without_body_len:], True
 
         if self.buffer.without_body_len:

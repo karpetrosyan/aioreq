@@ -1,13 +1,18 @@
-import zlib
 import gzip as _gzip
-
-from enum import Enum
+import zlib
 from abc import ABC
 from abc import abstractmethod
+from enum import Enum
+from typing import List
+from typing import Type
+from typing import TypeVar
+from typing import Union
+
+E_TYPE = TypeVar("E_TYPE", bound="Encoding")
 
 
 class Encoding(ABC):
-    all_encodings = []
+    all_encodings: List[Union[Type['Encoding'], 'Encodings']] = []
 
     @classmethod
     @abstractmethod
@@ -43,10 +48,8 @@ class deflate(Encoding):
 
 
 class Encodings(Enum):
-    # Some meta programming :)
-    global cls
-    for cls in Encoding.all_encodings:
-        locals()[cls.__name__] = cls
+    gzip = gzip
+    deflate = deflate
 
     def decompress(self, text: bytes) -> bytes:
         return self.value.decompress(text)
@@ -54,6 +57,7 @@ class Encodings(Enum):
 
 def get_avaliable_encodings():
     from .headers import AcceptEncoding
+    encodings = tuple((encoding, 1) for encoding in Encoding.all_encodings)
     return AcceptEncoding(
-        *((encoding, 1) for encoding in Encoding.all_encodings)
+        encodings[0]
     )

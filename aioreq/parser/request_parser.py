@@ -1,6 +1,5 @@
 import json as _json
 
-from abc import abstractmethod
 from typing import Iterable
 
 
@@ -10,7 +9,8 @@ class BaseRequestParser:
     via socket
     """
 
-    @abstractmethod
+    # @abstractmethod
+    @classmethod
     def parse(cls, request: 'Request') -> str: ...  # type: ignore
 
     @classmethod
@@ -41,8 +41,8 @@ class RequestParser(BaseRequestParser):
                 '\r\n'.join(
                     (f'{request.method} {request.path} {request.scheme_and_version}',
                      f'host:  {request.host.split("://", 1)[1]}',
-                     *request.headers.get_parsed())
-                ) + '\r\n\r\n')
+                     request.headers.get_parsed())
+                ) + '\r\n')
 
         message += request.content or ''
         return message

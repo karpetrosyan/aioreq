@@ -4,7 +4,11 @@ Contains Header classes to simplify header sending
 from abc import ABC
 from abc import abstractmethod
 from enum import Enum
+from typing import Dict
+from typing import Optional
 from typing import Tuple
+from typing import Type
+from typing import Union
 
 from lark import Lark
 
@@ -62,25 +66,23 @@ class AcceptEncoding(BaseHeader):
 
     def __init__(
             self,
-            *codings: Tuple[
-                Tuple[Encoding, int]
-                | Tuple[Encoding]
-                ]):
-        self._codings = {}
+            *codings: Tuple[Union[Type[Encoding], Encodings], Union[None, int]]
+    ):
+        self._codings: Dict[str, str] = {}
         for coding in codings:
-            assert 0 < len(coding) < 3
-            if len(coding) == 2:
-                coding_type, qvalue = coding  # type: ignore
-            else:
-                coding_type = coding[0]
-                qvalue = 1
+            coding_type, qvalue = coding  # type: ignore
 
-            if not qvalue_validate(qvalue):
-                raise ValueError("Invalid qvalue given -> {qvalue}. Expected int between 0, 1")
+            if qvalue is not None:
+                if not qvalue_validate(qvalue):
+                    raise ValueError("Invalid qvalue given -> {qvalue}. Expected number between 0, 1")
+                str_qvalue = str(qvalue)
+            else:
+                str_qvalue = "1"
 
             if isinstance(coding_type, Encodings):
-                coding_type = coding_type.value
-            self._codings[coding_type.stringify()] = qvalue
+                self._codings[coding_type.value.stringify()] = str_qvalue
+            else:
+                self._codings[coding_type.stringify()] = str_qvalue
 
     @property
     def value(self):
@@ -99,38 +101,41 @@ class Accept(BaseHeader):
         types which are acceptable for the response. Accept headers can be
         used to indicate that the request is specifically limited to a small
         set of desired types, as in the case of a request for an in-line image.
+
+    :Example:
+
+    >>> from aioreq.protocol.headers import Accept
+    >>> from aioreq.protocol.headers import MimeType
+    >>> Accept((MimeType.js, 1), (MimeType.avl, None)).value
+    ' text/javascript; q=1, video/x-msvideo; q=1'
+    >>> Accept((MimeType.js, 0.5), (MimeType.avl, None)).value
+    ' text/javascript; q=0.5, video/x-msvideo; q=1'
+    >>> Accept((MimeType.js, 0.5), (MimeType.avl, None), (MimeType.csv, 0.1)).value
+    ' text/javascript; q=0.5, video/x-msvideo; q=1, text/csv; q=0.1'
     """
 
     key = 'Accept'
 
     def __init__(
             self,
-            *types: Tuple[
-                tuple[
-                    MimeType,
-                    int | None
-                ] |
-                tuple[
-                    MimeType
-                ]
-                ]
+            *types: Tuple[MimeType, Optional[Union[int, float]]]
     ):
 
-        self.media_ranges = {}
+        self.media_ranges: Dict[MimeType, str] = {}
         for media_range in types:
-            assert 0 < len(media_range) < 3
-            if len(media_range) == 2:
-                type, qvalue = media_range
+            m_type, qvalue = media_range
+            if qvalue is None:
+                str_value = "1"
             else:
-                type, = media_range
-                qvalue = 1
-            self.media_ranges[type] = qvalue
+                str_value = str(qvalue)
+
+            self.media_ranges[m_type] = str_value
 
     @property
     def value(self) -> str:
         text = ' '
-        for type, qvalue in self.media_ranges.items():
-            text += f'{type.value}; q={qvalue}, '
+        for m_type, qvalue in self.media_ranges.items():
+            text += f'{m_type.value}; q={qvalue}, '
         text = text[:-2]
         return text
 
@@ -185,15 +190,14 @@ class AuthenticationWWW(ServerHeader):
     """
 
     parser = Lark(r"""
-            challenge: auth_scheme params
-            !auth_scheme: "Basic" | "Digest"
-            params: (param COL)* param?
-            param: key EQ value
-            key: /[^=\s]+/
-            value: /\"[^\"]+\"/
-            EQ: "="
-            COL: ","
-
+            challenge:      auth_scheme params
+            !auth_scheme:   "Basic" | "Digest"
+            params:         (param COL)* param?
+            param:          key EQ value
+            key:            /[^=\s]+/
+            value:          /\"[^\"]+\"/
+            EQ:             "="
+            COL:            ","
 
             %ignore /\s/
             """, parser='lalr', start='challenge')
@@ -218,13 +222,14 @@ class AuthenticationWWW(ServerHeader):
         parsed = self.parser.parse(value)
 
         params = {}
-        scheme = parsed.children[0].children[0].value
 
-        for param in parsed.children[1].children:
+        scheme = parsed.children[0].children[0].value  # type: ignore
+
+        for param in parsed.children[1].children:  # type: ignore
             if type(param) != type(parsed):
                 continue
-            key = param.children[0].children[0].value
-            value = param.children[2].children[0].value
+            key = param.children[0].children[0].value  # type: ignore
+            value = param.children[2].children[0].value  # type: ignore
             params[key] = value
         self.auth_schemes[scheme] = params
         return self

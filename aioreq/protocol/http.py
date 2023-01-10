@@ -1,34 +1,43 @@
 import asyncio
 import logging
+import typing
 from abc import ABCMeta, ABC
 from collections import defaultdict
 from typing import AsyncIterable
+from typing import Dict
 from typing import Iterable
+from typing import List
+from typing import Optional
+from typing import TypeVar
 from typing import Union
 
 from .headers import BaseHeader
 from .middlewares import MiddleWare
 from .middlewares import RedirectMiddleWare
 from .middlewares import RetryMiddleWare
-from .middlewares import TimeoutMiddleWare
 from .middlewares import default_middlewares
 from ..errors.requests import ConnectionTimeoutError
+from ..parser.request_parser import BaseRequestParser
 from ..parser.request_parser import JsonRequestParser
 from ..parser.request_parser import RequestParser
 from ..parser.response_parser import ResponseParser
 from ..parser.url_parser import Url
 from ..parser.url_parser import UrlParser
+from ..settings import DEFAULT_TIMEOUT as REQUEST_TIMEOUT
 from ..settings import LOGGER_NAME
 from ..settings import REQUEST_REDIRECT_COUNT
 from ..settings import REQUEST_RETRY_COUNT
 from ..settings import TEST_SERVER_DOMAIN
-from ..settings import DEFAULT_TIMEOUT as REQUEST_TIMEOUT
 from ..transports.connection import Transport
 from ..transports.connection import resolve_domain
 from ..utils import debug
 from ..utils.generic import wrap_errors
 
 log = logging.getLogger(LOGGER_NAME)
+
+T = TypeVar("T", bound="Headers")
+P = TypeVar("P", bound=BaseRequestParser)
+TRESP = TypeVar("TRESP", bound='Response')
 
 
 class HttpProtocol(ABC):
@@ -37,7 +46,7 @@ class HttpProtocol(ABC):
     with the general attributes
     """
 
-    __slots__ = tuple()
+    __slots__ = tuple()  # type: ignore
 
     safe_methods = (
         "GET",
@@ -73,10 +82,10 @@ class Headers(metaclass=MetaHeaders):
     True
     """
 
-    def __init__(self,
-                 initial_headers: Union[dict[str, str], None] = None):
-        self._headers = {}
-        self.cache = ''
+    def __init__(self: T,
+                 initial_headers: Optional[Union[dict[str, str], T]] = None):
+        self._headers: Dict[str, str] = {}
+        self.cache: Optional[str] = ''
 
         if initial_headers:
             for key, value in initial_headers.items():
@@ -106,7 +115,7 @@ class Headers(metaclass=MetaHeaders):
         if self.cache is not None:
             return self.cache
 
-        headers = (f"{key}:  {value}" for key, value in self._headers.items())
+        headers = '\r\n'.join(f"{key}:  {value}" for key, value in self._headers.items()) + "\r\n"
         self.cache = headers
         return headers
 
@@ -167,7 +176,7 @@ class BaseRequest(HttpProtocol, metaclass=ABCMeta):
     :type auth: Tuple[str, str] | None
     """
 
-    parser = None
+    parser: Optional[typing.Type[BaseRequestParser]] = None
 
     __slots__ = tuple()
 
@@ -191,8 +200,6 @@ class BaseRequest(HttpProtocol, metaclass=ABCMeta):
 
         splited_url = UrlParser.parse(url)
 
-
-
         self._host = splited_url.get_url_without_path()
         self.path = splited_url.path
         self.auth = auth
@@ -202,7 +209,7 @@ class BaseRequest(HttpProtocol, metaclass=ABCMeta):
         self.method = method
         self.content = content
         self.path_parameters = params
-        self._raw_request = None
+        self._raw_request: Optional[bytes] = None
 
     @property
     def host(self):
@@ -222,6 +229,7 @@ class BaseRequest(HttpProtocol, metaclass=ABCMeta):
         if self._raw_request:
             return self._raw_request
 
+        assert self.parser
         message = self.parser.parse(self)
         enc_message = message.encode('utf-8')
         self._raw_request = enc_message
@@ -274,7 +282,6 @@ class Request(BaseRequest):
 
 
 class JsonRequest(BaseRequest):
-
     """
     :Example:
 
@@ -357,11 +364,11 @@ class Response(BaseResponse):
         self.content = content
         self.request = request
 
-    def __eq__(self, value: 'Response') -> bool:
+    def __eq__(self, _value) -> bool:  # type: ignore
         """
         Checks if two Response objects have the same attributes or not
-        :param value: right side value of equal
-        :type value: Response 
+        :param _value: right side value of equal
+        :type _value: Response 
         :returns: True if values are equal
         :rtype: bool
 
@@ -390,10 +397,10 @@ class Response(BaseResponse):
         True
         """
 
-        if type(self) != type(value):
-            raise False
-        return self.status == value.status and self.status_message == value.status_message and \
-            self.headers == value.headers and self.content == value.content and self.request == value.request
+        if type(self) != type(_value):
+            raise TypeError("Can't compare `{type(self).__name__}` with `{type(_value).__name__}`")
+        return self.status == _value.status and self.status_message == _value.status_message and \
+            self.headers == _value.headers and self.content == _value.content and self.request == _value.request
 
     def __repr__(self) -> str:
         return f"<Response {self.status} {self.status_message}>"
@@ -427,7 +434,7 @@ class BaseClient(metaclass=ABCMeta):
                  retry_count: int = REQUEST_RETRY_COUNT,
                  timeout: Union[int, float, None] = None,
                  auth: Union[tuple[str, str], None] = None,
-                 middlewares: Union[list[str], None] = None):
+                 middlewares: Optional[typing.Tuple[Union[str, typing.Type[MiddleWare]], ...]] = None):
 
         headers = Headers(initial_headers=headers)
 
@@ -445,9 +452,9 @@ class BaseClient(metaclass=ABCMeta):
         self.redirect = redirect_count
         self.retry = retry_count
         self.auth = auth
-        self.connection_mapper = defaultdict(list)
+        self.connection_mapper: defaultdict[str, list] = defaultdict(list)
         self.headers = headers
-        self.transports = []
+        self.transports: List[Transport] = []
         self.persistent_connections = persistent_connections
 
     async def _get_connection(self, url: Url):
@@ -460,7 +467,7 @@ class BaseClient(metaclass=ABCMeta):
         """
         transport = None
         if self.persistent_connections:
-            log.trace(f"{self.connection_mapper} searching into mapped connections")
+            log.trace(f"{self.connection_mapper} searching into mapped connections")  # type: ignore
 
             for transport in self.connection_mapper[url.get_url_for_dns()]:
                 if not transport.used:
@@ -523,11 +530,12 @@ class BaseClient(metaclass=ABCMeta):
         tasks = []
 
         for transport in self.transports:
+            assert transport.writer
             transport.writer.close()
-            log.trace('Trying to close the connection')
+            log.trace('Trying to close the connection')  # type: ignore
             tasks.append(transport.writer.wait_closed())
         await asyncio.gather(*tasks)
-        log.trace('All connections are closed')
+        log.trace('All connections are closed')  # type: ignore
 
 
 class Client(BaseClient):
@@ -566,7 +574,7 @@ class Client(BaseClient):
                             method: str,
                             content: Union[str, bytearray, bytes] = '',
                             params: Union[Iterable[Iterable[str]], None] = None,
-                            headers: Union[None, dict[str, str]] = None,
+                            headers: Union[None, dict[str, str], Headers] = None,
                             auth: Union[tuple[str, str], None] = None,
                             timeout: Union[int, float, None] = None
                             ) -> Response:
@@ -755,7 +763,7 @@ class StreamClient(BaseClient):
                             method: str,
                             content: Union[str, bytearray, bytes] = '',
                             path_parameters: Union[Iterable[Iterable[str]], None] = None,
-                            headers: Union[None, dict[str, str]] = None,
+                            headers: Union[None, dict[str, str], Headers] = None,
                             ) -> AsyncIterable:
         headers = Headers(initial_headers=headers)
 
