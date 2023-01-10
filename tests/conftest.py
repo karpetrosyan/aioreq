@@ -47,13 +47,13 @@ def temp_function(persistent_connections=False, stream=False, kwargs=None):
 @pytest.fixture(scope='session')
 def server():
 
-    with subprocess.Popen(
+    proc = subprocess.Popen(
             ['uvicorn', 'tests.server:app', '--port', '7575'],
-            stdout=subprocess.PIPE,
-    ) as proc:
-        text = proc.stdout.read(7)
-        assert text == b'started'
-        yield SERVER_URL
+            stdout=subprocess.PIPE)
+    text = proc.stdout.read(7)
+    assert text == b'started'
+    yield SERVER_URL
+    os.kill(proc.pid, signal.SIGKILL)
 
 
 @pytest.fixture(scope='session')
