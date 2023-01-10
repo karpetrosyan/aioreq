@@ -103,7 +103,7 @@ We can see that middlewares by importing 'default_middlewares'  variable.
 ``` python
 >>> import aioreq
 >>> aioreq.middlewares.default_middlewares
-['RetryMiddleWare', 'RedirectMiddleWare', 'DecodeMiddleWare', 'AuthenticationMiddleWare']
+('RetryMiddleWare', 'RedirectMiddleWare', 'DecodeMiddleWare', 'AuthenticationMiddleWare')
 
 ```
 The first item on this list represents the first middleware that should handle our request (i.e. the closest middleware to our client), while the last index represents the closest middleware to the server.
@@ -163,7 +163,7 @@ Our CustomMiddleWare will now be the first middleware (i.e. closest to the clien
 
 Alternatively, we can alter the list of middlewares that the client receives.
 ``` python
->>> client = aioreq.Client(middlewares = [CustomMiddleWare] + aioreq.middlewares.default_middlewares)
+>>> client = aioreq.Client(middlewares = (CustomMiddleWare, ) + aioreq.middlewares.default_middlewares)
 >>> client.middlewares.__class__.__name__
 'CustomMiddleWare'
 
