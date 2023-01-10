@@ -1,8 +1,13 @@
-import pytest
 import asyncio
-import aioreq
+import os
+import signal
 import subprocess
+from time import sleep
+
+import pytest
 import pytest_asyncio
+
+import aioreq
 from aioreq.protocol.middlewares import default_middlewares
 
 SCOPE_SESSION = pytest_asyncio.fixture(scope='session')
@@ -41,17 +46,14 @@ def temp_function(persistent_connections=False, stream=False, kwargs=None):
 
 @pytest.fixture(scope='session')
 def server():
-    proc = subprocess.Popen(
-        ['uvicorn', 'tests.server:app', '--port', '7575'],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE
-    )
-    pid = proc.pid
-    text = proc.stdout.read(7).decode()
-    assert text == 'started'
 
-    yield SERVER_URL
-    subprocess.run(['kill', str(pid)])
+    with subprocess.Popen(
+            ['uvicorn', 'tests.server:app', '--port', '7575'],
+            stdout=subprocess.PIPE,
+    ) as proc:
+        text = proc.stdout.read(7)
+        assert text == b'started'
+        yield SERVER_URL
 
 
 @pytest.fixture(scope='session')
