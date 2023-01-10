@@ -1,11 +1,9 @@
 __version__ = '1.0.1b0'
 
-import asyncio
-
+from .protocol import headers
 from .protocol import http
 from .protocol import middlewares
 from .protocol.http import *
-from .protocol import headers
 
 try:
     ...
@@ -14,4 +12,3 @@ try:
     # asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 except:
     ...
-
