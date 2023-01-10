@@ -53,7 +53,7 @@ def server():
     text = proc.stdout.read(7)
     assert text == b'started'
     yield SERVER_URL
-    os.kill(proc.pid, signal.SIGKILL)
+    os.kill(proc.pid, signal.SIGTERM)
 
 
 @pytest.fixture(scope='session')
