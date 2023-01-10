@@ -9,11 +9,13 @@ requires-python = ">=3.10"
 description = "Asynchronous HTTP library."
 readme = "README.md"
 license-files = { paths = ["LICENSE"]}
+
 dependencies = [
     "certifi",
     "dnspython",
     "lark"
 ]
+
 classifiers = [
   "Development Status :: 2 - Pre-Alpha",
   "License :: OSI Approved :: MIT License",
@@ -30,15 +32,15 @@ Homepage = "https://github.com/karosis88/aioerq"
 Source = "https://github.com/karosis88/aioreq"
 
 [project.optional-dependencies]
-benchmark = [
+
+dev = [
     "httpx",
-]
-tests = [
     "fastapi",
     "pytest",
     "pytest-asyncio",
     "uvicorn",
 ]
+
 uvloop = [
     "uvloop",
 ]
