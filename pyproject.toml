@@ -37,6 +37,7 @@ Source = "https://github.com/karosis88/aioreq"
 [project.optional-dependencies]
 
 dev = [
+    "hatch",
     "httpx",
     "fastapi",
     "pytest",
