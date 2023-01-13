@@ -54,7 +54,7 @@ async def resolve_domain(
         else:
             return await memo
 
-    log.trace(f"trying resolve {hostname=}")  # type: ignore
+    log.trace(f"trying resolve hostname={hostname}")  # type: ignore
     coro = asyncio.create_task(get_address(hostname))
     dns_cache[hostname] = coro
     host = await coro

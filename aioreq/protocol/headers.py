@@ -202,7 +202,7 @@ class AuthenticationWWW(ServerHeader):
             %ignore /\s/
             """, parser='lalr', start='challenge')
 
-    def __init__(self, auth_schemes: dict[str, dict] = {}):
+    def __init__(self, auth_schemes: Dict[str, dict] = {}):
         self.auth_schemes = auth_schemes
 
     @classmethod

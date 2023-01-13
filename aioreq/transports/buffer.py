@@ -5,7 +5,7 @@ from enum import Enum
 from ..settings import LOGGER_NAME
 from ..parser.response_parser import ResponseParser
 
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Union
 
 log = logging.getLogger(LOGGER_NAME)
 
@@ -19,7 +19,7 @@ class ResponseParserStrategy(Enum):
     content_length = 'content_length'
 
     @staticmethod
-    def parse_content_length(buffer: 'Buffer') -> bytes | None:
+    def parse_content_length(buffer: 'Buffer') -> Union[bytes, None]:
         """
         Parse incoming `BaseBuffer` object receiving data on which body length by `content-length` header.
 
@@ -39,7 +39,7 @@ class ResponseParserStrategy(Enum):
         return None
 
     @staticmethod
-    def parse_chunked(buffer: 'Buffer') -> None | bytes:
+    def parse_chunked(buffer: 'Buffer') -> Union[None, bytes]:
         """
         Parse incoming `BaseBuffer` object receiving data on which body length by chunked transfer encoding.
 
@@ -82,7 +82,7 @@ class ResponseParserStrategy(Enum):
                 buffer.ignore_data(match.end() - match.start())
         return None
 
-    def parse(self, buffer: 'Buffer') -> bytes | None:
+    def parse(self, buffer: 'Buffer') -> Union[bytes, None]:
         """
         General interface to work with parsing strategies
         :param buffer: A buffer which data should be parsed
@@ -91,11 +91,11 @@ class ResponseParserStrategy(Enum):
         :rtype: bytes or None
         """
 
-        match self.value:
-            case 'content_length':
-                return self.parse_content_length(buffer)
-            case 'chunked':
-                return self.parse_chunked(buffer)
+        if self.value == 'content_length':
+            return self.parse_content_length(buffer)
+        elif self.value == 'chunked':
+            return self.parse_chunked(buffer)
+        assert True, "Unsupported parsing method"
 
 
 class BaseBuffer:
@@ -202,7 +202,7 @@ class Buffer(BaseBuffer):
         for byte in _bytes:
             self.text.append(byte)
 
-    def add_data(self, text: bytes) -> Tuple[bytes, int] | Tuple[None, None]:
+    def add_data(self, text: bytes) -> Union[Tuple[bytes, int], Tuple[None, None]]:
         """
         Called whenever new data is required to be added
         :param text: text to add

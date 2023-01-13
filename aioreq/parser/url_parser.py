@@ -1,6 +1,7 @@
 import logging
 import re
 from dataclasses import dataclass
+from typing import Union
 
 from ..errors.parser import UrlParsingError
 
@@ -31,13 +32,13 @@ class Url:
     :type fragment: str or None
     """
 
-    protocol: str | None
-    subdomain: str | None
+    protocol: Union[str, None]
+    subdomain: Union[str, None]
     domain: str
     top_level_domain: str
     path: str
-    variables: str | None
-    fragment: str | None
+    variables: Union[str, None]
+    fragment: Union[str, None]
 
     def get_url(self):
         """

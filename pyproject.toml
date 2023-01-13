@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "aioreq"
 dynamic = ["version"]
-requires-python = ">=3.10"
+requires-python = ">=3.7"
 description = "Asynchronous HTTP library."
 readme = "README.md"
 license-files = { paths = ["LICENSE"]}
@@ -17,14 +17,17 @@ dependencies = [
 ]
 
 classifiers = [
-  "Development Status :: 2 - Pre-Alpha",
-  "License :: OSI Approved :: MIT License",
-  "Natural Language :: English",
-  "Programming Language :: Python :: 3.10",
-  "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: Implementation :: CPython",
-  "Topic :: Internet :: WWW/HTTP",
-  "Framework :: AsyncIO",
+    "Development Status :: 2 - Pre-Alpha",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Topic :: Internet :: WWW/HTTP",
+    "Framework :: AsyncIO",
 ]
 
 [project.urls]

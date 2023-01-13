@@ -17,11 +17,10 @@ class AuthenticationSchemes(Enum):
 
     def authenticate(self, *args, **kwargs):
 
-        match self:
-            case AuthenticationSchemes.BASIC:
-                return authenticate_basic(*args)
-            case AuthenticationSchemes.DIGEST:
-                return authenticate_digest(**kwargs)
+        if self == AuthenticationSchemes.BASIC:
+            return authenticate_basic(*args)
+        elif self == AuthenticationSchemes.DIGEST:
+            return authenticate_digest(**kwargs)
 
 
 def parse_auth_header(header: AuthenticationWWW, request):

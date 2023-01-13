@@ -38,9 +38,9 @@ class TestResponseParser:
         ],
     )
     def test_parse(self,
-                   response_raw: bytes,
+                   response_raw,
                    wbl,
-                   expected_result: Response):
+                   expected_result):
         result = ResponseParser.body_len_parse(response_raw, wbl)
         is_same = result == expected_result
         assert is_same
@@ -96,7 +96,7 @@ class TestResponseParser:
         ]
     )
     def test_content_length_found(self,
-                                  response_raw: bytes,
-                                  expected_result: int | None):
+                                  response_raw,
+                                  expected_result):
         result = ResponseParser.search_content_length(response_raw)
         assert result == expected_result

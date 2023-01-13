@@ -1,5 +1,6 @@
 import logging
 import re
+from typing import Union
 
 from ..protocol.headers import ContentEncoding
 from ..protocol.headers import TransferEncoding
@@ -88,7 +89,7 @@ class ResponseParser:
         return response
 
     @classmethod
-    def search_content_length(cls, text: bytes) -> int | None:
+    def search_content_length(cls, text: bytes) -> Union[int, None]:
         """
         Search and returned content-length
 
@@ -121,7 +122,7 @@ class ResponseParser:
 
         match = cls.regex_without_body.match(text)
         assert match
-        assert match.start() == 0, f"Got unexpected {match.start=}"
+        assert match.start() == 0, f"Got unexpected match.start={match.start}"
         return match.end() - match.start()
 
     @classmethod
@@ -134,5 +135,5 @@ class ResponseParser:
 
         match = cls.regex_without_body.match(text)
         if match:
-            assert match.start() == 0, f"Got unexpected {match.start=}"  # type: ignore
+            assert match.start() == 0, f"Got unexpected match.start={match.start}"  # type: ignore
         return match is not None
