@@ -14,19 +14,18 @@ from ..settings import LOGGER_NAME
 
 log = logging.getLogger(LOGGER_NAME)
 
-
 default_middlewares = (
-    'RetryMiddleWare',
-    'RedirectMiddleWare',
-    'DecodeMiddleWare',
-    'AuthenticationMiddleWare',
+    "RetryMiddleWare",
+    "RedirectMiddleWare",
+    "DecodeMiddleWare",
+    "AuthenticationMiddleWare",
 )
 
 
 def load_class(name):
-    if '.' not in name:
+    if "." not in name:
         return globals()[name]
-    components = name.split('.')
+    components = name.split(".")
     mod = __import__(components[0])
     for comp in components[1:]:
         mod = getattr(mod, comp)
@@ -34,7 +33,6 @@ def load_class(name):
 
 
 class MiddleWare(ABC):
-
     def __init__(self, next_middleware):
         self.next_middleware = next_middleware
 
@@ -43,9 +41,11 @@ class MiddleWare(ABC):
         ...
 
     @staticmethod
-    def build(middlewares_: Union[
-                                    Tuple[Union[str, type], ...],
-                                ]):
+    def build(
+            middlewares_: Union[
+                Tuple[Union[str, type], ...],
+            ]
+    ):
         result = TimeoutMiddleWare(RequestMiddleWare(next_middleware=None))
         for middleware in reversed(middlewares_):
             if isinstance(middleware, str):
@@ -56,7 +56,6 @@ class MiddleWare(ABC):
 
 
 class RequestMiddleWare(MiddleWare):
-
     async def process(self, request, client):
         resp = await client.send_request_directly(request)
         return resp
@@ -66,7 +65,7 @@ class RedirectMiddleWare(MiddleWare):
     redirect_count = 3
 
     def __init__(self, *args, **kwargs):
-        redirect = kwargs.get('redirect', None)
+        redirect = kwargs.get("redirect", None)
         if not redirect:
             redirect = self.redirect_count
         self.redirect = max(redirect + 1, 1)
@@ -79,24 +78,23 @@ class RedirectMiddleWare(MiddleWare):
             redirect -= 1
             response = await self.next_middleware.process(request, client)
             if (response.status // 100) == 3:
-                request.host = response.headers['Location']
+                request.host = response.headers["Location"]
 
                 if redirect < 1:
                     return response
             else:
                 return response
-            log.info(f'Redirecting request with status code {response.status}')
+            log.info(f"Redirecting request with status code {response.status}")
         assert response is not None
 
         return response
 
 
 class DecodeMiddleWare(MiddleWare):
-
     def decode(self, response):
         for parser, header in (
-                (TransferEncoding, 'transfer-encoding'),
-                (ContentEncoding, 'content-encoding')
+                (TransferEncoding, "transfer-encoding"),
+                (ContentEncoding, "content-encoding"),
         ):
             header_content = response.headers.get(header, None)
             if header_content:
@@ -107,7 +105,7 @@ class DecodeMiddleWare(MiddleWare):
 
     async def process(self, request, client):
 
-        if 'content-encoding' not in request.headers:
+        if "content-encoding" not in request.headers:
             request.headers.add_header(get_avaliable_encodings())
 
         response = await self.next_middleware.process(request, client)
@@ -138,18 +136,19 @@ class RetryMiddleWare(MiddleWare):
 
 
 class AuthenticationMiddleWare(MiddleWare):
-
     async def process(self, request, client):
 
         resp = await self.next_middleware.process(request, client)
         if request.auth:
             if resp.status != codes.UNAUTHORIZED:
                 return resp
-            if 'www-authenticate' not in resp.headers:
-                raise ValueError(f'{codes.UNAUTHORIZED} status code received without `www-authenticate` header')
-            header_obj = AuthenticationWWW.parse(resp.headers['www-authenticate'])
+            if "www-authenticate" not in resp.headers:
+                raise ValueError(
+                    f"{codes.UNAUTHORIZED} status code received without `www-authenticate` header"
+                )
+            header_obj = AuthenticationWWW.parse(resp.headers["www-authenticate"])
             for authentication_header in parse_auth_header(header_obj, request):
-                request.headers['authorization'] = authentication_header
+                request.headers["authorization"] = authentication_header
                 resp = await self.next_middleware.process(request, client)
                 if resp.status != codes.UNAUTHORIZED:
                     break
@@ -157,11 +156,12 @@ class AuthenticationMiddleWare(MiddleWare):
 
 
 class TimeoutMiddleWare(MiddleWare):
-
     async def process(self, request, client):
 
         try:
-            return await asyncio.wait_for(self.next_middleware.process(request, client),
-                                          timeout=request.timeout or client.timeout)
+            return await asyncio.wait_for(
+                self.next_middleware.process(request, client),
+                timeout=request.timeout or client.timeout,
+            )
         except asyncio.TimeoutError:
             raise RequestTimeoutError from None

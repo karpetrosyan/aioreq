@@ -12,7 +12,7 @@ E_TYPE = TypeVar("E_TYPE", bound="Encoding")
 
 
 class Encoding(ABC):
-    all_encodings: List[Union[Type['Encoding'], 'Encodings']] = []
+    all_encodings: List[Union[Type["Encoding"], "Encodings"]] = []
 
     @classmethod
     @abstractmethod
@@ -30,15 +30,14 @@ class Encoding(ABC):
 # Encodings
 # -------------
 
-class gzip(Encoding):
 
+class gzip(Encoding):
     @classmethod
     def decompress(cls, text: bytes) -> bytes:
         return _gzip.decompress(text)
 
 
 class deflate(Encoding):
-
     @classmethod
     def decompress(cls, text: bytes) -> bytes:
         decompress = zlib.decompressobj(-zlib.MAX_WBITS)
@@ -57,7 +56,6 @@ class Encodings(Enum):
 
 def get_avaliable_encodings():
     from .headers import AcceptEncoding
+
     encodings = tuple((encoding, 1) for encoding in Encoding.all_encodings)
-    return AcceptEncoding(
-        encodings[0]
-    )
+    return AcceptEncoding(encodings[0])

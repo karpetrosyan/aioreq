@@ -6,7 +6,6 @@ import asyncio
 from time import perf_counter
 
 
-
 async def main():
     async with aioreq.Client() as client:
         tasks = []
@@ -18,6 +17,7 @@ async def main():
         text = f"Url: {url} | Requests: {count} | Time spent: {time_spent}"
         print(text)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     url, count = sys.argv[1:3]
     asyncio.run(main())

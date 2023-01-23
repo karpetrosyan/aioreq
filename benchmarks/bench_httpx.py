@@ -14,11 +14,15 @@ async def main():
     async with httpx.AsyncClient(follow_redirects=True) as cl:
         tasks = []
         for j in range(REQUESTS_COUNT):
-            tasks.append(send_req(cl, ))
+            tasks.append(
+                send_req(
+                    cl,
+                )
+            )
         a = await asyncio.gather(*tasks)
         print(a)
         return a
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     asyncio.run(main())

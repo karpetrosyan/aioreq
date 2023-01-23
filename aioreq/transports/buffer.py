@@ -15,11 +15,12 @@ class ResponseParserStrategy(Enum):
     An enumeration that implements the strategy design pattern used to
     choice of method for parsing the answer.
     """
-    chunked = 'chunked'
-    content_length = 'content_length'
+
+    chunked = "chunked"
+    content_length = "content_length"
 
     @staticmethod
-    def parse_content_length(buffer: 'Buffer') -> Union[bytes, None]:
+    def parse_content_length(buffer: "Buffer") -> Union[bytes, None]:
         """
         Parse incoming `BaseBuffer` object receiving data on which body length by `content-length` header.
 
@@ -39,7 +40,7 @@ class ResponseParserStrategy(Enum):
         return None
 
     @staticmethod
-    def parse_chunked(buffer: 'Buffer') -> Union[None, bytes]:
+    def parse_chunked(buffer: "Buffer") -> Union[None, bytes]:
         """
         Parse incoming `BaseBuffer` object receiving data on which body length by chunked transfer encoding.
 
@@ -75,14 +76,14 @@ class ResponseParserStrategy(Enum):
                     return buffer.message_verify()
 
                 match = ResponseParser.regex_find_chunk.search(buffer.text)
-                if match is None or match.groups()[0] == b'0':
+                if match is None or match.groups()[0] == b"0":
                     break
-                size = int(match.group('content_size'), 16)
+                size = int(match.group("content_size"), 16)
                 buffer.bytes_should_receive_and_save = size
                 buffer.ignore_data(match.end() - match.start())
         return None
 
-    def parse(self, buffer: 'Buffer') -> Union[bytes, None]:
+    def parse(self, buffer: "Buffer") -> Union[bytes, None]:
         """
         General interface to work with parsing strategies
         :param buffer: A buffer which data should be parsed
@@ -91,15 +92,14 @@ class ResponseParserStrategy(Enum):
         :rtype: bytes or None
         """
 
-        if self.value == 'content_length':
+        if self.value == "content_length":
             return self.parse_content_length(buffer)
-        elif self.value == 'chunked':
+        elif self.value == "chunked":
             return self.parse_chunked(buffer)
         assert True, "Unsupported parsing method"
 
 
 class BaseBuffer:
-
     @abstractmethod
     def __init__(self):
         ...
@@ -237,8 +237,7 @@ class StreamBuffer(BaseBuffer, ABC):
         self.buffer = Buffer()
         self.headers_skipped = False
 
-    def add_data(self,
-                 text: bytes) -> Tuple[Optional[bytes], int]:
+    def add_data(self, text: bytes) -> Tuple[Optional[bytes], int]:
         """
         Adds new bytes into the buffer and gets parsed result if possible, otherwise returns `None`
         """
@@ -249,17 +248,19 @@ class StreamBuffer(BaseBuffer, ABC):
             if self.headers_skipped:
                 return done[0], True
             assert done[0]
-            return done[0][self.buffer.without_body_len:], True
+            return done[0][self.buffer.without_body_len :], True
 
         if self.buffer.without_body_len:
-            if not self.headers_skipped:  # if headers not received, receive and clean the bytearray
+            if (
+                not self.headers_skipped
+            ):  # if headers not received, receive and clean the bytearray
                 self.headers_skipped = True
 
                 # if transfer encoding was chunked, then with headers it can also receive some chunks
                 # This code receive additional content which comes with `headers`
-                body_received = self.buffer.message_data[self.buffer.without_body_len:]
-                self.buffer.message_data = bytearray(b'')  # clear message_data
+                body_received = self.buffer.message_data[self.buffer.without_body_len :]
+                self.buffer.message_data = bytearray(b"")  # clear message_data
                 return body_received, False
         msg = self.buffer.message_data
-        self.buffer.message_data = bytearray(b'')  # clear message_data
+        self.buffer.message_data = bytearray(b"")  # clear message_data
         return msg, False

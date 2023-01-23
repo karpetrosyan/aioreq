@@ -15,7 +15,7 @@ from ..errors.requests import AsyncRequestsError
 from ..settings import LOGGER_NAME
 
 res = asyncresolver.Resolver()
-res.nameservers = ['1.1.1.1', '8.8.8.8']
+res.nameservers = ["1.1.1.1", "8.8.8.8"]
 
 log = logging.getLogger(LOGGER_NAME)
 
@@ -24,7 +24,7 @@ context.minimum_version = ssl.TLSVersion.TLSv1_2
 context.maximum_version = ssl.TLSVersion.TLSv1_2
 
 context.load_verify_locations(certifi.where())
-context.keylog_filename = os.getenv('SSLKEYLOGFILE')  # type: ignore
+context.keylog_filename = os.getenv("SSLKEYLOGFILE")  # type: ignore
 
 context.check_hostname = False
 
@@ -38,7 +38,7 @@ dns_cache: Dict[str, Union[str, Awaitable]] = dict()
 
 
 async def resolve_domain(
-        hostname: str,
+    hostname: str,
 ) -> str:
     """
     Makes an asynchronous DNS request to resolve the IP address
@@ -102,11 +102,7 @@ class Transport:
         headerless_data = self.stream_message_manager.add_data(data)
         return headerless_data
 
-    async def make_connection(
-            self,
-            ip: str,
-            port: int,
-            ssl: bool) -> None:
+    async def make_connection(self, ip: str, port: int, ssl: bool) -> None:
         """
         An asynchronous alternative for socket connect
         :param ip: Ip where connection should be made
@@ -117,20 +113,16 @@ class Transport:
         :type ssl: bool
         :returns: None
         """
-        reader, writer = await \
-            asyncio.wait_for(asyncio.open_connection(
-                host=ip,
-                port=port,
-                ssl=context if ssl else None
-            ),
-                timeout=3
-            )
+        reader, writer = await asyncio.wait_for(
+            asyncio.open_connection(host=ip, port=port, ssl=context if ssl else None),
+            timeout=3,
+        )
         self.reader = reader
         self.writer = writer
 
     def _check_used(self):
         if self.used:
-            raise AsyncRequestsError('Using transport which is already in use')
+            raise AsyncRequestsError("Using transport which is already in use")
         self.used = True
 
     async def send_http_request(self, raw_data: bytes) -> Tuple[bytes, int]:
@@ -153,9 +145,7 @@ class Transport:
                 assert without_body_len
                 return resp, without_body_len
 
-    async def send_http_stream_request(
-            self,
-            raw_data: bytes):
+    async def send_http_stream_request(self, raw_data: bytes):
 
         self._check_used()
         self.stream_message_manager.set_up()

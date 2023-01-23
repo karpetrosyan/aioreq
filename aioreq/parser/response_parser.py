@@ -13,52 +13,50 @@ class ResponseParser:
     """
     Used to parse raw response becoming from TCP connection
     """
+
     # Default regex to parse full response
     regex = re.compile(
         (
-            r'(?P<scheme_and_version>HTTP/[210].[210]) (?P<status_code>\d{3}) (?P<status_message>.*?)\r\n'
-            r'(?P<headers>[\d\D]*?)\r\n'
-            r'\r\n'
-            r'(?P<body>[\d\D]*)'
+            r"(?P<scheme_and_version>HTTP/[210].[210]) (?P<status_code>\d{3}) (?P<status_message>.*?)\r\n"
+            r"(?P<headers>[\d\D]*?)\r\n"
+            r"\r\n"
+            r"(?P<body>[\d\D]*)"
         ).encode(),
     )
 
     regex_without_body = re.compile(
         (
-            r'(?P<scheme_and_version>HTTP/[210].[210]) (?P<status_code>\d{3}) (?P<status_message>.*?)\r\n'
-            r'(?P<headers>[\d\D]*?)\r\n'
-            r'\r\n'
+            r"(?P<scheme_and_version>HTTP/[210].[210]) (?P<status_code>\d{3}) (?P<status_message>.*?)\r\n"
+            r"(?P<headers>[\d\D]*?)\r\n"
+            r"\r\n"
         ).encode()
     )
 
     # Regex to find content-length header if exists
-    regex_content = (r'\r\nContent-length\s*:\s*(?P<length>\d*)\r\n',
-                     re.IGNORECASE)
+    regex_content = (r"\r\nContent-length\s*:\s*(?P<length>\d*)\r\n", re.IGNORECASE)
 
-    regex_content_length = re.compile(
-        regex_content[0].encode(),
-        regex_content[1]
-    )
+    regex_content_length = re.compile(regex_content[0].encode(), regex_content[1])
 
     regex_find_chunk = re.compile("^(?P<content_size>[0-9abcdefABCDEF]+)\r\n".encode())
-    regex_end_chunk = re.compile(r'^0\r\n\r\n'.encode())
+    regex_end_chunk = re.compile(r"^0\r\n\r\n".encode())
 
     @classmethod
     def parse_and_fill_headers(cls, binary_headers: bytes):
         from .. import Headers
+
         headers = Headers()
         string_headers = binary_headers.decode()
 
-        for line in string_headers.split('\r\n'):
-            key, value = line.split(':', 1)
+        for line in string_headers.split("\r\n"):
+            key, value = line.split(":", 1)
             headers[key.strip()] = value.strip()
         return headers
 
     @classmethod
     def decode_response_body(cls, response) -> None:
         for parser, header in (
-                (TransferEncoding, 'transfer-encoding'),
-                (ContentEncoding, 'content-encoding')
+            (TransferEncoding, "transfer-encoding"),
+            (ContentEncoding, "content-encoding"),
         ):
             header_content = response.headers.get(header, None)
             if header_content:
@@ -83,7 +81,7 @@ class ResponseParser:
             status=status,
             status_message=status_message.decode(),
             headers=headers,
-            content=body
+            content=body,
         )
 
         return response
@@ -104,7 +102,7 @@ class ResponseParser:
         match = cls.regex_content_length.search(text)
         if not match:
             return None
-        content_length = match.group('length')
+        content_length = match.group("length")
         return int(content_length)
 
     @classmethod
@@ -112,7 +110,7 @@ class ResponseParser:
         """
         Get body less response
 
-        Get index number from the text where body 
+        Get index number from the text where body
         part starting
         :param text: string where should be search
         :type text: bytes

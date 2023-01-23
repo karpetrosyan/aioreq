@@ -21,37 +21,38 @@ def qvalue_validate(qvalue: int) -> bool:
 
 
 class MimeType(Enum):
-    json = 'application/json'
-    html = 'application/html'
-    audio = 'audio/aac'
-    abiword = 'application/x-abiword'
-    archive = 'application/x-freearc'
-    avif = 'image/avif'
-    avl = 'video/x-msvideo'
-    kindle_ebook = 'application/vnd.amazon.ebook'
-    binary = 'application/octet-stream'
-    bmp = 'image/bmp'
-    css = 'text/css'
-    csv = 'text/csv'
-    gzip = 'application/gzip'
-    gif = 'image/gif'
-    js = 'text/javascript'
-    png = 'image/png'
+    json = "application/json"
+    html = "application/html"
+    audio = "audio/aac"
+    abiword = "application/x-abiword"
+    archive = "application/x-freearc"
+    avif = "image/avif"
+    avl = "video/x-msvideo"
+    kindle_ebook = "application/vnd.amazon.ebook"
+    binary = "application/octet-stream"
+    bmp = "image/bmp"
+    css = "text/css"
+    csv = "text/csv"
+    gzip = "application/gzip"
+    gif = "image/gif"
+    js = "text/javascript"
+    png = "image/png"
 
 
 class ServerHeader(ABC):
-
     @classmethod
     @abstractmethod
-    def parse(self, value: str) -> str: ...
+    def parse(self, value: str) -> str:
+        ...
 
 
 class BaseHeader(ABC):
-    key = 'NotImplemented'
+    key = "NotImplemented"
 
     @property
     @abstractmethod
-    def value(self) -> str: ...
+    def value(self) -> str:
+        ...
 
 
 class AcceptEncoding(BaseHeader):
@@ -62,11 +63,10 @@ class AcceptEncoding(BaseHeader):
         the response.
     """
 
-    key = 'Accept-Encoding'
+    key = "Accept-Encoding"
 
     def __init__(
-            self,
-            *codings: Tuple[Union[Type[Encoding], Encodings], Union[None, int]]
+        self, *codings: Tuple[Union[Type[Encoding], Encodings], Union[None, int]]
     ):
         self._codings: Dict[str, str] = {}
         for coding in codings:
@@ -74,7 +74,9 @@ class AcceptEncoding(BaseHeader):
 
             if qvalue is not None:
                 if not qvalue_validate(qvalue):
-                    raise ValueError("Invalid qvalue given -> {qvalue}. Expected number between 0, 1")
+                    raise ValueError(
+                        "Invalid qvalue given -> {qvalue}. Expected number between 0, 1"
+                    )
                 str_qvalue = str(qvalue)
             else:
                 str_qvalue = "1"
@@ -86,7 +88,7 @@ class AcceptEncoding(BaseHeader):
 
     @property
     def value(self):
-        text = ' '
+        text = " "
         for coding, qvalue in self._codings.items():
             text += f"{str(coding)}; q={qvalue}, "
         if self._codings:
@@ -114,12 +116,9 @@ class Accept(BaseHeader):
     ' text/javascript; q=0.5, video/x-msvideo; q=1, text/csv; q=0.1'
     """
 
-    key = 'Accept'
+    key = "Accept"
 
-    def __init__(
-            self,
-            *types: Tuple[MimeType, Optional[Union[int, float]]]
-    ):
+    def __init__(self, *types: Tuple[MimeType, Optional[Union[int, float]]]):
 
         self.media_ranges: Dict[MimeType, str] = {}
         for media_range in types:
@@ -133,15 +132,14 @@ class Accept(BaseHeader):
 
     @property
     def value(self) -> str:
-        text = ' '
+        text = " "
         for m_type, qvalue in self.media_ranges.items():
-            text += f'{m_type.value}; q={qvalue}, '
+            text += f"{m_type.value}; q={qvalue}, "
         text = text[:-2]
         return text
 
 
 class ServerEncoding(ServerHeader):
-
     def __init__(self):
         self.encodings = []
         self.iternum = 0
@@ -149,9 +147,9 @@ class ServerEncoding(ServerHeader):
     @classmethod
     def parse(cls, text: str):
         self = cls()
-        encodings = text.split(',')
+        encodings = text.split(",")
         for encoding in encodings:
-            if encoding != 'chunked':
+            if encoding != "chunked":
                 self.encodings.append(Encodings[encoding.strip()])
         self.encodings.reverse()
         return self
@@ -168,10 +166,12 @@ class ServerEncoding(ServerHeader):
         return encoding
 
 
-class TransferEncoding(ServerEncoding): ...
+class TransferEncoding(ServerEncoding):
+    ...
 
 
-class ContentEncoding(ServerEncoding): ...
+class ContentEncoding(ServerEncoding):
+    ...
 
 
 class AuthenticationWWW(ServerHeader):
@@ -189,7 +189,8 @@ class AuthenticationWWW(ServerHeader):
         credentials) might affect the response.
     """
 
-    parser = Lark(r"""
+    parser = Lark(
+        r"""
             challenge:      auth_scheme params
             !auth_scheme:   "Basic" | "Digest"
             params:         (param COL)* param?
@@ -200,7 +201,10 @@ class AuthenticationWWW(ServerHeader):
             COL:            ","
 
             %ignore /\s/
-            """, parser='lalr', start='challenge')
+            """,
+        parser="lalr",
+        start="challenge",
+    )
 
     def __init__(self, auth_schemes: Dict[str, dict] = {}):
         self.auth_schemes = auth_schemes

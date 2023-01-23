@@ -5,7 +5,7 @@ from typing import Union
 
 from ..errors.parser import UrlParsingError
 
-log = logging.getLogger('aioreq')
+log = logging.getLogger("aioreq")
 
 
 @dataclass
@@ -53,8 +53,8 @@ class Url:
         else:
             url = f"{self.protocol}://{self.domain}.{self.top_level_domain}"
         url += self.path
-        url += f'?{self.variables}' if self.variables else ''
-        url += self.fragment or ''
+        url += f"?{self.variables}" if self.variables else ""
+        url += self.fragment or ""
         return url
 
     def get_url_without_path(self):
@@ -86,7 +86,7 @@ class Url:
         Function which dataclasses calls after __init__ done
         """
 
-        self.path = self.path or '/'
+        self.path = self.path or "/"
 
 
 class UrlParser:
@@ -96,14 +96,14 @@ class UrlParser:
 
     # regex which getting parts from the url
     regex = re.compile(
-        r'(?P<protocol>https?)://'
-        r'((?P<subdomain>[^\.]+)\.)?'
-        r'(?P<domain>[^\.]+)\.'
-        r'(?P<top_level_domain>[^/#]+)'
-        r'(?P<port>\d+)?'
-        r'(?:(?P<path>/[^#?]*)((?:\?'
-        r'(?P<variables>[^#]*)?))?)?'
-        r'(?:#(?P<fragment>.*))?'
+        r"(?P<protocol>https?)://"
+        r"((?P<subdomain>[^\.]+)\.)?"
+        r"(?P<domain>[^\.]+)\."
+        r"(?P<top_level_domain>[^/#]+)"
+        r"(?P<port>\d+)?"
+        r"(?:(?P<path>/[^#?]*)((?:\?"
+        r"(?P<variables>[^#]*)?))?)?"
+        r"(?:#(?P<fragment>.*))?"
     )
 
     @classmethod
@@ -124,19 +124,13 @@ class UrlParser:
         if not matched:
             raise UrlParsingError(url)
 
-        protocol = matched.group('protocol')
-        subdomain = matched.group('subdomain')
-        domain = matched.group('domain')
-        top_level_domain = matched.group('top_level_domain')
-        path = matched.group('path')
-        variables = matched.group('variables')
-        fragment = matched.group('fragment')
+        protocol = matched.group("protocol")
+        subdomain = matched.group("subdomain")
+        domain = matched.group("domain")
+        top_level_domain = matched.group("top_level_domain")
+        path = matched.group("path")
+        variables = matched.group("variables")
+        fragment = matched.group("fragment")
         return Url(
-            protocol,
-            subdomain,
-            domain,
-            top_level_domain,
-            path,
-            variables,
-            fragment
+            protocol, subdomain, domain, top_level_domain, path, variables, fragment
         )
