@@ -262,10 +262,25 @@ class SetCookie(ServerHeader):
         start="cookie_string",
     )
 
+    datetime_formats = frozenset((
+        ('rfc850', "%a, %d %b %Y %H:%M:%S %Z"),  # Sun, 06 Nov 1994 08:49:37 GMT
+        ('rfc822', "%A, %d-%b-%y %H:%M:%S %Z"),  # Sunday, 06-Nov-94 08:49:37 GMT
+        ('undefined', "%a, %d-%b-%Y %H:%M:%S %Z")
+    ))
+
     def __init__(self):
         self.key = None
         self.value = None
         self.attrs = {}
+
+    @classmethod
+    def parse_datetime(cls, value):
+        for rfc, date_format in cls.datetime_formats:
+            try:
+                return datetime.strptime(value, date_format)
+            except Exception:
+                ...
+        raise ValueError(f"Invalid datetime received from the server {value}")
 
     @classmethod
     def parse(cls, value: str):
@@ -286,7 +301,7 @@ class SetCookie(ServerHeader):
 
                 key, _, value = attr.children
                 if key.value.startswith('exp') or key.value.startswith('Exp'):
-                    value.value = datetime.strptime(value, "%a, %d %b %Y %H:%M:%S %Z")
+                    value.value = cls.parse_datetime(value)
                 attrs[key.value] = value.value
         return self
 
