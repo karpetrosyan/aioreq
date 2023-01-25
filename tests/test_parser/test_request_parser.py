@@ -21,7 +21,7 @@ class TestRequestParser:
                     method="GET",
                     headers={},
                 ),
-                ("GET / HTTP/1.1\r\n" "host:  youtube.com\r\n" "\r\n"),
+                "GET / HTTP/1.1\r\n" "host:  youtube.com\r\n" "\r\n",
             ),
             (
                 Request(

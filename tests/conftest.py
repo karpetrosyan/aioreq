@@ -50,7 +50,7 @@ def temp_function(persistent_connections=False, stream=False, kwargs=None):
 
 @pytest.fixture(scope="session")
 def server():
-
+    ...
     proc = subprocess.Popen(
         ["uvicorn", "tests.server:app", "--port", "7575"], stdout=subprocess.PIPE
     )
