@@ -2,6 +2,7 @@ import asyncio
 import logging
 from typing import Awaitable
 
+from ..errors.base import UnexpectedError
 from ..errors.requests import RequestTimeoutError
 from ..settings import LOGGER_NAME
 
@@ -14,6 +15,6 @@ async def wrap_errors(coro: Awaitable):
         return await coro
     except asyncio.exceptions.TimeoutError:
         raise RequestTimeoutError(f"Request timeout error")
-    except BaseException as e:
-        log.critical(f"Unecpected error was raised")
-        raise e
+    except Exception as e:
+        log.critical(e)
+        raise UnexpectedError(str(e))

@@ -93,6 +93,7 @@ class Transport:
         """
         assert self.reader
         data = await self.reader.read(200)
+        log.trace(f"Received data with len : {len(data)} {data}")
         resp, without_body_len = self.message_manager.add_data(data)
         return resp, without_body_len
 
@@ -113,6 +114,7 @@ class Transport:
         :type ssl: bool
         :returns: None
         """
+        log.trace(f"{ip}, {port}")
         reader, writer = await asyncio.wait_for(
             asyncio.open_connection(host=ip, port=port, ssl=context if ssl else None),
             timeout=3,
@@ -134,6 +136,7 @@ class Transport:
         :returns: Response bytes and without data len
         :rtype: Tuple[bytes, int]
         """
+        log.trace("Sending an http request via socket")
         self._check_used()
         self.message_manager.set_up()
         await self._send_data(raw_data)
