@@ -2,11 +2,11 @@ import asyncio
 import logging
 from abc import ABC, abstractmethod
 from typing import Union, Tuple
-
+from ..errors.base import UnexpectedError
 from . import codes
 from .auth import parse_auth_header
 from .encodings import get_avaliable_encodings
-from .headers import AuthenticationWWW
+from .headers import AuthenticationWWW, SetCookie
 from .headers import ContentEncoding
 from .headers import TransferEncoding
 from ..errors.requests import RequestTimeoutError
@@ -17,8 +17,10 @@ log = logging.getLogger(LOGGER_NAME)
 default_middlewares = (
     "RetryMiddleWare",
     "RedirectMiddleWare",
+    "CookiesMiddleWare",
     "DecodeMiddleWare",
     "AuthenticationMiddleWare",
+    # "DjangoTestMiddleWare",
 )
 
 
@@ -42,9 +44,9 @@ class MiddleWare(ABC):
 
     @staticmethod
     def build(
-            middlewares_: Union[
-                Tuple[Union[str, type], ...],
-            ]
+        middlewares_: Union[
+            Tuple[Union[str, type], ...],
+        ]
     ):
         result = TimeoutMiddleWare(RequestMiddleWare(next_middleware=None))
         for middleware in reversed(middlewares_):
@@ -78,7 +80,13 @@ class RedirectMiddleWare(MiddleWare):
             redirect -= 1
             response = await self.next_middleware.process(request, client)
             if (response.status // 100) == 3:
-                request.host = response.headers["Location"]
+                request.method = "GET"
+                new_location = response.headers["Location"]
+                if new_location.startswith("http"):
+                    assert new_location
+                    request.url = new_location
+                else:
+                    request.path = new_location
 
                 if redirect < 1:
                     return response
@@ -93,8 +101,8 @@ class RedirectMiddleWare(MiddleWare):
 class DecodeMiddleWare(MiddleWare):
     def decode(self, response):
         for parser, header in (
-                (TransferEncoding, "transfer-encoding"),
-                (ContentEncoding, "content-encoding"),
+            (TransferEncoding, "transfer-encoding"),
+            (ContentEncoding, "content-encoding"),
         ):
             header_content = response.headers.get(header, None)
             if header_content:
@@ -129,6 +137,8 @@ class RetryMiddleWare(MiddleWare):
                 response = await self.next_middleware.process(request, client)
                 break
             except Exception as e:
+                if isinstance(e, UnexpectedError):
+                    raise e
                 log.info(f"Retrying cause of error : {e}")
                 if retry_count == -1:
                     raise e
@@ -146,7 +156,9 @@ class AuthenticationMiddleWare(MiddleWare):
                 raise ValueError(
                     f"{codes.UNAUTHORIZED} status code received without `www-authenticate` header"
                 )
+            log.trace(resp.headers['www-authenticate'])
             header_obj = AuthenticationWWW.parse(resp.headers["www-authenticate"])
+            log.trace("Authentication header was parsed")
             for authentication_header in parse_auth_header(header_obj, request):
                 request.headers["authorization"] = authentication_header
                 resp = await self.next_middleware.process(request, client)
@@ -165,3 +177,17 @@ class TimeoutMiddleWare(MiddleWare):
             )
         except asyncio.TimeoutError:
             raise RequestTimeoutError from None
+
+
+class CookiesMiddleWare(MiddleWare):
+    async def process(self, request, client):
+        cookies = client.cookies.get_raw_cookies()
+        request.headers["cookie"] = cookies
+        resp = await self.next_middleware.process(request, client)
+
+        if "set-cookie" in resp.headers:
+            set_cookies = [SetCookie.parse(cookie_value) for cookie_value in resp.headers['set-cookie']]
+            for set_cookie in set_cookies:
+                client.cookies.add_cookie(set_cookie)
+        return resp
+
