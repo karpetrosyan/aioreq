@@ -4,11 +4,12 @@ Contains Header classes to simplify header sending
 from abc import ABC
 from abc import abstractmethod
 from enum import Enum
-from typing import Dict
+from typing import Dict, List
 from typing import Optional
 from typing import Tuple
 from typing import Type
 from typing import Union
+from datetime import datetime
 
 from lark import Lark
 
@@ -42,7 +43,7 @@ class MimeType(Enum):
 class ServerHeader(ABC):
     @classmethod
     @abstractmethod
-    def parse(self, value: str) -> str:
+    def parse(self, value: str):
         ...
 
 
@@ -66,7 +67,7 @@ class AcceptEncoding(BaseHeader):
     key = "Accept-Encoding"
 
     def __init__(
-        self, *codings: Tuple[Union[Type[Encoding], Encodings], Union[None, int]]
+            self, *codings: Tuple[Union[Type[Encoding], Encodings], Union[None, int]]
     ):
         self._codings: Dict[str, str] = {}
         for coding in codings:
@@ -206,37 +207,105 @@ class AuthenticationWWW(ServerHeader):
         start="challenge",
     )
 
-    def __init__(self, auth_schemes: Dict[str, dict] = {}):
-        self.auth_schemes = auth_schemes
+    def __init__(self):
+        self.auth_schemes: Dict[str, dict] = {}
 
     @classmethod
-    def parse(cls, value: str):
+    def parse(cls, values: List[str]):
         """
         :Example:
 
         >>> from aioreq.protocol.headers import AuthenticationWWW
-        >>> AuthenticationWWW.parse('Basic realm="test"')
-        <AuthenticationWWW {'Basic': {'realm': '"test"'}}>
-        >>> AuthenticationWWW.parse('Basic realm="test1", arg1="test2"')
+        >>> AuthenticationWWW.parse(['Basic realm="test"', 'Digest realm="asdf"'])
+        <AuthenticationWWW {'Basic': {'realm': '"test"'}, 'Digest': {'realm': '"asdf"'}}>
+        >>> AuthenticationWWW.parse(['Basic realm="test1", arg1="test2"'])
         <AuthenticationWWW {'Basic': {'realm': '"test1"', 'arg1': '"test2"'}}>
+        >>> AuthenticationWWW.parse(['Basic realm="Fake Realm"'])
+        <AuthenticationWWW {'Basic': {'realm': '"Fake Realm"'}}>
         """
 
         self = cls()
+        for value in values:
+            parsed = self.parser.parse(value)
+            params = {}
+            scheme = parsed.children[0].children[0].value  # type: ignore
 
-        parsed = self.parser.parse(value)
-
-        params = {}
-
-        scheme = parsed.children[0].children[0].value  # type: ignore
-
-        for param in parsed.children[1].children:  # type: ignore
-            if type(param) != type(parsed):
-                continue
-            key = param.children[0].children[0].value  # type: ignore
-            value = param.children[2].children[0].value  # type: ignore
-            params[key] = value
-        self.auth_schemes[scheme] = params
+            for param in parsed.children[1].children:  # type: ignore
+                if type(param) != type(parsed):
+                    continue
+                key = param.children[0].children[0].value  # type: ignore
+                value = param.children[2].children[0].value  # type: ignore
+                params[key] = value
+            self.auth_schemes[scheme] = params
         return self
 
     def __repr__(self):
         return f"<AuthenticationWWW {self.auth_schemes}>"
+
+
+class SetCookie(ServerHeader):
+    parser = Lark(
+        r"""
+            cookie_string:  cookie_pair (AREND SP cookie_parameter)*
+            cookie_pair:    KEY EQ VAL
+            cookie_parameter: ATTRIBUTE (EQ VAL)?
+            KEY:            /\b[^=;]+/
+            VAL:          /[^;]+/
+            ATTRIBUTE: "Expires" | "Max-Age" | "Domain" | "Path" | "Secure" | "HttpOnly" | "SameSite" | "Partitioned"
+                        | "expires" | "max-age" | "domain" | "path" | "secure" | "httponly" | "samesite" | "partitioned"
+            EQ:             "="
+            AREND:          ";"
+            COL:            ","
+            SP:             " "
+        """,
+        parser="lalr",
+        start="cookie_string",
+    )
+
+    def __init__(self):
+        self.key = None
+        self.value = None
+        self.attrs = {}
+
+    @classmethod
+    def parse(cls, value: str):
+        self = cls()
+        parsed_tree = cls.parser.parse(value)
+
+        key = parsed_tree.children[0].children[0].value
+        value = parsed_tree.children[0].children[2].value
+        self.key = key
+        self.value = value
+        attrs = self.attrs
+
+        for attr in parsed_tree.find_data("cookie_parameter"):
+            if len(attr.children) == 1:
+                key, = attr.children
+                attrs[key.value] = None
+            else:
+
+                key, _, value = attr.children
+                if key.value.startswith('exp') or key.value.startswith('Exp'):
+                    value.value = datetime.strptime(value, "%a, %d %b %Y %H:%M:%S %Z")
+                attrs[key.value] = value.value
+        return self
+
+    def __repr__(self):
+        return f"<Set-Cookie {self.key}={self.value}>"
+
+
+class Cookie(BaseHeader):
+    def __init__(self, cookies: Dict):
+        self.cookies = cookies
+
+    @property
+    def value(self) -> str:
+        cookie_string = ""
+
+        for key, set_cookie in self.cookies.items():
+            keyval = f"{key}={set_cookie.value}; "
+            cookie_string += keyval
+
+        if cookie_string:
+            cookie_string = cookie_string[:-2]
+        return cookie_string
