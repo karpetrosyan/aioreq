@@ -12,6 +12,7 @@ from typing import TypeVar
 from typing import Union
 from typing import Type
 
+from .cookies import Cookies
 from .headers import BaseHeader
 from .middlewares import MiddleWare
 from .middlewares import RedirectMiddleWare
@@ -79,8 +80,10 @@ class Headers(metaclass=MetaHeaders):
     True
     """
 
+    multivalue_headers = frozenset(("set-cookie", "www-authenticate"))
+
     def __init__(self: T, initial_headers: Optional[Union[Dict[str, str], T]] = None):
-        self._headers: Dict[str, str] = {}
+        self._headers: Dict[str, Union[str, List]] = {}
         self.cache: Optional[str] = ""
 
         if initial_headers:
@@ -99,7 +102,12 @@ class Headers(metaclass=MetaHeaders):
         False
         """
         self.cache = None
-        self._headers[key.lower()] = value
+        key = key.lower()
+        if key in self.multivalue_headers:
+            values = self._headers.setdefault(key, [])
+            values.append(value)
+        else:
+            self._headers[key.lower()] = value
 
     def __getitem__(self, item):
         return self._headers[item.lower()]
@@ -200,6 +208,8 @@ class BaseRequest(HttpProtocol, metaclass=ABCMeta):
         if params is None:
             params = ()
 
+        log.trace(url)
+        assert url
         splited_url = UrlParser.parse(url)
 
         self._host = splited_url.get_url_without_path()
@@ -219,6 +229,22 @@ class BaseRequest(HttpProtocol, metaclass=ABCMeta):
 
     @host.setter
     def host(self, new_value):
+        self._host = new_value
+
+    @property
+    def path(self):
+        return self.path
+
+    @path.setter
+    def path(self, new_value):
+        self.path = new_value
+
+    @property
+    def url(self):
+        return self._host + self.path
+
+    @url.setter
+    def url(self, new_value):
         parsed_url = UrlParser.parse(new_value)
         self.path = parsed_url.path
         self._host = parsed_url.get_url_without_path()
@@ -440,12 +466,20 @@ class BaseClient(metaclass=ABCMeta):
         timeout: Union[int, float, None] = None,
         auth: Union[Tuple[str, str], None] = None,
         middlewares: Optional[Tuple[Union[str, Type[MiddleWare]], ...]] = None,
+        cookies: Optional[Union[Cookies, Dict]] = None,
     ):
 
         headers = Headers(initial_headers=headers)
 
         RedirectMiddleWare.redirect_count = redirect_count
         RetryMiddleWare.retry_count = retry_count
+
+        if isinstance(cookies, Cookies):
+            self.cookies = cookies
+        elif isinstance(cookies, dict):
+            self.cookies = Cookies(cookies)
+        elif cookies is None:
+            self.cookies = Cookies()
 
         if middlewares is None:
             self.middlewares = MiddleWare.build(default_middlewares)
