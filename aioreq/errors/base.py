@@ -1,2 +1,6 @@
 class AioreqError(Exception):
     ...
+
+
+class UnexpectedError(AioreqError):
+    ...
