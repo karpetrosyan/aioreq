@@ -44,9 +44,9 @@ class MiddleWare(ABC):
 
     @staticmethod
     def build(
-        middlewares_: Union[
-            Tuple[Union[str, type], ...],
-        ]
+            middlewares_: Union[
+                Tuple[Union[str, type], ...],
+            ]
     ):
         result = TimeoutMiddleWare(RequestMiddleWare(next_middleware=None))
         for middleware in reversed(middlewares_):
@@ -71,7 +71,62 @@ class RedirectMiddleWare(MiddleWare):
         if not redirect:
             redirect = self.redirect_count
         self.redirect = max(redirect + 1, 1)
+        self.memory = {}
         super().__init__(*args, **kwargs)
+
+    def contains_location(self, response):
+        return 'location' in response.headers
+
+    async def handle_301(self, request, response):
+        if not self.contains_location(response):
+            return False
+        new_location = response.headers['location']
+        old_url = request.url
+        if new_location.startswith('http'):
+            request.url = new_location
+            self.memory[old_url] = new_location
+        else:
+            request.path = new_location
+            self.memory[old_url] = request.host + new_location
+        return True
+
+    async def handle_302(self, request, response):
+        if not self.contains_location(response):
+            return False
+        new_location = response.headers['location']
+        if new_location.startswith('http'):
+            request.url = new_location
+        else:
+            request.path = new_location
+        return True
+
+    async def handle_303(self, request, response):
+        if not self.contains_location(response):
+            return False
+        new_location = response.headers['location']
+        if not (request.method == 'GET' or request.method == 'HEAD'):
+            request.method = "GET"
+            request.context = b""
+        if new_location.startswith('http'):
+            request.url = new_location
+        else:
+            request.path = new_location
+        return True
+
+    async def handle_304(self, request, response):
+        assert True, "304 status code received by the server"
+
+    async def handle_305(self, *args, **kwargs):
+        return False
+
+    async def handle_306(self, request, response):
+        return False
+
+    async def handle_307(self, request, response):
+        return await self.handle_302(request, response)
+
+    async def handle_308(self, request, response):
+        return await self.handle_301(request, response)
 
     async def process(self, request, client):
         redirect = self.redirect
@@ -80,15 +135,13 @@ class RedirectMiddleWare(MiddleWare):
             redirect -= 1
             response = await self.next_middleware.process(request, client)
             if (response.status // 100) == 3:
-                request.method = "GET"
-                new_location = response.headers["Location"]
-                if new_location.startswith("http"):
-                    assert new_location
-                    request.url = new_location
-                else:
-                    request.path = new_location
+                handler = getattr(self, f'handle_{response.status}', None)
 
-                if redirect < 1:
+                if handler is None:
+                    raise ValueError(f"Handler for {response.status} status code was not implemented")
+                continue_ = await handler(request, response)
+
+                if redirect < 1 or not continue_:
                     return response
             else:
                 return response
@@ -101,8 +154,8 @@ class RedirectMiddleWare(MiddleWare):
 class DecodeMiddleWare(MiddleWare):
     def decode(self, response):
         for parser, header in (
-            (TransferEncoding, "transfer-encoding"),
-            (ContentEncoding, "content-encoding"),
+                (TransferEncoding, "transfer-encoding"),
+                (ContentEncoding, "content-encoding"),
         ):
             header_content = response.headers.get(header, None)
             if header_content:
@@ -190,4 +243,3 @@ class CookiesMiddleWare(MiddleWare):
             for set_cookie in set_cookies:
                 client.cookies.add_cookie(set_cookie)
         return resp
-
