@@ -545,7 +545,11 @@ class BaseClient(metaclass=ABCMeta):
 
             transport = Transport()
             connection_coroutine = transport.make_connection(
-                ip, port, ssl=url.protocol == "https"
+                ip,
+                port,
+                **{"ssl": True, "server_hostname": url.get_url_for_dns()}
+                if url.protocol == "https"
+                else {**{"ssl": False, "server_hostname": None}},
             )
             try:
                 await connection_coroutine

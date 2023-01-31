@@ -18,11 +18,11 @@ res.nameservers = ["1.1.1.1", "8.8.8.8"]
 
 log = logging.getLogger(LOGGER_NAME)
 
-context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-context.minimum_version = ssl.TLSVersion.TLSv1_2
-context.maximum_version = ssl.TLSVersion.TLSv1_2
+context = ssl.create_default_context()
+# context.minimum_version = ssl.TLSVersion.TLSv1_2
+# context.maximum_version = ssl.TLSVersion.TLSv1_2
 
-context.load_verify_locations(certifi.where())
+# context.load_verify_locations(certifi.where())
 context.keylog_filename = os.getenv("SSLKEYLOGFILE")  # type: ignore
 
 context.check_hostname = False
@@ -90,7 +90,9 @@ class Transport:
         self.writer.write(raw_data)
         await self.writer.drain()
 
-    async def make_connection(self, ip: str, port: int, ssl: bool) -> None:
+    async def make_connection(
+        self, ip: str, port: int, ssl: bool, server_hostname
+    ) -> None:
         """
         An asynchronous alternative for socket connect
         :param ip: Ip where connection should be made
@@ -103,7 +105,12 @@ class Transport:
         """
         log.trace(f"{ip}, {port}")
         reader, writer = await asyncio.wait_for(
-            asyncio.open_connection(host=ip, port=port, ssl=context if ssl else None),
+            asyncio.open_connection(
+                host=ip,
+                port=port,
+                ssl=context if ssl else None,
+                server_hostname=server_hostname,
+            ),
             timeout=3,
         )
         self.reader = reader
