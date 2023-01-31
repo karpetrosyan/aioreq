@@ -21,13 +21,12 @@ class ResponseParser:
 
     regex_content_length = re.compile(regex_content[0], regex_content[1])
 
-
     @classmethod
     def parse_and_fill_headers(cls, raw_headers):
         from .. import Headers
 
         headers = Headers()
-        raw_headers = raw_headers.strip('\r\n')
+        raw_headers = raw_headers.strip("\r\n")
         for line in raw_headers.split("\r\n"):
             key, value = line.split(":", 1)
             headers[key.strip()] = value.strip()

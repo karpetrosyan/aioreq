@@ -43,9 +43,9 @@ class MiddleWare(ABC):
 
     @staticmethod
     def build(
-            middlewares_: Union[
-                Tuple[Union[str, type], ...],
-            ]
+        middlewares_: Union[
+            Tuple[Union[str, type], ...],
+        ]
     ):
         result = TimeoutMiddleWare(RequestMiddleWare(next_middleware=None))
         for middleware in reversed(middlewares_):
@@ -74,14 +74,14 @@ class RedirectMiddleWare(MiddleWare):
         super().__init__(*args, **kwargs)
 
     def contains_location(self, response):
-        return 'location' in response.headers
+        return "location" in response.headers
 
     async def handle_301(self, request, response):
         if not self.contains_location(response):
             return False
-        new_location = response.headers['location']
+        new_location = response.headers["location"]
         old_url = request.url
-        if new_location.startswith('http'):
+        if new_location.startswith("http"):
             request.url = new_location
             self.memory[old_url] = new_location
         else:
@@ -92,8 +92,8 @@ class RedirectMiddleWare(MiddleWare):
     async def handle_302(self, request, response):
         if not self.contains_location(response):
             return False
-        new_location = response.headers['location']
-        if new_location.startswith('http'):
+        new_location = response.headers["location"]
+        if new_location.startswith("http"):
             request.url = new_location
         else:
             request.path = new_location
@@ -102,10 +102,10 @@ class RedirectMiddleWare(MiddleWare):
     async def handle_303(self, request, response):
         if not self.contains_location(response):
             return False
-        new_location = response.headers['location']
+        new_location = response.headers["location"]
         request.method = "GET"
         request.context = b""
-        if new_location.startswith('http'):
+        if new_location.startswith("http"):
             request.url = new_location
         else:
             request.path = new_location
@@ -133,10 +133,12 @@ class RedirectMiddleWare(MiddleWare):
             redirect -= 1
             response = await self.next_middleware.process(request, client)
             if (response.status // 100) == 3:
-                handler = getattr(self, f'handle_{response.status}', None)
+                handler = getattr(self, f"handle_{response.status}", None)
 
                 if handler is None:
-                    raise ValueError(f"Handler for {response.status} status code was not implemented")
+                    raise ValueError(
+                        f"Handler for {response.status} status code was not implemented"
+                    )
                 continue_ = await handler(request, response)
 
                 if redirect < 1 or not continue_:
@@ -151,8 +153,8 @@ class RedirectMiddleWare(MiddleWare):
 class DecodeMiddleWare(MiddleWare):
     def decode(self, response):
         for parser, header in (
-                (TransferEncoding, "transfer-encoding"),
-                (ContentEncoding, "content-encoding"),
+            (TransferEncoding, "transfer-encoding"),
+            (ContentEncoding, "content-encoding"),
         ):
             header_content = response.headers.get(header, None)
             if header_content:
@@ -232,7 +234,10 @@ class CookiesMiddleWare(MiddleWare):
         resp = await self.next_middleware.process(request, client)
 
         if "set-cookie" in resp.headers:
-            set_cookies = [SetCookie.parse(cookie_value) for cookie_value in resp.headers['set-cookie']]
+            set_cookies = [
+                SetCookie.parse(cookie_value)
+                for cookie_value in resp.headers["set-cookie"]
+            ]
             for set_cookie in set_cookies:
                 client.cookies.add_cookie(set_cookie)
         return resp

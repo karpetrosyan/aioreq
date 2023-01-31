@@ -112,22 +112,19 @@ async def test_dirctly_requests_using(one_time_session, event_loop):
 @pytest.mark.asyncio
 async def test_root_with_stream(server, constants, get_stream_test_url):
     t2 = bytearray()
-    req = Request(
-        url = get_stream_test_url,
-        method="GET"
-    )
+    req = Request(url=get_stream_test_url, method="GET")
     async with StreamClient(request=req) as response:
         assert response.status == 200
         async for chunk in response.content:
             log.critical(chunk)
             for char in chunk:
                 t2.append(char)
-    assert t2 == constants["STREAMING_RESPONSE_CHUNK_COUNT"] * b'test'
+    assert t2 == constants["STREAMING_RESPONSE_CHUNK_COUNT"] * b"test"
 
 
 @pytest.mark.asyncio
 async def test_basic_authentication(
-        one_time_session, one_time_session_without_authorization
+    one_time_session, one_time_session_without_authorization
 ):
     woauth_resp = one_time_session_without_authorization.get(
         "http://httpbin.org/basic-auth/foo/bar", auth=("foo", "bar")

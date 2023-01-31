@@ -72,7 +72,7 @@ class AcceptEncoding(BaseHeader):
     key = "Accept-Encoding"
 
     def __init__(
-            self, *codings: Tuple[Union[Type[Encoding], Encodings], Union[None, int]]
+        self, *codings: Tuple[Union[Type[Encoding], Encodings], Union[None, int]]
     ):
         self._codings: Dict[str, str] = {}
         for coding in codings:
@@ -267,11 +267,13 @@ class SetCookie(ServerHeader):
         start="cookie_string",
     )
 
-    datetime_formats = frozenset((
-        ('rfc850', "%a, %d %b %Y %H:%M:%S %Z"),  # Sun, 06 Nov 1994 08:49:37 GMT
-        ('rfc822', "%A, %d-%b-%y %H:%M:%S %Z"),  # Sunday, 06-Nov-94 08:49:37 GMT
-        ('undefined', "%a, %d-%b-%Y %H:%M:%S %Z")
-    ))
+    datetime_formats = frozenset(
+        (
+            ("rfc850", "%a, %d %b %Y %H:%M:%S %Z"),  # Sun, 06 Nov 1994 08:49:37 GMT
+            ("rfc822", "%A, %d-%b-%y %H:%M:%S %Z"),  # Sunday, 06-Nov-94 08:49:37 GMT
+            ("undefined", "%a, %d-%b-%Y %H:%M:%S %Z"),
+        )
+    )
 
     def __init__(self):
         self.key = None
@@ -300,12 +302,12 @@ class SetCookie(ServerHeader):
 
         for attr in parsed_tree.find_data("cookie_parameter"):
             if len(attr.children) == 1:
-                key, = attr.children
+                (key,) = attr.children
                 attrs[key.value] = None
             else:
 
                 key, _, value = attr.children
-                if key.value.startswith('exp') or key.value.startswith('Exp'):
+                if key.value.startswith("exp") or key.value.startswith("Exp"):
                     value.value = cls.parse_datetime(value)
                 attrs[key.value] = value.value
         return self

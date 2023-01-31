@@ -15,18 +15,14 @@ class TestResponseParser:
         argnames=("status_line", "header_line", "content", "expected_result"),
         argvalues=[
             (
-                (
-                    "HTTP/1.1 200 OK\r\n"
-                ),
+                ("HTTP/1.1 200 OK\r\n"),
                 (
                     "test: :test:test:ttest\r\n"
                     "spacetest:          test\r\n"
                     "messagetest:    hello 123\r\n"
                     "\r\n"
                 ),
-                (
-                    b""
-                ),
+                (b""),
                 Response(
                     status=200,
                     status_message="OK",

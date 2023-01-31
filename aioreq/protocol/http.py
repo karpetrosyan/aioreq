@@ -120,8 +120,8 @@ class Headers(metaclass=MetaHeaders):
             return self.cache
 
         headers = (
-                "\r\n".join(f"{key}:  {value}" for key, value in self._headers.items())
-                + "\r\n"
+            "\r\n".join(f"{key}:  {value}" for key, value in self._headers.items())
+            + "\r\n"
         )
         self.cache = headers
         return headers
@@ -154,7 +154,7 @@ class Headers(metaclass=MetaHeaders):
             return False
         for header in self._headers:
             if header not in other.dict() or (
-                    header and other.dict()[header] != self._headers[header]
+                header and other.dict()[header] != self._headers[header]
             ):
                 return False
         return True
@@ -191,15 +191,15 @@ class BaseRequest(HttpProtocol, metaclass=ABCMeta):
     __slots__ = tuple()
 
     def __init__(
-            self,
-            url: str,
-            *,
-            headers: Union[Headers, Dict[str, str], None] = None,
-            method: str = "GET",
-            content: Union[str, bytearray, bytes] = "",
-            params: Union[Iterable[Iterable[str]], None] = None,
-            auth: Union[Tuple[str, str], None] = None,
-            timeout: Union[int, float, None] = None,
+        self,
+        url: str,
+        *,
+        headers: Union[Headers, Dict[str, str], None] = None,
+        method: str = "GET",
+        content: Union[str, bytearray, bytes] = "",
+        params: Union[Iterable[Iterable[str]], None] = None,
+        auth: Union[Tuple[str, str], None] = None,
+        timeout: Union[int, float, None] = None,
     ) -> None:
         """
         Request initialization method
@@ -370,12 +370,12 @@ class Response(BaseResponse):
     __slots__ = ("status", "status_message", "headers", "content", "request")
 
     def __init__(
-            self,
-            status: int,
-            status_message: str,
-            headers: Union[Headers, Dict[str, str]],
-            content: bytes,
-            request: Union[Request, None] = None,
+        self,
+        status: int,
+        status_message: str,
+        headers: Union[Headers, Dict[str, str]],
+        content: bytes,
+        request: Union[Request, None] = None,
     ):
         """
         Response initialization method
@@ -425,11 +425,11 @@ class Response(BaseResponse):
                 "Can't compare `{type(self).__name__}` with `{type(_value).__name__}`"
             )
         return (
-                self.status == _value.status
-                and self.status_message == _value.status_message
-                and self.headers == _value.headers
-                and self.content == _value.content
-                and self.request == _value.request
+            self.status == _value.status
+            and self.status_message == _value.status_message
+            and self.headers == _value.headers
+            and self.content == _value.content
+            and self.request == _value.request
         )
 
     def __repr__(self) -> str:
@@ -440,12 +440,12 @@ class StreamResponse(BaseResponse):
     __slots__ = ("status", "status_message", "headers", "content", "request")
 
     def __init__(
-            self,
-            status: int,
-            status_message: str,
-            headers: Union[Headers, Dict[str, str]],
-            content: bytes,
-            request: Union[Request, None] = None,
+        self,
+        status: int,
+        status_message: str,
+        headers: Union[Headers, Dict[str, str]],
+        content: bytes,
+        request: Union[Request, None] = None,
     ):
         """
         Response initialization method
@@ -480,15 +480,15 @@ class BaseClient(metaclass=ABCMeta):
     """
 
     def __init__(
-            self,
-            headers: Union[Dict[str, str], Headers, None] = None,
-            persistent_connections: bool = False,
-            redirect_count: int = REQUEST_REDIRECT_COUNT,
-            retry_count: int = REQUEST_RETRY_COUNT,
-            timeout: Union[int, float, None] = None,
-            auth: Union[Tuple[str, str], None] = None,
-            middlewares: Optional[Tuple[Union[str, Type[MiddleWare]], ...]] = None,
-            cookies: Optional[Union[Cookies, Dict]] = None,
+        self,
+        headers: Union[Dict[str, str], Headers, None] = None,
+        persistent_connections: bool = False,
+        redirect_count: int = REQUEST_REDIRECT_COUNT,
+        retry_count: int = REQUEST_RETRY_COUNT,
+        timeout: Union[int, float, None] = None,
+        auth: Union[Tuple[str, str], None] = None,
+        middlewares: Optional[Tuple[Union[str, Type[MiddleWare]], ...]] = None,
+        cookies: Optional[Union[Cookies, Dict]] = None,
     ):
 
         headers = Headers(initial_headers=headers)
@@ -625,14 +625,14 @@ class Client(BaseClient):
         return response
 
     async def _send_request(
-            self,
-            url: str,
-            method: str,
-            content: Union[str, bytearray, bytes] = "",
-            params: Union[Iterable[Iterable[str]], None] = None,
-            headers: Union[None, Dict[str, str], Headers] = None,
-            auth: Union[Tuple[str, str], None] = None,
-            timeout: Union[int, float, None] = None,
+        self,
+        url: str,
+        method: str,
+        content: Union[str, bytearray, bytes] = "",
+        params: Union[Iterable[Iterable[str]], None] = None,
+        headers: Union[None, Dict[str, str], Headers] = None,
+        auth: Union[Tuple[str, str], None] = None,
+        timeout: Union[int, float, None] = None,
     ) -> Response:
         """
         Simulates a http request
@@ -679,13 +679,13 @@ class Client(BaseClient):
         )
 
     async def get(
-            self,
-            url: str,
-            content: Union[str, bytearray, bytes] = "",
-            headers: Union[Dict[str, str], None] = None,
-            path_parameters: Union[Iterable[Iterable[str]], None] = None,
-            auth: Union[Tuple[str, str], None] = None,
-            timeout: Union[int, float, None] = None,
+        self,
+        url: str,
+        content: Union[str, bytearray, bytes] = "",
+        headers: Union[Dict[str, str], None] = None,
+        path_parameters: Union[Iterable[Iterable[str]], None] = None,
+        auth: Union[Tuple[str, str], None] = None,
+        timeout: Union[int, float, None] = None,
     ) -> Response:
         return await self._send_request(
             url=url,
@@ -698,13 +698,13 @@ class Client(BaseClient):
         )
 
     async def post(
-            self,
-            url: str,
-            content: Union[str, bytearray, bytes] = "",
-            headers: Union[Dict[str, str], None] = None,
-            path_parameters: Union[Iterable[Iterable[str]], None] = None,
-            auth: Union[Tuple[str, str], None] = None,
-            timeout: Union[int, float, None] = None,
+        self,
+        url: str,
+        content: Union[str, bytearray, bytes] = "",
+        headers: Union[Dict[str, str], None] = None,
+        path_parameters: Union[Iterable[Iterable[str]], None] = None,
+        auth: Union[Tuple[str, str], None] = None,
+        timeout: Union[int, float, None] = None,
     ) -> Response:
         return await self._send_request(
             url=url,
@@ -717,13 +717,13 @@ class Client(BaseClient):
         )
 
     async def put(
-            self,
-            url: str,
-            content: Union[str, bytearray, bytes] = "",
-            headers: Union[Dict[str, str], None] = None,
-            path_parameters: Union[Iterable[Iterable[str]], None] = None,
-            auth: Union[Tuple[str, str], None] = None,
-            timeout: Union[int, float, None] = None,
+        self,
+        url: str,
+        content: Union[str, bytearray, bytes] = "",
+        headers: Union[Dict[str, str], None] = None,
+        path_parameters: Union[Iterable[Iterable[str]], None] = None,
+        auth: Union[Tuple[str, str], None] = None,
+        timeout: Union[int, float, None] = None,
     ) -> Response:
         return await self._send_request(
             url=url,
@@ -736,13 +736,13 @@ class Client(BaseClient):
         )
 
     async def delete(
-            self,
-            url: str,
-            content: Union[str, bytearray, bytes] = "",
-            headers: Union[Dict[str, str], None] = None,
-            path_parameters: Union[Iterable[Iterable[str]], None] = None,
-            auth: Union[Tuple[str, str], None] = None,
-            timeout: Union[int, float, None] = None,
+        self,
+        url: str,
+        content: Union[str, bytearray, bytes] = "",
+        headers: Union[Dict[str, str], None] = None,
+        path_parameters: Union[Iterable[Iterable[str]], None] = None,
+        auth: Union[Tuple[str, str], None] = None,
+        timeout: Union[int, float, None] = None,
     ) -> Response:
         return await self._send_request(
             url=url,
@@ -755,13 +755,13 @@ class Client(BaseClient):
         )
 
     async def options(
-            self,
-            url: str,
-            content: Union[str, bytearray, bytes] = "",
-            headers: Union[Dict[str, str], None] = None,
-            path_parameters: Union[Iterable[Iterable[str]], None] = None,
-            auth: Union[Tuple[str, str], None] = None,
-            timeout: Union[int, float, None] = None,
+        self,
+        url: str,
+        content: Union[str, bytearray, bytes] = "",
+        headers: Union[Dict[str, str], None] = None,
+        path_parameters: Union[Iterable[Iterable[str]], None] = None,
+        auth: Union[Tuple[str, str], None] = None,
+        timeout: Union[int, float, None] = None,
     ) -> Response:
         return await self._send_request(
             url=url,
@@ -774,13 +774,13 @@ class Client(BaseClient):
         )
 
     async def head(
-            self,
-            url: str,
-            content: Union[str, bytearray, bytes] = "",
-            headers: Union[Dict[str, str], None] = None,
-            path_parameters: Union[Iterable[Iterable[str]], None] = None,
-            auth: Union[Tuple[str, str], None] = None,
-            timeout: Union[int, float, None] = None,
+        self,
+        url: str,
+        content: Union[str, bytearray, bytes] = "",
+        headers: Union[Dict[str, str], None] = None,
+        path_parameters: Union[Iterable[Iterable[str]], None] = None,
+        auth: Union[Tuple[str, str], None] = None,
+        timeout: Union[int, float, None] = None,
     ) -> Response:
         return await self._send_request(
             url=url,
@@ -793,13 +793,13 @@ class Client(BaseClient):
         )
 
     async def patch(
-            self,
-            url: str,
-            content: Union[str, bytearray, bytes] = "",
-            headers: Union[Dict[str, str], None] = None,
-            path_parameters: Union[Iterable[Iterable[str]], None] = None,
-            auth: Union[Tuple[str, str], None] = None,
-            timeout: Union[int, float, None] = None,
+        self,
+        url: str,
+        content: Union[str, bytearray, bytes] = "",
+        headers: Union[Dict[str, str], None] = None,
+        path_parameters: Union[Iterable[Iterable[str]], None] = None,
+        auth: Union[Tuple[str, str], None] = None,
+        timeout: Union[int, float, None] = None,
     ) -> Response:
         return await self._send_request(
             url=url,
@@ -813,11 +813,7 @@ class Client(BaseClient):
 
 
 class StreamClient:
-
-    def __init__(
-            self,
-            request
-    ):
+    def __init__(self, request):
 
         self.request = request
 
@@ -832,14 +828,17 @@ class StreamClient:
         coro = transport.send_http_stream_request(request.get_raw_request())
         iterable = aiter(coro)
         status_line, header_line = await anext(iterable)
-        scheme, status_code, status_message = ResponseParser.parse_status_line(status_line)
+        scheme, status_code, status_message = ResponseParser.parse_status_line(
+            status_line
+        )
         headers = ResponseParser.parse_and_fill_headers(header_line)
-        return StreamResponse(status=status_code,
-                              status_message=status_message,
-                              content=self.content_iter(iterable),
-                              headers=headers,
-                              request=request
-                              )
+        return StreamResponse(
+            status=status_code,
+            status_message=status_message,
+            content=self.content_iter(iterable),
+            headers=headers,
+            request=request,
+        )
 
     async def content_iter(self, async_generator):
         async for chunk in async_generator:

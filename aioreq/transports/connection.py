@@ -37,7 +37,7 @@ dns_cache: Dict[str, Union[str, Awaitable]] = dict()
 
 
 async def resolve_domain(
-        url,
+    url,
 ):
     """
     Makes an asynchronous DNS request to resolve the IP address
@@ -49,9 +49,9 @@ async def resolve_domain(
 
     hostname = url.get_url_for_dns()
     if url.domain == TEST_SERVER_DOMAIN:
-        return 'localhost', 7575
+        return "localhost", 7575
 
-    port = 80 if url.protocol == 'http' else 443
+    port = 80 if url.protocol == "http" else 443
     if hostname in dns_cache:
         memo = dns_cache[hostname]
         if isinstance(memo, str):
@@ -127,10 +127,11 @@ class Transport:
         self._check_used()
         await self._send_data(raw_data)
         from aioreq import ResponseParser
+
         assert self.reader
-        status_line = await self.reader.readuntil(b'\r\n')
+        status_line = await self.reader.readuntil(b"\r\n")
         status_line = status_line.decode()
-        headers_line = await self.reader.readuntil(b'\r\n\r\n')
+        headers_line = await self.reader.readuntil(b"\r\n\r\n")
         headers_line = headers_line.decode()
         content_length = ResponseParser.search_content_length(headers_line)
         content = b""
@@ -139,7 +140,7 @@ class Transport:
             content = await self.reader.readexactly(content_length)
         else:
             while True:
-                chunk = await self.reader.readuntil(b'\r\n')
+                chunk = await self.reader.readuntil(b"\r\n")
                 chunk_size = chunk[:-2]
 
                 chunk_size = int(chunk_size, 16)
@@ -165,9 +166,9 @@ class Transport:
         self._check_used()
         await self._send_data(raw_data)
         assert self.reader
-        status_line = await self.reader.readuntil(b'\r\n')
+        status_line = await self.reader.readuntil(b"\r\n")
         status_line = status_line.decode()
-        headers_line = await self.reader.readuntil(b'\r\n\r\n')
+        headers_line = await self.reader.readuntil(b"\r\n\r\n")
         headers_line = headers_line.decode()
         content_length = ResponseParser.search_content_length(headers_line)
 
@@ -176,7 +177,7 @@ class Transport:
             raise TypeError("Stream request should use chunked")
         else:
             while True:
-                chunk = await self.reader.readuntil(b'\r\n')
+                chunk = await self.reader.readuntil(b"\r\n")
                 chunk_size = chunk[:-2]
 
                 chunk_size = int(chunk_size, 16)
