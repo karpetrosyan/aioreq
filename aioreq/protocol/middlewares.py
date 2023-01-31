@@ -20,7 +20,6 @@ default_middlewares = (
     "CookiesMiddleWare",
     "DecodeMiddleWare",
     "AuthenticationMiddleWare",
-    # "DjangoTestMiddleWare",
 )
 
 
@@ -104,9 +103,8 @@ class RedirectMiddleWare(MiddleWare):
         if not self.contains_location(response):
             return False
         new_location = response.headers['location']
-        if not (request.method == 'GET' or request.method == 'HEAD'):
-            request.method = "GET"
-            request.context = b""
+        request.method = "GET"
+        request.context = b""
         if new_location.startswith('http'):
             request.url = new_location
         else:
@@ -145,7 +143,6 @@ class RedirectMiddleWare(MiddleWare):
                     return response
             else:
                 return response
-            log.info(f"Redirecting request with status code {response.status}")
         assert response is not None
 
         return response
@@ -166,8 +163,7 @@ class DecodeMiddleWare(MiddleWare):
 
     async def process(self, request, client):
 
-        if "content-encoding" not in request.headers:
-            request.headers.add_header(get_avaliable_encodings())
+        request.headers.add_header(get_avaliable_encodings())
 
         response = await self.next_middleware.process(request, client)
         self.decode(response)
@@ -192,7 +188,6 @@ class RetryMiddleWare(MiddleWare):
             except Exception as e:
                 if isinstance(e, UnexpectedError):
                     raise e
-                log.info(f"Retrying cause of error : {e}")
                 if retry_count == -1:
                     raise e
         return response
@@ -209,9 +204,7 @@ class AuthenticationMiddleWare(MiddleWare):
                 raise ValueError(
                     f"{codes.UNAUTHORIZED} status code received without `www-authenticate` header"
                 )
-            log.trace(resp.headers['www-authenticate'])
             header_obj = AuthenticationWWW.parse(resp.headers["www-authenticate"])
-            log.trace("Authentication header was parsed")
             for authentication_header in parse_auth_header(header_obj, request):
                 request.headers["authorization"] = authentication_header
                 resp = await self.next_middleware.process(request, client)
