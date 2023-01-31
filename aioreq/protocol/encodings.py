@@ -9,6 +9,11 @@ from typing import TypeVar
 from typing import Union
 
 E_TYPE = TypeVar("E_TYPE", bound="Encoding")
+import logging
+
+from ..settings import LOGGER_NAME
+
+log = logging.getLogger(LOGGER_NAME)
 
 
 class Encoding(ABC):

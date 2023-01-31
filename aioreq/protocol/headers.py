@@ -15,6 +15,11 @@ from lark import Lark
 
 from .encodings import Encoding
 from .encodings import Encodings
+import logging
+
+from ..settings import LOGGER_NAME
+
+log = logging.getLogger(LOGGER_NAME)
 
 
 def qvalue_validate(qvalue: int) -> bool:
