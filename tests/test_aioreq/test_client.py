@@ -1,9 +1,15 @@
 import asyncio
 
 import pytest
+import logging
+
+from aioreq.settings import LOGGER_NAME
+
+log = logging.getLogger(LOGGER_NAME)
 
 from aioreq.protocol.http import JsonRequest
 from aioreq.protocol.http import Request
+from aioreq.protocol.http import StreamClient
 from aioreq.protocol.middlewares import MiddleWare
 from aioreq.errors.requests import RequestTimeoutError
 
@@ -104,28 +110,24 @@ async def test_dirctly_requests_using(one_time_session, event_loop):
 
 
 @pytest.mark.asyncio
-async def test_stream_request(one_time_session_stream, get_stream_test_url, constants):
+async def test_root_with_stream(server, constants, get_stream_test_url):
     t2 = bytearray()
-    async for chunk in one_time_session_stream.get(get_stream_test_url):
-        for byte in chunk:
-            t2.append(byte)
-    assert t2 == bytearray(
-        "test" * constants["STREAMING_RESPONSE_CHUNK_COUNT"], "utf-8"
+    req = Request(
+        url = get_stream_test_url,
+        method="GET"
     )
-
-
-@pytest.mark.asyncio
-async def test_root_with_stream(one_time_session_stream, server):
-    t2 = bytearray()
-    async for chunk in one_time_session_stream.get(server):
-        for byte in chunk:
-            t2.append(byte)
-    assert t2 == bytearray(b'"Hello World"')
+    async with StreamClient(request=req) as response:
+        assert response.status == 200
+        async for chunk in response.content:
+            log.critical(chunk)
+            for char in chunk:
+                t2.append(char)
+    assert t2 == constants["STREAMING_RESPONSE_CHUNK_COUNT"] * b'test'
 
 
 @pytest.mark.asyncio
 async def test_basic_authentication(
-    one_time_session, one_time_session_without_authorization
+        one_time_session, one_time_session_without_authorization
 ):
     woauth_resp = one_time_session_without_authorization.get(
         "http://httpbin.org/basic-auth/foo/bar", auth=("foo", "bar")

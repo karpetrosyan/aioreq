@@ -12,17 +12,21 @@ class TestResponseParser:
     """
 
     @pytest.mark.parametrize(
-        argnames=("response_raw", "wbl", "expected_result"),
+        argnames=("status_line", "header_line", "content", "expected_result"),
         argvalues=[
             (
                 (
                     "HTTP/1.1 200 OK\r\n"
+                ),
+                (
                     "test: :test:test:ttest\r\n"
                     "spacetest:          test\r\n"
                     "messagetest:    hello 123\r\n"
                     "\r\n"
-                ).encode(),
-                96,
+                ),
+                (
+                    b""
+                ),
                 Response(
                     status=200,
                     status_message="OK",
@@ -36,10 +40,12 @@ class TestResponseParser:
             ),
         ],
     )
-    def test_parse(self, response_raw, wbl, expected_result):
-        result = ResponseParser.body_len_parse(response_raw, wbl)
-        is_same = result == expected_result
-        assert is_same
+    def test_parse(self, status_line, header_line, content, expected_result):
+        result = ResponseParser.parse(status_line, header_line, content)
+        assert result.status == expected_result.status
+        assert result.status_message == expected_result.status_message
+        assert result.headers == expected_result.headers
+        assert result.content == expected_result.content
 
     @pytest.mark.parametrize(
         argnames=("response_raw", "expected_result"),
@@ -81,5 +87,5 @@ class TestResponseParser:
         ],
     )
     def test_content_length_found(self, response_raw, expected_result):
-        result = ResponseParser.search_content_length(response_raw)
+        result = ResponseParser.search_content_length(response_raw.decode())
         assert result == expected_result

@@ -1,14 +1,11 @@
-import asyncio
-
 import pytest
 
 from aioreq import UrlParser
-from aioreq.errors.requests import AsyncRequestsError
 
 
 @pytest.mark.asyncio
 async def test_persistent_connections_base(one_time_session_cached, event_loop):
-    url = "https://www.github.com"
+    url = "https://www.google.com"
     splited_url = UrlParser.parse(url)
     url_for_dns = splited_url.get_url_for_dns()
     await one_time_session_cached.get(url)
