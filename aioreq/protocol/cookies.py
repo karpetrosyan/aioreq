@@ -32,4 +32,5 @@ class Cookies:
         return header.value
 
     def __repr__(self):
-        return f"<Cookie: {self.get_raw_cookies()}>"
+        raw_cookies = self.get_raw_cookies()
+        return f"<Cookie: {raw_cookies}>"
