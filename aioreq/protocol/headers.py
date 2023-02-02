@@ -4,7 +4,7 @@ Contains Header classes to simplify header sending
 from abc import ABC
 from abc import abstractmethod
 from enum import Enum
-from typing import Dict, List
+from typing import Dict, List, TypeVar
 from typing import Optional
 from typing import Tuple
 from typing import Type
@@ -21,6 +21,99 @@ from ..settings import LOGGER_NAME
 
 log = logging.getLogger(LOGGER_NAME)
 
+T = TypeVar("T", bound="Headers")
+
+
+class MetaHeaders(type):
+    def __call__(cls, initial_headers=None):
+        """
+        If 'initial headers' passed through 'Headers' is already an instance of 'Headers,'
+        return it rather than creating a new one.
+        """
+        if isinstance(initial_headers, Headers):
+            return initial_headers
+        return super(MetaHeaders, cls).__call__(initial_headers)
+
+
+class Headers(metaclass=MetaHeaders):
+
+    multivalue_headers = frozenset(("set-cookie", "www-authenticate"))
+
+    def __init__(self, initial_headers: Optional[Union[Dict[str, str], T]] = None):
+        self._headers: Dict[str, Union[str, List]] = {}
+        self.cache: Optional[str] = ""
+
+        if initial_headers:
+            for key, value in initial_headers.items():
+                self[key] = value
+
+    def __setitem__(self, key: str, value: str):
+
+        self.cache = None
+        key = key.lower()
+        if key in self.multivalue_headers:
+            values = self._headers.setdefault(key, [])
+            values.append(value)
+        else:
+            self._headers[key.lower()] = value
+
+    def __getitem__(self, item):
+        return self._headers[item.lower()]
+
+    def add_header(self, header: 'BaseHeader'):
+        self[header.key] = header.value
+
+    def get_parsed(self):
+        if self.cache is not None:
+            return self.cache
+
+        headers = (
+                "\r\n".join(f"{key}:  {value}" for key, value in self._headers.items())
+                + "\r\n"
+        )
+        self.cache = headers
+        return headers
+
+    def items(self):
+        return self._headers.items()
+
+    def get(self, name, default=None):
+        return self._headers.get(name.lower(), default)
+
+    def dict(self):
+        return self._headers
+
+    def __contains__(self, item):
+        return item.lower() in self._headers
+
+    def __or__(self, other):
+        if not isinstance(other, Headers):
+            raise ValueError(
+                f"Can't combine {self.__class__.__name__} object with {type(other).__name__}"
+            )
+
+        self._headers.update(other._headers)
+        return Headers(initial_headers=self._headers)
+
+    def __eq__(self, other):
+        if type(self) != type(other):
+            return False
+        if len(self._headers) != len(other.dict()):
+            return False
+        for header in self._headers:
+            if header not in other.dict() or (
+                    header and other.dict()[header] != self._headers[header]
+            ):
+                return False
+        return True
+
+    def __len__(self):
+        return len(self._headers)
+
+    def __repr__(self):
+        return f"Headers:\n" + "\n".join(
+            (f" {key}: {value}" for key, value in self._headers.items())
+        )
 
 def qvalue_validate(qvalue: int) -> bool:
     return 0 <= qvalue <= 1

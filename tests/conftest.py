@@ -12,7 +12,7 @@ from aioreq.protocol.middlewares import default_middlewares
 
 SCOPE_SESSION = pytest_asyncio.fixture(scope="session")
 SCOPE_FUNCTION = pytest_asyncio.fixture(scope="function")
-SERVER_URL = "http://testulik.com"
+SERVER_URL = "http://127.0.0.1:7575"
 
 # Server constants
 CONSTANTS = dict(
@@ -35,7 +35,7 @@ def temp_function(persistent_connections=False, kwargs=None):
 
     async def inner():
         async with aioreq.http.Client(
-            persistent_connections=persistent_connections, **kwargs
+                persistent_connections=persistent_connections, **kwargs
         ) as s:
             yield s
 
@@ -67,6 +67,11 @@ def get_deflate_url(server):
 @pytest.fixture(scope="session")
 def get_stream_test_url(server):
     return SERVER_URL + "/test_stream"
+
+
+@pytest.fixture(scope="session")
+def redirect_url(server):
+    return SERVER_URL + "/redirect"
 
 
 @pytest.fixture(scope="session")

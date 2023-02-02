@@ -1,8 +1,9 @@
 import pytest
 
-from aioreq.parser.request_parser import RequestParser
+from aioreq.parser.request_parser import default_parser
 from aioreq.protocol.http import Request
 from aioreq.protocol.http import JsonRequest
+from aioreq.parser.url_parser import parse_url
 
 
 class TestRequestParser:
@@ -16,61 +17,61 @@ class TestRequestParser:
         argnames=("request_obj", "expected_result"),
         argvalues=[
             (
-                Request(
-                    url="http://youtube.com",
-                    method="GET",
-                    headers={},
-                ),
-                "GET / HTTP/1.1\r\n" "host:  youtube.com\r\n" "\r\n",
+                    Request(
+                        url=parse_url("http://youtube.com"),
+                        method="GET",
+                        headers={},
+                    ),
+                    "GET / HTTP/1.1\r\n" "host:  youtube.com\r\n" "\r\n",
             ),
             (
-                Request(
-                    url="http://chxko.am/chxkopath",
-                    method="POST",
-                    headers={"testheader": "testvalue", "TEstchxko": "chxko"},
-                ),
-                (
-                    "POST /chxkopath HTTP/1.1\r\n"
-                    "host:  chxko.am\r\n"
-                    "testheader:  testvalue\r\n"
-                    "testchxko:  chxko\r\n"
-                    "\r\n"
-                ),
+                    Request(
+                        url=parse_url("http://chxko.am/chxkopath"),
+                        method="POST",
+                        headers={"testheader": "testvalue", "TEstchxko": "chxko"},
+                    ),
+                    (
+                            "POST /chxkopath HTTP/1.1\r\n"
+                            "host:  chxko.am\r\n"
+                            "testheader:  testvalue\r\n"
+                            "testchxko:  chxko\r\n"
+                            "\r\n"
+                    ),
             ),
             (
-                Request(
-                    url="http://chxko.am/chxkopath",
-                    method="HEAD",
-                    headers={"testheader": "testvalue", "testchxko": "chxko"},
-                    content="this is a test body data",
-                ),
-                (
-                    "HEAD /chxkopath HTTP/1.1\r\n"
-                    "host:  chxko.am\r\n"
-                    "testheader:  testvalue\r\n"
-                    "testchxko:  chxko\r\n"
-                    "content-length:  24\r\n"
-                    "\r\n"
-                    "this is a test body data"
-                ),
+                    Request(
+                        url=parse_url("http://chxko.am/chxkopath"),
+                        method="HEAD",
+                        headers={"testheader": "testvalue", "testchxko": "chxko"},
+                        content="this is a test body data",
+                    ),
+                    (
+                            "HEAD /chxkopath HTTP/1.1\r\n"
+                            "host:  chxko.am\r\n"
+                            "testheader:  testvalue\r\n"
+                            "testchxko:  chxko\r\n"
+                            "content-length:  24\r\n"
+                            "\r\n"
+                            "this is a test body data"
+                    ),
             ),
             (
-                JsonRequest(
-                    url="http://chxko.am/chxkopath",
-                    method="LINK",
-                    headers={"testheader": "testvalue", "testchxko": "chxko"},
-                    content="{'this is a test body data': 20}",
-                ),
-                (
-                    "LINK /chxkopath HTTP/1.1\r\n"
-                    "host:  chxko.am\r\n"
-                    "testheader:  testvalue\r\n"
-                    "testchxko:  chxko\r\n"
-                    "content-type:  application/json\r\n"
-                    "content-length:  32\r\n"
-                    "\r\n"
-                    "{'this is a test body data': 20}"
-                ),
+                    JsonRequest(
+                        url=parse_url("http://chxko.am/chxkopath"),
+                        method="LINK",
+                        headers={"testheader": "testvalue", "testchxko": "chxko"},
+                        content="{'this is a test body data': 20}",
+                    ),
+                    (
+                            "LINK /chxkopath HTTP/1.1\r\n"
+                            "host:  chxko.am\r\n"
+                            "testheader:  testvalue\r\n"
+                            "testchxko:  chxko\r\n"
+                            "content-length:  32\r\n"
+                            "content-type:  application/json\r\n"
+                            "\r\n"
+                            "{'this is a test body data': 20}"
+                    ),
             ),
         ],
     )
@@ -83,5 +84,5 @@ class TestRequestParser:
         :returns: None
         """
 
-        parsed_data = type(request_obj).parser.parse(request_obj)
+        parsed_data = default_parser(request_obj)
         assert parsed_data == expected_result

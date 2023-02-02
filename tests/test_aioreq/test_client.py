@@ -3,6 +3,7 @@ import asyncio
 import pytest
 import logging
 
+from aioreq import parse_url
 from aioreq.settings import LOGGER_NAME
 
 log = logging.getLogger(LOGGER_NAME)
@@ -16,37 +17,35 @@ from aioreq.errors.requests import RequestTimeoutError
 
 @pytest.mark.asyncio
 async def test_few_requests(server, one_time_session, event_loop):
-    t1 = one_time_session.get("http://testulik.com")
-    t2 = one_time_session.get("http://testulik.com")
-    t3 = one_time_session.get("http://testulik.com")
+    t1 = one_time_session.get(server)
+    t2 = one_time_session.get(server)
+    t3 = one_time_session.get(server)
     tasks = await asyncio.gather(t1, t2, t3)
     assert all([result.status == 200 for result in tasks])
 
 
 @pytest.mark.asyncio
 async def test_normal_request(server, one_time_session):
-    url = "http://testulik.com"
+    url = server
     response = await one_time_session.get(url)
     assert response.status == 200
 
 
 @pytest.mark.asyncio
-async def test_moved_301(server, one_time_session_redirect_0):
-    url = "http://testulik.com/redirect"
-    response = await one_time_session_redirect_0.get(url)
+async def test_moved_301(server, one_time_session_redirect_0, redirect_url):
+    response = await one_time_session_redirect_0.get(redirect_url)
     assert response.status == 301
 
 
 @pytest.mark.asyncio
-async def test_moving_301(server, one_time_session):
-    url = "http://testulik.com/redirect"
-    response = await one_time_session.get(url)
+async def test_moving_301(server, one_time_session, redirect_url):
+    response = await one_time_session.get(redirect_url)
     assert response.status == 200
 
 
 @pytest.mark.asyncio
-async def test_moving_301_with_directly_request(one_time_session):
-    url = "http://testulik.com"
+async def test_moving_301_with_directly_request(server, one_time_session):
+    url = parse_url(server)
     req = Request(
         url=url,
         method="GET",
@@ -81,22 +80,22 @@ async def test_deflate(one_time_session, constants, get_deflate_url):
 
 
 @pytest.mark.asyncio
-async def test_https_request(one_time_session):
-    url = "http://www.testulik.com"
+async def test_https_request(one_time_session, server):
+    url = server
     response = await one_time_session.get(url)
     assert response.status == 200
 
 
 @pytest.mark.asyncio
-async def test_dirctly_requests_using(one_time_session, event_loop):
+async def test_dirctly_requests_using(one_time_session, event_loop, server):
     req = Request(
-        url="http://testulik.com/",
+        url=parse_url(server),
         method="GET",
         headers={},
     )
 
     jsonreq = JsonRequest(
-        url="http://testulik.com/",
+        url=parse_url(server),
         method="GET",
         headers={},
     )
@@ -112,7 +111,7 @@ async def test_dirctly_requests_using(one_time_session, event_loop):
 @pytest.mark.asyncio
 async def test_root_with_stream(server, constants, get_stream_test_url):
     t2 = bytearray()
-    req = Request(url=get_stream_test_url, method="GET")
+    req = Request(url=parse_url(get_stream_test_url), method="GET")
     async with StreamClient(request=req) as response:
         assert response.status == 200
         async for chunk in response.content:

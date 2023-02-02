@@ -38,7 +38,7 @@ async def ping():
 @app.get("/redirect")
 async def redirect():
     return Response(
-        headers={"location": "http://testulik.com/redirected"}, status_code=301
+        headers={"location": "http://127.0.0.1:7575/redirected"}, status_code=301
     )
 
 

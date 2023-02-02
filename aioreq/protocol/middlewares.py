@@ -81,18 +81,20 @@ class RedirectMiddleWare(MiddleWare):
             return False
         new_location = response.headers["location"]
         old_url = request.url
+
         if new_location.startswith("http"):
             request.url = new_location
-            self.memory[old_url] = new_location
+            self.memory[str(old_url)] = new_location
         else:
             request.path = new_location
-            self.memory[old_url] = request.host + new_location
+            self.memory[str(old_url)] = request.host + new_location
         return True
 
     async def handle_302(self, request, response):
         if not self.contains_location(response):
             return False
         new_location = response.headers["location"]
+        log.critical(new_location)
         if new_location.startswith("http"):
             request.url = new_location
         else:
@@ -107,8 +109,6 @@ class RedirectMiddleWare(MiddleWare):
         request.context = b""
         if new_location.startswith("http"):
             request.url = new_location
-        else:
-            request.path = new_location
         return True
 
     async def handle_304(self, request, response):
@@ -131,6 +131,7 @@ class RedirectMiddleWare(MiddleWare):
         response = None
         while redirect != 0:
             redirect -= 1
+
             response = await self.next_middleware.process(request, client)
             if (response.status // 100) == 3:
                 handler = getattr(self, f"handle_{response.status}", None)

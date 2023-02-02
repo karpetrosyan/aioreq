@@ -19,10 +19,6 @@ res.nameservers = ["1.1.1.1", "8.8.8.8"]
 log = logging.getLogger(LOGGER_NAME)
 
 context = ssl.create_default_context()
-# context.minimum_version = ssl.TLSVersion.TLSv1_2
-# context.maximum_version = ssl.TLSVersion.TLSv1_2
-
-# context.load_verify_locations(certifi.where())
 context.keylog_filename = os.getenv("SSLKEYLOGFILE")  # type: ignore
 
 context.check_hostname = False
@@ -46,12 +42,18 @@ async def resolve_domain(
     :returns: ip and port for that domain
     :rtype: [str, int]
     """
+    ...
+    hostname = url.ip or '.'.join(url.host)
 
-    hostname = url.get_url_for_dns()
-    if url.domain == TEST_SERVER_DOMAIN:
-        return "localhost", 7575
+    port = url.port
+    ip = url.ip
 
-    port = 80 if url.protocol == "http" else 443
+    if port is None:
+        port = 80 if url.scheme == "http" else 443
+
+    if ip is not None:
+        return ip, port
+
     if hostname in dns_cache:
         memo = dns_cache[hostname]
         if isinstance(memo, str):
@@ -62,9 +64,9 @@ async def resolve_domain(
     log.trace(f"trying resolve hostname={hostname}")  # type: ignore
     coro = asyncio.create_task(get_address(hostname))
     dns_cache[hostname] = coro
-    host = await coro
-    dns_cache[hostname] = host
-    return host, port
+    ip = await coro
+    dns_cache[hostname] = ip
+    return ip, port
 
 
 class Transport:
@@ -149,7 +151,8 @@ class Transport:
             while True:
                 chunk = await self.reader.readuntil(b"\r\n")
                 chunk_size = chunk[:-2]
-
+                if b';' in chunk_size:
+                    chunk_size = chunk_size.split(b';')[0].strip()
                 chunk_size = int(chunk_size, 16)
                 if chunk_size == 0:
                     break
