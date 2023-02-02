@@ -77,7 +77,7 @@ class TestRequestParser:
                         url=parse_url("http://chxko.am/chxkopath"),
                         method="LINK",
                         headers={"testheader": "testvalue", "testchxko": "chxko"},
-                        content="{'this is a test body data': 20}",
+                        content='{"this is a test body data": 20}',
                     ),
                     (
                             "LINK /chxkopath HTTP/1.1\r\n"
@@ -87,7 +87,7 @@ class TestRequestParser:
                             "content-length:  32\r\n"
                             "content-type:  application/json\r\n"
                             "\r\n"
-                            "{'this is a test body data': 20}"
+                            '{"this is a test body data": 20}'
                     ),
             ),
         ],

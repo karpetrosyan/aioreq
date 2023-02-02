@@ -37,5 +37,12 @@ def default_parser(request):
 
 
 def configure_json(request):
-    request.headers["content-type"] = "application/json"
-    request.content = _json.dumps(request.content)[1:-1]
+    payload = request.content
+
+    if payload:
+        if isinstance(payload, str):
+            payload = _json.loads(payload) # validate json format
+        payload = _json.dumps(payload)
+
+        request.headers["content-type"] = "application/json"
+        request.content = payload
