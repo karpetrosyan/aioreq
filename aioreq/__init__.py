@@ -1,4 +1,4 @@
-__version__ = "1.0.1"
+__version__ = "1.0.2b0"
 
 from .protocol import headers
 from .protocol import http
