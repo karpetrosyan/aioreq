@@ -36,7 +36,6 @@ class MetaHeaders(type):
 
 
 class Headers(metaclass=MetaHeaders):
-
     multivalue_headers = frozenset(("set-cookie", "www-authenticate"))
 
     def __init__(self, initial_headers: Optional[Union[Dict[str, str], T]] = None):
@@ -115,6 +114,7 @@ class Headers(metaclass=MetaHeaders):
             (f" {key}: {value}" for key, value in self._headers.items())
         )
 
+
 def qvalue_validate(qvalue: int) -> bool:
     return 0 <= qvalue <= 1
 
@@ -165,7 +165,7 @@ class AcceptEncoding(BaseHeader):
     key = "Accept-Encoding"
 
     def __init__(
-        self, *codings: Tuple[Union[Type[Encoding], Encodings], Union[None, int]]
+            self, *codings: Tuple[Union[Type[Encoding], Encodings], Union[None, int]]
     ):
         self._codings: Dict[str, str] = {}
         for coding in codings:

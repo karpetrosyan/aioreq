@@ -115,7 +115,6 @@ async def test_root_with_stream(server, constants, get_stream_test_url):
     async with StreamClient(request=req) as response:
         assert response.status == 200
         async for chunk in response.content:
-            log.critical(chunk)
             for char in chunk:
                 t2.append(char)
     assert t2 == constants["STREAMING_RESPONSE_CHUNK_COUNT"] * b"test"

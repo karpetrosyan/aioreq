@@ -52,7 +52,6 @@ class BaseRequest:
             params = ()
 
         log.trace(url)
-        assert url
 
         self._url = url
         self.auth = auth
