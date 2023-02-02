@@ -26,6 +26,23 @@ class TestRequestParser:
             ),
             (
                     Request(
+                        url=parse_url("http://youtube.com?a=1&b=2"),
+                        method="GET",
+                        headers={},
+                    ),
+                    "GET /?a=1&b=2 HTTP/1.1\r\n" "host:  youtube.com\r\n" "\r\n",
+            ),
+            (
+                    Request(
+                        url=parse_url("http://youtube.com"),
+                        method="GET",
+                        params={'a':1, 'b':2},
+                        headers={},
+                    ),
+                    "GET /?a=1&b=2 HTTP/1.1\r\n" "host:  youtube.com\r\n" "\r\n",
+            ),
+            (
+                    Request(
                         url=parse_url("http://chxko.am/chxkopath"),
                         method="POST",
                         headers={"testheader": "testvalue", "TEstchxko": "chxko"},

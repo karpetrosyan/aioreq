@@ -43,24 +43,23 @@ class BaseRequest:
             headers: Union[Headers, Dict[str, str], None] = None,
             method: str = "GET",
             content: Union[str, bytearray, bytes] = "",
-            params: Union[Iterable[Iterable[str]], None] = None,
-            auth: Union[Tuple[str, str], None] = None,
+            params: Optional[Dict[str, str]] = None,
+            auth: Optional[Tuple[str, str]] = None,
             timeout: Union[int, float, None] = None,
     ) -> None:
 
-        if params is None:
-            params = ()
-
-        log.trace(url)
+        if url.query and params:
+            raise ValueError("Request incorporates the query parameter into the URL or as an argument, but not both.")
 
         self._url = url
+        self._url.query = params or self._url.query
+
         self.auth = auth
         self.headers = Headers(headers)
         self.timeout = timeout
-
+        self.params = self._url.query
         self.method = method
         self.content = content
-        self.path_parameters = params
         self._raw_request: Optional[bytes] = None
 
     @property
@@ -70,6 +69,7 @@ class BaseRequest:
     @url.setter
     def url(self, value):
         self._url = parse_url(value)
+        self.params = self._url.query
 
     def get_raw_request(self) -> bytes:
 
