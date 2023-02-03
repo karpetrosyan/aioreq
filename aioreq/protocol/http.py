@@ -1,9 +1,10 @@
 import asyncio
-import json
 import logging
 from abc import ABCMeta
 from collections import defaultdict
 from typing import Dict
+from typing import AsyncIterator
+from typing import AsyncGenerator
 from typing import Iterable
 from typing import List
 from typing import Optional
@@ -11,6 +12,8 @@ from typing import Tuple
 from typing import Type
 from typing import TypeVar
 from typing import Union
+
+from rfcparser.object_abstractions import Uri3986
 
 from .cookies import Cookies
 from .headers import Headers
@@ -39,7 +42,7 @@ class BaseRequest:
 
     def __init__(
             self,
-            url: str,
+            url: Uri3986,
             *,
             headers: Union[Headers, Dict[str, str], None] = None,
             method: str = "GET",
@@ -121,7 +124,7 @@ class Response(BaseResponse):
     def __eq__(self, _value) -> bool:
         if type(self) != type(_value):
             raise TypeError(
-                "Can't compare `{type(self).__name__}` with `{type(_value).__name__}`"
+                f"Can't compare `{type(self).__name__}` with `{type(_value).__name__}`"
             )
         return (
                 self.status == _value.status
@@ -141,13 +144,13 @@ class StreamResponse(BaseResponse):
             self,
             status: int,
             status_message: str,
-            headers: Union[Headers, Dict[str, str]],
-            content: bytes,
-            request: Union[Request, None] = None,
+            headers: Headers,
+            content: AsyncGenerator,
+            request: Request,
     ):
         self.status = status
         self.status_message = status_message
-        self.headers = Headers(headers)
+        self.headers = headers
         self.content = content
         self.request = request
 
@@ -160,16 +163,13 @@ class BaseClient(metaclass=ABCMeta):
             persistent_connections: bool = False,
             redirect_count: int = REQUEST_REDIRECT_COUNT,
             retry_count: int = REQUEST_RETRY_COUNT,
-            timeout: Union[int, float, None] = None,
-            auth: Union[Tuple[str, str], None] = None,
+            timeout: Union[int, float] = REQUEST_TIMEOUT,
+            auth: Optional[Tuple[str, str]] = None,
             middlewares: Optional[Tuple[Union[str, Type[MiddleWare]], ...]] = None,
             cookies: Optional[Union[Cookies, Dict]] = None,
     ):
 
         headers = Headers(initial_headers=headers)
-
-        RedirectMiddleWare.redirect_count = redirect_count
-        RetryMiddleWare.retry_count = retry_count
 
         if isinstance(cookies, Cookies):
             self.cookies = cookies
@@ -178,12 +178,12 @@ class BaseClient(metaclass=ABCMeta):
         elif cookies is None:
             self.cookies = Cookies()
 
+        RedirectMiddleWare.redirect_count = redirect_count
+        RetryMiddleWare.retry_count = retry_count
         if middlewares is None:
             self.middlewares = MiddleWare.build(default_middlewares)
         else:
             self.middlewares = MiddleWare.build(middlewares)
-        if timeout is None:
-            timeout = REQUEST_TIMEOUT
 
         self.timeout = timeout
         self.redirect = redirect_count
@@ -249,10 +249,8 @@ class BaseClient(metaclass=ABCMeta):
 
         for transport in self.transports:
             transport.writer.close()
-            log.trace("Trying to close the connection")
             tasks.append(transport.writer.wait_closed())
         await asyncio.gather(*tasks)
-        log.trace("All connections are closed")
 
 
 class Client(BaseClient):
@@ -260,7 +258,8 @@ class Client(BaseClient):
     async def send_request_directly(self, request: Request):
         transport = await self._get_connection(request.url)
         coro = transport.send_http_request(request.get_raw_request())
-        status_line, header_line, content = await wrap_errors(coro=coro)
+        with wrap_errors():
+            status_line, header_line, content = await coro
         resp = ResponseParser.parse(status_line, header_line, content)
         resp.request = request
         return resp
@@ -302,7 +301,7 @@ class Client(BaseClient):
             url: str,
             content: Union[str, bytearray, bytes] = "",
             headers: Union[Dict[str, str], None] = None,
-            path_parameters: Union[Iterable[Iterable[str]], None] = None,
+            path_parameters: Dict[str, str] = None,
             auth: Union[Tuple[str, str], None] = None,
             timeout: Union[int, float, None] = None,
     ) -> Response:
@@ -321,7 +320,7 @@ class Client(BaseClient):
             url: str,
             content: Union[str, bytearray, bytes] = "",
             headers: Union[Dict[str, str], None] = None,
-            path_parameters: Union[Iterable[Iterable[str]], None] = None,
+            path_parameters: Dict[str, str] = None,
             auth: Union[Tuple[str, str], None] = None,
             timeout: Union[int, float, None] = None,
     ) -> Response:
@@ -340,7 +339,7 @@ class Client(BaseClient):
             url: str,
             content: Union[str, bytearray, bytes] = "",
             headers: Union[Dict[str, str], None] = None,
-            path_parameters: Union[Iterable[Iterable[str]], None] = None,
+            path_parameters: Dict[str, str] = None,
             auth: Union[Tuple[str, str], None] = None,
             timeout: Union[int, float, None] = None,
     ) -> Response:
@@ -359,7 +358,7 @@ class Client(BaseClient):
             url: str,
             content: Union[str, bytearray, bytes] = "",
             headers: Union[Dict[str, str], None] = None,
-            path_parameters: Union[Iterable[Iterable[str]], None] = None,
+            path_parameters: Dict[str, str] = None,
             auth: Union[Tuple[str, str], None] = None,
             timeout: Union[int, float, None] = None,
     ) -> Response:
@@ -378,7 +377,7 @@ class Client(BaseClient):
             url: str,
             content: Union[str, bytearray, bytes] = "",
             headers: Union[Dict[str, str], None] = None,
-            path_parameters: Union[Iterable[Iterable[str]], None] = None,
+            path_parameters: Dict[str, str] = None,
             auth: Union[Tuple[str, str], None] = None,
             timeout: Union[int, float, None] = None,
     ) -> Response:
@@ -397,7 +396,7 @@ class Client(BaseClient):
             url: str,
             content: Union[str, bytearray, bytes] = "",
             headers: Union[Dict[str, str], None] = None,
-            path_parameters: Union[Iterable[Iterable[str]], None] = None,
+            path_parameters: Dict[str, str] = None,
             auth: Union[Tuple[str, str], None] = None,
             timeout: Union[int, float, None] = None,
     ) -> Response:
@@ -416,7 +415,7 @@ class Client(BaseClient):
             url: str,
             content: Union[str, bytearray, bytes] = "",
             headers: Union[Dict[str, str], None] = None,
-            path_parameters: Union[Iterable[Iterable[str]], None] = None,
+            path_parameters: Dict[str, str] = None,
             auth: Union[Tuple[str, str], None] = None,
             timeout: Union[int, float, None] = None,
     ) -> Response:
@@ -458,7 +457,7 @@ class StreamClient:
             request=request,
         )
 
-    async def content_iter(self, async_generator):
+    async def content_iter(self, async_generator: AsyncIterator):
         async for chunk in async_generator:
             yield chunk
 
