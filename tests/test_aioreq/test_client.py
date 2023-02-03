@@ -145,3 +145,11 @@ async def test_add_custom_middleware(temp_session):
     )
     resp = await temp_session.get("http://test.test")
     assert resp == "TEST"
+
+@pytest.mark.asyncio
+async def test_permanent_redirection(server, temp_session, redirect_url):
+    resp1 = await temp_session.get(redirect_url)
+    resp2 = await temp_session.get(redirect_url)
+
+    assert resp1.redirects == [server + '/redirected']
+    assert not resp2.redirects

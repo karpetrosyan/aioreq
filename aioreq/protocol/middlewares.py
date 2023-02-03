@@ -2,6 +2,8 @@ import asyncio
 import logging
 from abc import ABC, abstractmethod
 from typing import Union, Tuple
+
+from aioreq.parser.url_parser import parse_url
 from ..errors.base import UnexpectedError
 from . import codes
 from .auth import parse_auth_header
@@ -80,35 +82,35 @@ class RedirectMiddleWare(MiddleWare):
         if not self.contains_location(response):
             return False
         new_location = response.headers["location"]
-        old_url = request.url
+        old_url = str(request.url)
 
-        if new_location.startswith("http"):
-            request.url = new_location
-            self.memory[str(old_url)] = new_location
-        else:
-            request.path = new_location
-            self.memory[str(old_url)] = request.host + new_location
+        if not new_location.startswith("http"):
+            new_location = request.url.updated_relative_ref(new_location)
+
+        request.url = new_location
+        self.memory[old_url] = str(request.url)
         return True
 
     async def handle_302(self, request, response):
         if not self.contains_location(response):
             return False
         new_location = response.headers["location"]
-        log.critical(new_location)
-        if new_location.startswith("http"):
-            request.url = new_location
-        else:
-            request.path = new_location
+        if not new_location.startswith("http"):
+            new_location = request.url.updated_relative_ref(new_location)
+        request.url = new_location
         return True
 
     async def handle_303(self, request, response):
         if not self.contains_location(response):
             return False
         new_location = response.headers["location"]
+        if not new_location.startswith("http"):
+            new_location = request.url.updated_relative_ref(new_location)
+
+        request.url = parse_url(new_location)
         request.method = "GET"
         request.context = b""
-        if new_location.startswith("http"):
-            request.url = new_location
+        request.url = new_location
         return True
 
     async def handle_304(self, request, response):
@@ -129,11 +131,20 @@ class RedirectMiddleWare(MiddleWare):
     async def process(self, request, client):
         redirect = self.redirect
         response = None
+        redirects = []
+        redirect_uri = ""
         while redirect != 0:
             redirect -= 1
 
+            if str(request.url) in self.memory:  # take from the memory if it's permanent redirected
+                request.url = self.memory[str(request.url)]
             response = await self.next_middleware.process(request, client)
+            if redirect_uri:
+                redirects.append(redirect_uri)
+                response.redirects = redirects
+
             if (response.status // 100) == 3:
+
                 handler = getattr(self, f"handle_{response.status}", None)
 
                 if handler is None:
@@ -142,12 +153,12 @@ class RedirectMiddleWare(MiddleWare):
                     )
                 continue_ = await handler(request, response)
 
+                redirect_uri = str(request.url)
                 if redirect < 1 or not continue_:
                     return response
             else:
                 return response
         assert response is not None
-
         return response
 
 

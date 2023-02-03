@@ -120,6 +120,7 @@ class Response(BaseResponse):
         self.headers = Headers(headers)
         self.content = content
         self.request = request
+        self.redirects = None
 
     def __eq__(self, _value) -> bool:
         if type(self) != type(_value):
