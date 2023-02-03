@@ -15,7 +15,7 @@ def default_parser(request):
     if query:
         query = "?" + sum_path_parameters(query)
 
-    if isinstance(request.content, Union[bytes, bytearray]):
+    if type(request.content) in (bytes, bytearray):
         request.content = request.content.decode()
 
     if request.content:
