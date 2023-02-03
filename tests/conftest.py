@@ -104,6 +104,9 @@ async def temp_session_without_authorization():
     async with aioreq.http.Client(middlewares=middlewares) as s:
         yield s
 
+@pytest_asyncio.fixture()
+async def set_cookie_url():
+    return SERVER_URL + '/set-cookie'
 
 def test_turn_server_on(server):
     ...

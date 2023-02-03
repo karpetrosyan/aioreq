@@ -63,6 +63,11 @@ async def stream():
     return StreamingResponse(streaming_text())
 
 
+@app.get('/set-cookie')
+async def set_cookie(resp: Response):
+    resp.set_cookie(key="test", value="val")
+    return 200
+
 if __name__ == "__main__":
     from conftest import CONSTANTS
     import uvicorn

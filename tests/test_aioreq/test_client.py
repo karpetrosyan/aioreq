@@ -155,3 +155,8 @@ async def test_permanent_redirection(server, temp_session, redirect_url):
 
     assert resp1.redirects == [server + "/redirected"]
     assert not resp2.redirects
+
+@pytest.mark.asyncio
+async def test_set_cookie(server, temp_session, set_cookie_url):
+    resp = await temp_session.get(set_cookie_url)
+    assert "test" in temp_session.cookies.cookies
