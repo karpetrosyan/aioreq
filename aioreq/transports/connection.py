@@ -35,14 +35,7 @@ dns_cache: Dict[str, Union[str, Awaitable]] = dict()
 async def resolve_domain(
     url,
 ):
-    """
-    Makes an asynchronous DNS request to resolve the IP address
-    :param hostname: Domain name for example YouTube.com
-    :type hostname: str
-    :returns: ip and port for that domain
-    :rtype: [str, int]
-    """
-    ...
+
     hostname = url.ip or '.'.join(url.host)
 
     port = url.port
@@ -70,10 +63,6 @@ async def resolve_domain(
 
 
 class Transport:
-    """
-    An asynchronous sockets communication implementation using
-    asyncio streams.
-    """
 
     def __init__(self):
         self.reader: asyncio.StreamReader | None = None
@@ -81,13 +70,7 @@ class Transport:
         self.used: bool = False
 
     async def _send_data(self, raw_data: bytes) -> None:
-        """
-        An asynchronous alternative for socket.send_all method
-        :param raw_data: Data which should be sent
-        :type raw_data: bytes
 
-        :returns: None
-        """
         assert self.writer
         self.writer.write(raw_data)
         await self.writer.drain()
@@ -95,16 +78,7 @@ class Transport:
     async def make_connection(
         self, ip: str, port: int, ssl: bool, server_hostname
     ) -> None:
-        """
-        An asynchronous alternative for socket connect
-        :param ip: Ip where connection should be made
-        :type ip: str
-        :param port: Connection port
-        :type port: int
-        :param ssl: True if TLS/SSL should be used
-        :type ssl: bool
-        :returns: None
-        """
+
         log.trace(f"{ip}, {port}")
         reader, writer = await asyncio.wait_for(
             asyncio.open_connection(
@@ -124,14 +98,6 @@ class Transport:
         self.used = True
 
     async def send_http_request(self, raw_data: bytes):
-        """
-        The lowest level http request method, can be used directly
-        :param raw_data: HTTP message bytes
-        :type raw_data: bytes
-
-        :returns: Response bytes and without data len
-        :rtype: Tuple[bytes, int]
-        """
 
         self._check_used()
         await self._send_data(raw_data)
@@ -163,14 +129,7 @@ class Transport:
         return status_line, headers_line, content
 
     async def send_http_stream_request(self, raw_data: bytes):
-        """
-        The lowest level http request method, can be used directly
-        :param raw_data: HTTP message bytes
-        :type raw_data: bytes
 
-        :returns: Response bytes and without data len
-        :rtype: Tuple[bytes, int]
-        """
         from aioreq import ResponseParser
 
         self._check_used()
