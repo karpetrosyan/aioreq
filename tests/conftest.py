@@ -2,7 +2,6 @@ import asyncio
 import os
 import signal
 import subprocess
-from time import sleep
 
 import pytest
 import pytest_asyncio
@@ -10,8 +9,6 @@ import pytest_asyncio
 import aioreq
 from aioreq.protocol.middlewares import default_middlewares
 
-SCOPE_SESSION = pytest_asyncio.fixture(scope="session")
-SCOPE_FUNCTION = pytest_asyncio.fixture(scope="function")
 SERVER_URL = "http://127.0.0.1:7575"
 
 # Server constants
@@ -79,25 +76,34 @@ def constants():
     return CONSTANTS
 
 
+@pytest_asyncio.fixture()
+async def temp_session():
+    async with aioreq.http.Client() as s:
+        yield s
+
+
+@pytest_asyncio.fixture()
+async def temp_session_cached():
+    async with aioreq.http.Client(persistent_connections=True) as s:
+        yield s
+
+
+@pytest_asyncio.fixture()
+async def temp_session_redirect_0():
+    async with aioreq.http.Client(redirect_count=0, retry_count=0) as s:
+        yield s
+
+
+@pytest_asyncio.fixture()
+async def temp_session_without_authorization():
+    middlewares = [
+        middleware
+        for middleware in default_middlewares
+        if middleware != "AuthenticationMiddleWare"
+    ]
+    async with aioreq.http.Client(middlewares=middlewares) as s:
+        yield s
+
+
 def test_turn_server_on(server):
     ...
-
-
-one_time_session = SCOPE_FUNCTION(temp_function())
-session = SCOPE_SESSION(temp_function())
-one_time_session_cached = SCOPE_SESSION(temp_function(persistent_connections=True))
-
-one_time_session_redirect_0 = SCOPE_SESSION(
-    temp_function(kwargs=dict(redirect_count=0, retry_count=0))
-)
-one_time_session_without_authorization = SCOPE_SESSION(
-    temp_function(
-        kwargs=dict(
-            middlewares=[
-                middleware
-                for middleware in default_middlewares
-                if middleware != "AuthenticationMiddleWare"
-            ]
-        )
-    )
-)
