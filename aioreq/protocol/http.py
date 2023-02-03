@@ -443,8 +443,8 @@ class StreamClient:
 
         await transport.make_connection(ip=ip, port=port, ssl=False, server_hostname=None)
         coro = transport.send_http_stream_request(request.get_raw_request())
-        iterable = aiter(coro)
-        status_line, header_line = await anext(iterable)
+        iterable = coro.__aiter__()
+        status_line, header_line = await iterable.__anext__()
         scheme, status_code, status_message = ResponseParser.parse_status_line(
             status_line
         )
