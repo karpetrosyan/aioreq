@@ -1,4 +1,5 @@
 import json as _json
+from typing import Union
 
 
 def sum_path_parameters(parameters):
@@ -13,6 +14,9 @@ def default_parser(request):
 
     if query:
         query = "?" + sum_path_parameters(query)
+
+    if isinstance(request.content, Union[bytes, bytearray]):
+        request.content = request.content.decode()
 
     if request.content:
         request.headers["Content-Length"] = len(request.content)
@@ -45,4 +49,5 @@ def configure_json(request):
         payload = _json.dumps(payload)
 
         request.headers["content-type"] = "application/json"
+        request.headers["Content-Length"] = len(payload)
         request.content = payload
