@@ -3,6 +3,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Union, Tuple
 
+from rfcparser.core import SetCookieParser6265
 from aioreq.parser.url_parser import parse_url
 from ..errors.base import UnexpectedError
 from . import codes
@@ -246,12 +247,14 @@ class CookiesMiddleWare(MiddleWare):
         cookies = client.cookies.get_raw_cookies()
         request.headers["cookie"] = cookies
         resp = await self.next_middleware.process(request, client)
+        log.critical(f"cookie middleware {resp.headers}")
 
         if "set-cookie" in resp.headers:
             set_cookies = [
-                SetCookie.parse(cookie_value)
+                SetCookieParser6265().parse(cookie_value)
                 for cookie_value in resp.headers["set-cookie"]
             ]
+            log.critical(set_cookies)
             for set_cookie in set_cookies:
                 client.cookies.add_cookie(set_cookie)
         return resp

@@ -3,4 +3,4 @@ from rfcparser.object_abstractions import Uri3986
 
 
 def parse_url(url) -> Uri3986:
-    return core.UriParse3986().parse(url)
+    return core.UriParser3986().parse(url)
