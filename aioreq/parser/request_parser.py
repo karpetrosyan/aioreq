@@ -1,5 +1,4 @@
 import json as _json
-from typing import Union
 
 
 def sum_path_parameters(parameters):

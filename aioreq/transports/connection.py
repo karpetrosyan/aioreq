@@ -2,12 +2,10 @@ import asyncio
 import logging
 import os
 import ssl
-from typing import Coroutine, Awaitable, Optional
+from typing import Awaitable
 from typing import Dict
-from typing import Tuple
 from typing import Union
-from ..settings import TEST_SERVER_DOMAIN
-import certifi
+
 from dns import asyncresolver
 
 from ..errors.requests import AsyncRequestsError
