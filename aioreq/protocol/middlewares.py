@@ -136,7 +136,9 @@ class RedirectMiddleWare(MiddleWare):
         while redirect != 0:
             redirect -= 1
 
-            if str(request.url) in self.memory:  # take from the memory if it's permanent redirected
+            if (
+                str(request.url) in self.memory
+            ):  # take from the memory if it's permanent redirected
                 request.url = self.memory[str(request.url)]
             response = await self.next_middleware.process(request, client)
             if redirect_uri:

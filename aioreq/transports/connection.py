@@ -34,7 +34,7 @@ async def resolve_domain(
     url,
 ):
 
-    hostname = url.ip or '.'.join(url.host)
+    hostname = url.ip or ".".join(url.host)
 
     port = url.port
     ip = url.ip
@@ -61,7 +61,6 @@ async def resolve_domain(
 
 
 class Transport:
-
     def __init__(self):
         self.reader: asyncio.StreamReader | None = None
         self.writer: asyncio.StreamWriter | None = None
@@ -115,8 +114,8 @@ class Transport:
             while True:
                 chunk = await self.reader.readuntil(b"\r\n")
                 chunk_size = chunk[:-2]
-                if b';' in chunk_size:
-                    chunk_size = chunk_size.split(b';')[0].strip()
+                if b";" in chunk_size:
+                    chunk_size = chunk_size.split(b";")[0].strip()
                 chunk_size = int(chunk_size, 16)
                 if chunk_size == 0:
                     break

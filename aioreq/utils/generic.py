@@ -17,5 +17,3 @@ def wrap_errors():
         yield
     except asyncio.TimeoutError:
         raise RequestTimeoutError
-
-

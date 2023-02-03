@@ -15,8 +15,6 @@ async def test_persistent_connections_base(temp_session_cached, server):
     await temp_session_cached.get(url)
 
     if not old_transport.is_closing():
-        assert (
-            old_transport is temp_session_cached.connection_mapper[domain][0]
-        )
+        assert old_transport is temp_session_cached.connection_mapper[domain][0]
     else:
         assert len(temp_session_cached.connection_mapper[domain]) == 1

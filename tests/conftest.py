@@ -32,7 +32,7 @@ def temp_function(persistent_connections=False, kwargs=None):
 
     async def inner():
         async with aioreq.http.Client(
-                persistent_connections=persistent_connections, **kwargs
+            persistent_connections=persistent_connections, **kwargs
         ) as s:
             yield s
 

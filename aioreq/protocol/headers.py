@@ -59,7 +59,7 @@ class Headers(metaclass=MetaHeaders):
     def __getitem__(self, item):
         return self._headers[item.lower()]
 
-    def add_header(self, header: 'BaseHeader'):
+    def add_header(self, header: "BaseHeader"):
         self[header.key] = header.value
 
     def get_parsed(self):
@@ -67,8 +67,8 @@ class Headers(metaclass=MetaHeaders):
             return self.cache
 
         headers = (
-                "\r\n".join(f"{key}:  {value}" for key, value in self._headers.items())
-                + "\r\n"
+            "\r\n".join(f"{key}:  {value}" for key, value in self._headers.items())
+            + "\r\n"
         )
         self.cache = headers
         return headers
@@ -101,7 +101,7 @@ class Headers(metaclass=MetaHeaders):
             return False
         for header in self._headers:
             if header not in other.dict() or (
-                    header and other.dict()[header] != self._headers[header]
+                header and other.dict()[header] != self._headers[header]
             ):
                 return False
         return True
@@ -165,7 +165,7 @@ class AcceptEncoding(BaseHeader):
     key = "Accept-Encoding"
 
     def __init__(
-            self, *codings: Tuple[Union[Type[Encoding], Encodings], Union[None, int]]
+        self, *codings: Tuple[Union[Type[Encoding], Encodings], Union[None, int]]
     ):
         self._codings: Dict[str, str] = {}
         for coding in codings:

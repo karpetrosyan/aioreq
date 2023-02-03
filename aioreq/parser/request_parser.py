@@ -25,14 +25,14 @@ def default_parser(request):
 
     path += query
     message = (
-            "\r\n".join(
-                (
-                    f"{request.method} {path} HTTP/1.1",
-                    f'host:  {domain}',
-                    request.headers.get_parsed(),
-                )
+        "\r\n".join(
+            (
+                f"{request.method} {path} HTTP/1.1",
+                f"host:  {domain}",
+                request.headers.get_parsed(),
             )
-            + "\r\n"
+        )
+        + "\r\n"
     )
 
     message += request.content or ""
@@ -44,7 +44,7 @@ def configure_json(request):
 
     if payload:
         if isinstance(payload, str):
-            payload = _json.loads(payload) # validate json format
+            payload = _json.loads(payload)  # validate json format
         payload = _json.dumps(payload)
 
         request.headers["content-type"] = "application/json"

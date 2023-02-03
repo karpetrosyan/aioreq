@@ -16,7 +16,10 @@ from aioreq.errors.requests import RequestTimeoutError
 
 
 @pytest.mark.asyncio
-async def test_few_requests(server, temp_session, ):
+async def test_few_requests(
+    server,
+    temp_session,
+):
     t1 = temp_session.get(server)
     t2 = temp_session.get(server)
     t3 = temp_session.get(server)
@@ -121,9 +124,7 @@ async def test_root_with_stream(server, constants, get_stream_test_url):
 
 
 @pytest.mark.asyncio
-async def test_basic_authentication(
-    temp_session, temp_session_without_authorization
-):
+async def test_basic_authentication(temp_session, temp_session_without_authorization):
     woauth_resp = temp_session_without_authorization.get(
         "http://httpbin.org/basic-auth/foo/bar", auth=("foo", "bar")
     )
@@ -146,10 +147,11 @@ async def test_add_custom_middleware(temp_session):
     resp = await temp_session.get("http://test.test")
     assert resp == "TEST"
 
+
 @pytest.mark.asyncio
 async def test_permanent_redirection(server, temp_session, redirect_url):
     resp1 = await temp_session.get(redirect_url)
     resp2 = await temp_session.get(redirect_url)
 
-    assert resp1.redirects == [server + '/redirected']
+    assert resp1.redirects == [server + "/redirected"]
     assert not resp2.redirects
