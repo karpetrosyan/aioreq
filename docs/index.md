@@ -293,7 +293,7 @@ Authentication is enabled by 'AuthenticationMiddleWare,' so exercise caution whe
 
 
 ## Supported Features
-**Aioreq** support basic features to work with **HTTP/1.1**.<br />More functionality will be avaliable in future realeases.<br />
+**Aioreq** support basic features to work with **HTTP/1.1**.<br />More functionality will be available in future releases.<br />
 This is the latest version features.
 
 * [Keep-Alive (Persistent Connections)](#more-advanced-usage)

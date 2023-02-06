@@ -12,3 +12,13 @@ repos:
     rev: 6.0.0
     hooks:
       - id: flake8
+
+  - repo: https://github.com/codespell-project/codespell
+    rev: v1.16.0
+    hooks:
+    -   id: codespell
+        name: codespell
+        description: Checks for common misspellings in text files.
+        entry: codespell readme.md docs/*md
+        language: python
+        types: [text]
