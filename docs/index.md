@@ -32,7 +32,7 @@ $ pip install aioreq
 >>> resp.status_message
 'OK'
 >>> resp.request
-<Request GET https://www.google.com>
+<Request GET www.google.com>
 >>> headers = resp.headers # dict
 >>> body = resp.content # bytes object
 
@@ -83,8 +83,17 @@ There is some fundamental Stream usage.
 ``` python
 >>> import aioreq
 >>> import asyncio
+>>> from aioreq import Request
 >>> 
 >>> async def main():
+        req = Request(url="https://www.example.com", method="GET")
+        async with StreamClient(request=req) as response:
+            assert response.status == 200
+            async for chunk in response.content:
+                for char in chunk:
+                    t2.append(char)
+        assert t2 == constants["STREAMING_RESPONSE_CHUNK_COUNT"] * b"test"
+
 ...        async with aioreq.StreamClient() as cl:
 ...                # This code iterates through the message and yields each received chunk separately.
 ...                async for chunk in cl.get('https://google.com'):

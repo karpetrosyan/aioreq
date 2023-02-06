@@ -2,36 +2,37 @@ import asyncio
 import logging
 from abc import ABCMeta
 from collections import defaultdict
-from typing import Dict
-from typing import AsyncIterator
-from typing import AsyncGenerator
-from typing import Iterable
-from typing import List
-from typing import Optional
-from typing import Tuple
-from typing import Type
-from typing import TypeVar
-from typing import Union
+from typing import (
+    AsyncGenerator,
+    AsyncIterator,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
 from rfcparser.object_abstractions import Uri3986
 
-from .cookies import Cookies
-from .headers import Headers
-from .middlewares import MiddleWare
-from .middlewares import RedirectMiddleWare
-from .middlewares import RetryMiddleWare
-from .middlewares import default_middlewares
 from ..errors.requests import ConnectionTimeoutError
 from ..parser.request_parser import configure_json, default_parser
 from ..parser.response_parser import ResponseParser
 from ..parser.url_parser import parse_url
 from ..settings import DEFAULT_TIMEOUT as REQUEST_TIMEOUT
-from ..settings import LOGGER_NAME
-from ..settings import REQUEST_REDIRECT_COUNT
-from ..settings import REQUEST_RETRY_COUNT
-from ..transports.connection import Transport
-from ..transports.connection import resolve_domain
+from ..settings import LOGGER_NAME, REQUEST_REDIRECT_COUNT, REQUEST_RETRY_COUNT
+from ..transports.connection import Transport, resolve_domain
 from ..utils.generic import wrap_errors
+from .cookies import Cookies
+from .headers import Headers
+from .middlewares import (
+    MiddleWare,
+    RedirectMiddleWare,
+    RetryMiddleWare,
+    default_middlewares,
+)
 
 log = logging.getLogger(LOGGER_NAME)
 
@@ -50,13 +51,18 @@ class BaseRequest:
         auth: Optional[Tuple[str, str]] = None,
         timeout: Union[int, float, None] = None,
     ) -> None:
+        if isinstance(url, Uri3986):
+            self._url = url
+        else:
+            self._url = parse_url(url)
 
-        if url.query and params:
+        if self._url.query and params:
             raise ValueError(
-                "Request incorporates the query parameter into the URL or as an argument, but not both."
+                (
+                    "Request incorporates the query parameter into"
+                    " the URL or as an argument, but not both."
+                )
             )
-
-        self._url = url
         self._url.query = params or self._url.query
 
         self.auth = auth
@@ -77,7 +83,6 @@ class BaseRequest:
         self.params = self._url.query
 
     def get_raw_request(self) -> bytes:
-
         if self._raw_request:
             return self._raw_request
 
@@ -87,7 +92,7 @@ class BaseRequest:
         return enc_message
 
     def __repr__(self) -> str:
-        return f"<{type(self).__name__} {self.method} {self.host}>"
+        return f"<{type(self).__name__} {self.method} {self.url.get_domain()}>"
 
     def __getattribute__(self, item):
         self._raw_request = None
@@ -167,7 +172,6 @@ class BaseClient(metaclass=ABCMeta):
         middlewares: Optional[Tuple[Union[str, Type[MiddleWare]], ...]] = None,
         cookies: Optional[Union[Cookies, Dict]] = None,
     ):
-
         headers = Headers(initial_headers=headers)
 
         if isinstance(cookies, Cookies):
@@ -194,11 +198,10 @@ class BaseClient(metaclass=ABCMeta):
         self.persistent_connections = persistent_connections
 
     async def _get_connection(self, url):
-
         transport = None
         domain = url.get_domain()
         if self.persistent_connections:
-            log.trace(f"{self.connection_mapper} searching into mapped connections")  # type: ignore
+            log.trace(f"{self.connection_mapper} searching into mapped connections")
 
             for transport in self.connection_mapper[domain]:
                 if not transport.used:
@@ -277,9 +280,8 @@ class Client(BaseClient):
         timeout: Union[int, float, None] = None,
     ) -> Response:
         headers = Headers(initial_headers=headers)
-        parsed_url = parse_url(url)
         request = Request(
-            url=parsed_url,
+            url=url,
             method=method,
             headers=self.headers | headers,
             params=params,

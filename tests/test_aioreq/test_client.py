@@ -45,7 +45,7 @@ async def test_moving_301(server, temp_session, redirect_url):
 
 @pytest.mark.asyncio
 async def test_moving_301_with_directly_request(server, temp_session):
-    url = parse_url(server)
+    url = server
     req = Request(
         url=url,
         method="GET",
