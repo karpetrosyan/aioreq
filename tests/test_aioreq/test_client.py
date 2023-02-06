@@ -1,18 +1,15 @@
 import asyncio
-
-import pytest
 import logging
 
+import pytest
+
 from aioreq import parse_url
+from aioreq.errors.requests import RequestTimeoutError
+from aioreq.protocol.http import JsonRequest, Request, StreamClient
+from aioreq.protocol.middlewares import MiddleWare
 from aioreq.settings import LOGGER_NAME
 
 log = logging.getLogger(LOGGER_NAME)
-
-from aioreq.protocol.http import JsonRequest
-from aioreq.protocol.http import Request
-from aioreq.protocol.http import StreamClient
-from aioreq.protocol.middlewares import MiddleWare
-from aioreq.errors.requests import RequestTimeoutError
 
 
 @pytest.mark.asyncio
@@ -156,7 +153,8 @@ async def test_permanent_redirection(server, temp_session, redirect_url):
     assert resp1.redirects == [server + "/redirected"]
     assert not resp2.redirects
 
+
 @pytest.mark.asyncio
 async def test_set_cookie(server, temp_session, set_cookie_url):
-    resp = await temp_session.get(set_cookie_url)
-    assert "test" in temp_session.cookies.cookies
+    await temp_session.get(set_cookie_url)
+    assert "test" in temp_session.cookies.cookies[0].key
