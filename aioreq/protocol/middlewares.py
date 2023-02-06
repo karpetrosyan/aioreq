@@ -1,19 +1,19 @@
 import asyncio
 import logging
 from abc import ABC, abstractmethod
-from typing import Union, Tuple
+from typing import Tuple, Union
 
 from rfcparser.core import SetCookieParser6265
+
 from aioreq.parser.url_parser import parse_url
+
 from ..errors.base import UnexpectedError
+from ..errors.requests import RequestTimeoutError
+from ..settings import LOGGER_NAME
 from . import codes
 from .auth import parse_auth_header
 from .encodings import get_avaliable_encodings
-from .headers import AuthenticationWWW, SetCookie
-from .headers import ContentEncoding
-from .headers import TransferEncoding
-from ..errors.requests import RequestTimeoutError
-from ..settings import LOGGER_NAME
+from .headers import AuthenticationWWW, ContentEncoding, TransferEncoding
 
 log = logging.getLogger(LOGGER_NAME)
 
@@ -45,11 +45,7 @@ class MiddleWare(ABC):
         ...
 
     @staticmethod
-    def build(
-        middlewares_: Union[
-            Tuple[Union[str, type], ...],
-        ]
-    ):
+    def build(middlewares_: Union[Tuple[Union[str, type], ...],]):
         result = TimeoutMiddleWare(RequestMiddleWare(next_middleware=None))
         for middleware in reversed(middlewares_):
             if isinstance(middleware, str):
@@ -147,7 +143,6 @@ class RedirectMiddleWare(MiddleWare):
                 response.redirects = redirects
 
             if (response.status // 100) == 3:
-
                 handler = getattr(self, f"handle_{response.status}", None)
 
                 if handler is None:
@@ -179,7 +174,6 @@ class DecodeMiddleWare(MiddleWare):
                     response.content = encoding.decompress(response.content)
 
     async def process(self, request, client):
-
         request.headers.add_header(get_avaliable_encodings())
 
         response = await self.next_middleware.process(request, client)
@@ -212,14 +206,16 @@ class RetryMiddleWare(MiddleWare):
 
 class AuthenticationMiddleWare(MiddleWare):
     async def process(self, request, client):
-
         resp = await self.next_middleware.process(request, client)
         if request.auth:
             if resp.status != codes.UNAUTHORIZED:
                 return resp
             if "www-authenticate" not in resp.headers:
                 raise ValueError(
-                    f"{codes.UNAUTHORIZED} status code received without `www-authenticate` header"
+                    (
+                        f"{codes.UNAUTHORIZED} status code received"
+                        f" without `www-authenticate` header"
+                    )
                 )
             header_obj = AuthenticationWWW.parse(resp.headers["www-authenticate"])
             for authentication_header in parse_auth_header(header_obj, request):
@@ -232,7 +228,6 @@ class AuthenticationMiddleWare(MiddleWare):
 
 class TimeoutMiddleWare(MiddleWare):
     async def process(self, request, client):
-
         try:
             return await asyncio.wait_for(
                 self.next_middleware.process(request, client),
@@ -244,17 +239,15 @@ class TimeoutMiddleWare(MiddleWare):
 
 class CookiesMiddleWare(MiddleWare):
     async def process(self, request, client):
-        cookies = client.cookies.get_raw_cookies()
+        cookies = client.cookies.get_raw_cookies(request.url)
         request.headers["cookie"] = cookies
         resp = await self.next_middleware.process(request, client)
-        log.critical(f"cookie middleware {resp.headers}")
 
         if "set-cookie" in resp.headers:
-            set_cookies = [
+            cookies = [
                 SetCookieParser6265().parse(cookie_value, request.url)
                 for cookie_value in resp.headers["set-cookie"]
             ]
-            log.critical(set_cookies)
-            for set_cookie in set_cookies:
-                client.cookies.add_cookie(set_cookie)
+            for cookie in cookies:
+                client.cookies.add_cookie(cookie)
         return resp
