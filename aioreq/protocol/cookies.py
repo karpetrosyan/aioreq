@@ -36,7 +36,7 @@ class Cookies:
                 cookie.host_only_flag
                 and cookie.domain == uri.get_domain()
                 or cookie.host_only_flag
-                and path_matches(uri.get_domain, cookie.domain)
+                and path_matches(uri.get_domain(), cookie.domain)
             ):
                 continue
 

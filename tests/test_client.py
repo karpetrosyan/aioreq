@@ -164,5 +164,11 @@ async def test_set_cookie(server, temp_session, set_cookie_url):
 async def test_stream_req_to_youtube():
     req = Request(url="https://www.youtube.com", method="GET")
     async with StreamClient(req) as resp:
+        assert resp.status == 200
         async for chunk in resp.content:
             ...
+
+
+@pytest.mark.asyncio
+async def test_req_to_youtube(temp_session):
+    await temp_session.get("https://youtube.com")
