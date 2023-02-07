@@ -1,8 +1,8 @@
-__version__ = "1.0.2b0"
+__version__ = "1.0.2"
 
-from .protocol import headers
-from .protocol import http
-from .protocol import middlewares
+import asyncio
+
+from .protocol import headers, http, middlewares
 from .protocol.http import *
 
 try:
