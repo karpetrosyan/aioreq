@@ -111,7 +111,7 @@ async def test_dirctly_requests_using(temp_session, server):
 @pytest.mark.asyncio
 async def test_root_with_stream(server, constants, get_stream_test_url):
     t2 = bytearray()
-    req = Request(url=parse_url(get_stream_test_url), method="GET")
+    req = Request(url=get_stream_test_url, method="GET")
     async with StreamClient(request=req) as response:
         assert response.status == 200
         async for chunk in response.content:
@@ -158,3 +158,11 @@ async def test_permanent_redirection(server, temp_session, redirect_url):
 async def test_set_cookie(server, temp_session, set_cookie_url):
     await temp_session.get(set_cookie_url)
     assert "test" in temp_session.cookies.cookies[0].key
+
+
+@pytest.mark.asyncio
+async def test_stream_req_to_youtube():
+    req = Request(url="https://www.youtube.com", method="GET")
+    async with StreamClient(req) as resp:
+        async for chunk in resp.content:
+            ...

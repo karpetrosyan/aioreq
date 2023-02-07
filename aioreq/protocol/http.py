@@ -438,11 +438,15 @@ class StreamClient:
         request = self.request
         parsed_url = self.request.url
         transport = Transport()
-
+        domain = request.url.get_domain()
         ip, port = await resolve_domain(parsed_url)
 
         await transport.make_connection(
-            ip=ip, port=port, ssl=False, server_hostname=None
+            ip,
+            port,
+            **{"ssl": True, "server_hostname": domain}
+            if request.url.scheme == "https"
+            else {**{"ssl": False, "server_hostname": None}},
         )
         coro = transport.send_http_stream_request(request.get_raw_request())
         iterable = coro.__aiter__()
