@@ -17,13 +17,14 @@ from typing import (
 
 from rfcparser.object_abstractions import Uri3986
 
+from aioreq.protocol.connection import Transport, resolve_domain
+
 from ..errors.requests import ConnectionTimeoutError
 from ..parser.request_parser import configure_json, default_parser
 from ..parser.response_parser import ResponseParser
 from ..parser.url_parser import parse_url
 from ..settings import DEFAULT_TIMEOUT as REQUEST_TIMEOUT
 from ..settings import LOGGER_NAME, REQUEST_REDIRECT_COUNT, REQUEST_RETRY_COUNT
-from ..transports.connection import Transport, resolve_domain
 from ..utils.generic import wrap_errors
 from .cookies import Cookies
 from .headers import Headers

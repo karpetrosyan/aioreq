@@ -2,14 +2,12 @@ import asyncio
 import logging
 import os
 import ssl
-from typing import Awaitable
-from typing import Dict
-from typing import Union
+from typing import Awaitable, Dict, Union
 
 from dns import asyncresolver
 
-from ..errors.requests import AsyncRequestsError
-from ..settings import LOGGER_NAME
+from aioreq.errors.requests import AsyncRequestsError
+from aioreq.settings import LOGGER_NAME
 
 res = asyncresolver.Resolver()
 res.nameservers = ["1.1.1.1", "8.8.8.8"]
@@ -33,7 +31,6 @@ dns_cache: Dict[str, Union[str, Awaitable]] = dict()
 async def resolve_domain(
     url,
 ):
-
     hostname = url.ip or ".".join(url.host)
 
     port = url.port
@@ -67,7 +64,6 @@ class Transport:
         self.used: bool = False
 
     async def _send_data(self, raw_data: bytes) -> None:
-
         assert self.writer
         self.writer.write(raw_data)
         await self.writer.drain()
@@ -75,7 +71,6 @@ class Transport:
     async def make_connection(
         self, ip: str, port: int, ssl: bool, server_hostname
     ) -> None:
-
         log.trace(f"{ip}, {port}")
         reader, writer = await asyncio.wait_for(
             asyncio.open_connection(
@@ -95,7 +90,6 @@ class Transport:
         self.used = True
 
     async def send_http_request(self, raw_data: bytes):
-
         self._check_used()
         await self._send_data(raw_data)
         from aioreq import ResponseParser
@@ -120,13 +114,12 @@ class Transport:
                 if chunk_size == 0:
                     break
                 data = await self.reader.readexactly(chunk_size)
-                crlf = await self.reader.readexactly(2)
+                await self.reader.readexactly(2)  # crlf
                 content += data
 
         return status_line, headers_line, content
 
     async def send_http_stream_request(self, raw_data: bytes):
-
         from aioreq import ResponseParser
 
         self._check_used()
@@ -150,7 +143,7 @@ class Transport:
                 if chunk_size == 0:
                     break
                 data = await self.reader.readexactly(chunk_size)
-                crlf = await self.reader.readexactly(2)
+                await self.reader.readexactly(2)  # crlf
                 yield data
 
     def is_closing(self) -> bool:
