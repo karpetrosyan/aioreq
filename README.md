@@ -32,7 +32,7 @@ $ pip install aioreq
 >>> resp.status_message
 'OK'
 >>> resp.request
-<Request GET https://www.google.com>
+<Request GET www.google.com>
 >>> headers = resp.headers # dict
 >>> body = resp.content # bytes object
 
@@ -83,12 +83,14 @@ There is some fundamental Stream usage.
 ``` python
 >>> import aioreq
 >>> import asyncio
+>>> from aioreq import Request
 >>> 
 >>> async def main():
-...        async with aioreq.StreamClient() as cl:
-...                # This code iterates through the message and yields each received chunk separately.
-...                async for chunk in cl.get('https://google.com'):
-...                        ...
+...     req = Request(url="https://www.youtube.com", method="GET")
+...     async with aioreq.StreamClient(request=req) as response:
+...         assert response.status == 200
+...         async for chunk in response.content:
+...             assert chunk   
 >>> asyncio.run(main())
 
 ```
@@ -103,7 +105,7 @@ We can see that middlewares by importing 'default_middlewares'  variable.
 ``` python
 >>> import aioreq
 >>> aioreq.middlewares.default_middlewares
-('RetryMiddleWare', 'RedirectMiddleWare', 'DecodeMiddleWare', 'AuthenticationMiddleWare')
+('RetryMiddleWare', 'RedirectMiddleWare', 'CookiesMiddleWare', 'DecodeMiddleWare', 'AuthenticationMiddleWare')
 
 ```
 The first item on this list represents the first middleware that should handle our request (i.e. the closest middleware to our client), while the last index represents the closest middleware to the server.
@@ -129,8 +131,7 @@ Also, because aioreq stores middlewares in Client objects as linked lists, we ca
 >>> 
 >>> client.middlewares = client.middlewares.next_middleware
 >>> client.middlewares.__class__.__name__
-'DecodeMiddleWare'
->>> # It's like 'list = list.next.next',
+'CookiesMiddleWare'
 
 ```
 
@@ -154,6 +155,7 @@ MiddleWare below would add 'test-md' header if request domain is 'www.example.co
 ...     async def process(self, request, client):
 ...         if request.host == 'www.example.com':
 ...             request.headers['test_md'] = 'test'
+...         await self.next_middleware.process(request, client)
 ...
 >>> client = aioreq.Client()
 >>> client.middlewares = CustomMiddleWare(next_middleware=client.middlewares)

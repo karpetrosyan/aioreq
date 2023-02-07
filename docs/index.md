@@ -155,6 +155,7 @@ MiddleWare below would add 'test-md' header if request domain is 'www.example.co
 ...     async def process(self, request, client):
 ...         if request.host == 'www.example.com':
 ...             request.headers['test_md'] = 'test'
+...         await self.next_middleware.process(request, client)
 ...
 >>> client = aioreq.Client()
 >>> client.middlewares = CustomMiddleWare(next_middleware=client.middlewares)
