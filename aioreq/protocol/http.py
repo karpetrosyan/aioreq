@@ -434,6 +434,7 @@ class Client(BaseClient):
 class StreamClient:
     def __init__(self, request):
         self.request = request
+        self.transport = None
 
     async def __aenter__(self):
         request = self.request
@@ -449,6 +450,7 @@ class StreamClient:
             if request.url.scheme == "https"
             else {**{"ssl": False, "server_hostname": None}},
         )
+        self.transport = transport
         coro = transport.send_http_stream_request(request.get_raw_request())
         iterable = coro.__aiter__()
         status_line, header_line = await iterable.__anext__()
@@ -469,4 +471,6 @@ class StreamClient:
             yield chunk
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        ...
+        if self.transport:
+            self.transport.writer.close()
+            await self.transport.writer.wait_closed()

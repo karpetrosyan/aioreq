@@ -89,7 +89,8 @@ class Cookies:
 
     def add_cookie(self, cookie):
         self.remove_expired_cookies()
-        if old_cookie := self.cookie_exists(cookie):
+        old_cookie = self.cookie_exists(cookie)
+        if old_cookie:
             cookie.creation_time = old_cookie.creation_time
             self._remove_cookie(old_cookie)
         self._cookies.append(cookie)
