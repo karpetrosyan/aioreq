@@ -31,7 +31,7 @@ This is a suggested setup.
 This is how 'response' objects are used.
 ``` py
 >>> response.request
-<Request GET http://www.google.com>
+<Request GET www.google.com>
 >>> response.status
 200
 >>> response.status_message
@@ -83,8 +83,9 @@ If you need to receive very lots of data, use 'StreamClient' instead of 'Client.
 >>> async def main():
 ...     import tempfile
 ...     file = tempfile.TemporaryFile()
-...     async with aioreq.StreamClient() as stream_client:
-...         async for chunk in stream_client.get("http://aioreq.example.com"):
+...     req = aioreq.Request("https://google.com", method="GET")
+...     async with aioreq.StreamClient(request = get) as resp:
+...         async for chunk in resp.content:
 ...             file.write(chunk)
 ...     file.close()
 
@@ -194,7 +195,7 @@ Each response object contains his request.
 The 'request' field provides access to the Request object.
 ``` py
 >>> response.request
-<Request GET http://www.google.com>
+<Request GET www.google.com>
 
 ```
 
@@ -203,15 +204,14 @@ The 'request' field provides access to the Request object.
 Initialization of the client.
 ``` py
 >>> client = aioreq.Client()
->>> stream_client = aioreq.StreamClient()
 
 ```
 
 or
 ``` py
 >>> async def example():
-...     async with aioreq.Client() as client, aioreq.StreamClient() as stream_client:
-...	   ...
+...     async with aioreq.Client() as client:
+...	        ...
 
 ```
 
@@ -228,8 +228,9 @@ The initialization interface for StreamClient is the same, but the request sendi
 This is how StreamClient requests works.
 ``` py
 >>> async def main(file):
-... 	async with aioreq.StreamClient() as stream_client:
-...			async for chunk in stream_client.get('https://youtube.com'):
+...     req = aioreq.Request("https://google.com", method="GET")
+... 	async with aioreq.StreamClient(request = req) as resp:
+...			async for chunk in resp.content:
 ...				file.write(chunk)
 ...     file.close()
 

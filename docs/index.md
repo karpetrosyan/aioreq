@@ -86,18 +86,11 @@ There is some fundamental Stream usage.
 >>> from aioreq import Request
 >>> 
 >>> async def main():
-        req = Request(url="https://www.example.com", method="GET")
-        async with StreamClient(request=req) as response:
-            assert response.status == 200
-            async for chunk in response.content:
-                for char in chunk:
-                    t2.append(char)
-        assert t2 == constants["STREAMING_RESPONSE_CHUNK_COUNT"] * b"test"
-
-...        async with aioreq.StreamClient() as cl:
-...                # This code iterates through the message and yields each received chunk separately.
-...                async for chunk in cl.get('https://google.com'):
-...                        ...
+...     req = Request(url="https://www.youtube.com", method="GET")
+...     async with aioreq.StreamClient(request=req) as response:
+...         assert response.status == 200
+...         async for chunk in response.content:
+...             assert chunk   
 >>> asyncio.run(main())
 
 ```
@@ -112,7 +105,7 @@ We can see that middlewares by importing 'default_middlewares'  variable.
 ``` python
 >>> import aioreq
 >>> aioreq.middlewares.default_middlewares
-('RetryMiddleWare', 'RedirectMiddleWare', 'DecodeMiddleWare', 'AuthenticationMiddleWare')
+('RetryMiddleWare', 'RedirectMiddleWare', 'CookiesMiddleWare', 'DecodeMiddleWare', 'AuthenticationMiddleWare')
 
 ```
 The first item on this list represents the first middleware that should handle our request (i.e. the closest middleware to our client), while the last index represents the closest middleware to the server.
@@ -138,8 +131,7 @@ Also, because aioreq stores middlewares in Client objects as linked lists, we ca
 >>> 
 >>> client.middlewares = client.middlewares.next_middleware
 >>> client.middlewares.__class__.__name__
-'DecodeMiddleWare'
->>> # It's like 'list = list.next.next',
+'CookiesMiddleWare'
 
 ```
 
