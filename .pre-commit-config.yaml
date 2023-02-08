@@ -22,3 +22,8 @@ repos:
         entry: codespell readme.md docs/*md
         language: python
         types: [text]
+  - repo: https://github.com/dhruvmanila/remove-print-statements
+    rev: v0.5.0
+    hooks:
+      - id: remove-print-statements
+        args: [ '--verbose' ]   # Show all the print statements to be removed

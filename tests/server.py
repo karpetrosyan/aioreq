@@ -1,8 +1,8 @@
 import asyncio
+import sys
 import zlib
 
-from fastapi import FastAPI
-from fastapi import Response
+from fastapi import FastAPI, Response
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import StreamingResponse
 
@@ -12,7 +12,7 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 @app.on_event("startup")
 async def startup():
-    print("started", flush=True)
+    sys.stdout.write("started")
 
 
 @app.get("/gzip", response_class=Response)
@@ -63,14 +63,15 @@ async def stream():
     return StreamingResponse(streaming_text())
 
 
-@app.get('/set-cookie')
+@app.get("/set-cookie")
 async def set_cookie(resp: Response):
     resp.set_cookie(key="test", value="val")
     return 200
 
+
 if __name__ == "__main__":
-    from conftest import CONSTANTS
     import uvicorn
+    from conftest import CONSTANTS
 
     uvicorn.run(app, port=7575)
 else:
