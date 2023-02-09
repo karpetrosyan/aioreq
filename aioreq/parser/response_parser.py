@@ -7,9 +7,8 @@ log = logging.getLogger(LOGGER_NAME)
 
 
 class ResponseParser:
-
     # Regex to find content-length header if exists
-    regex_content = (r"\r\nContent-length\s*:\s*(?P<length>\d*)\r\n", re.IGNORECASE)
+    regex_content = (r"content-length\s*:\s*(?P<length>\d*)\r\n", re.IGNORECASE)
     regex_content_length = re.compile(regex_content[0], regex_content[1])
 
     @classmethod
