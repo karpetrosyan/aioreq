@@ -43,6 +43,7 @@ dev = [
     "pytest",
     "pytest-asyncio",
     "uvicorn",
+    "tox"
 ]
 
 uvloop = [
