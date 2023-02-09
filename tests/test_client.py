@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 
 import pytest
 
@@ -14,40 +15,38 @@ log = logging.getLogger(LOGGER_NAME)
 
 @pytest.mark.asyncio
 async def test_few_requests(
-    server,
+    SERVER_URL,
     temp_session,
 ):
-    t1 = temp_session.get(server)
-    t2 = temp_session.get(server)
-    t3 = temp_session.get(server)
+    t1 = temp_session.get(SERVER_URL)
+    t2 = temp_session.get(SERVER_URL)
+    t3 = temp_session.get(SERVER_URL)
     tasks = await asyncio.gather(t1, t2, t3)
     assert all([result.status == 200 for result in tasks])
 
 
 @pytest.mark.asyncio
-async def test_normal_request(server, temp_session):
-    url = server
-    response = await temp_session.get(url)
+async def test_normal_request(SERVER_URL, temp_session):
+    response = await temp_session.get(SERVER_URL)
     assert response.status == 200
 
 
 @pytest.mark.asyncio
-async def test_moved_301(server, temp_session_redirect_0, redirect_url):
+async def test_moved_301(SERVER_URL, temp_session_redirect_0, redirect_url):
     response = await temp_session_redirect_0.get(redirect_url)
     assert response.status == 301
 
 
 @pytest.mark.asyncio
-async def test_moving_301(server, temp_session, redirect_url):
+async def test_moving_301(SERVER_URL, temp_session, redirect_url):
     response = await temp_session.get(redirect_url)
     assert response.status == 200
 
 
 @pytest.mark.asyncio
-async def test_moving_301_with_directly_request(server, temp_session):
-    url = server
+async def test_moving_301_with_directly_request(SERVER_URL, temp_session):
     req = Request(
-        url=url,
+        url=SERVER_URL,
         method="GET",
         headers={"accept-encoding": "gzip"},
     )
@@ -56,9 +55,9 @@ async def test_moving_301_with_directly_request(server, temp_session):
 
 
 @pytest.mark.asyncio
-async def test_timeout(temp_session, server):
+async def test_timeout(temp_session, SERVER_URL):
     with pytest.raises(RequestTimeoutError):
-        await temp_session.get(server, timeout=0.00001)
+        await temp_session.get(SERVER_URL, timeout=0.00001)
 
 
 @pytest.mark.asyncio
@@ -80,22 +79,21 @@ async def test_deflate(temp_session, constants, get_deflate_url):
 
 
 @pytest.mark.asyncio
-async def test_https_request(temp_session, server):
-    url = server
-    response = await temp_session.get(url)
+async def test_https_request(temp_session, SERVER_URL):
+    response = await temp_session.get(SERVER_URL)
     assert response.status == 200
 
 
 @pytest.mark.asyncio
-async def test_dirctly_requests_using(temp_session, server):
+async def test_dirctly_requests_using(temp_session, SERVER_URL):
     req = Request(
-        url=parse_url(server),
+        url=parse_url(SERVER_URL),
         method="GET",
         headers={},
     )
 
     jsonreq = JsonRequest(
-        url=parse_url(server),
+        url=parse_url(SERVER_URL),
         method="GET",
         headers={},
     )
@@ -109,7 +107,7 @@ async def test_dirctly_requests_using(temp_session, server):
 
 
 @pytest.mark.asyncio
-async def test_root_with_stream(server, constants, get_stream_test_url):
+async def test_root_with_stream(SERVER_URL, constants, get_stream_test_url):
     t2 = bytearray()
     req = Request(url=get_stream_test_url, method="GET")
     async with StreamClient(request=req) as response:
@@ -146,16 +144,16 @@ async def test_add_custom_middleware(temp_session):
 
 
 @pytest.mark.asyncio
-async def test_permanent_redirection(server, temp_session, redirect_url):
+async def test_permanent_redirection(SERVER_URL, temp_session, redirect_url):
     resp1 = await temp_session.get(redirect_url)
     resp2 = await temp_session.get(redirect_url)
 
-    assert resp1.redirects == [server + "/redirected"]
+    assert resp1.redirects == [SERVER_URL + "/redirected"]
     assert not resp2.redirects
 
 
 @pytest.mark.asyncio
-async def test_set_cookie(server, temp_session, set_cookie_url):
+async def test_set_cookie(SERVER_URL, temp_session, set_cookie_url):
     await temp_session.get(set_cookie_url)
     assert "test" in temp_session.cookies.cookies[0].key
 
@@ -172,3 +170,15 @@ async def test_stream_req_to_youtube():
 @pytest.mark.asyncio
 async def test_req_to_youtube(temp_session):
     await temp_session.get("https://youtube.com")
+
+
+@pytest.mark.asyncio
+async def test_sslkeylog(temp_session_cached, tox):
+    temp_session = temp_session_cached
+    keylog_file = os.getenv("SSLKEYLOGFILE")
+    if not keylog_file:
+        assert not tox, "SSLKEYLOGFILE variable must be provided during tox test"
+        pytest.skip("SSLKEYLOGFILE variable was not provided")
+    await temp_session.get("https://www.github.com")
+    assert temp_session.transports
+    assert os.path.exists(os.path.join(keylog_file))

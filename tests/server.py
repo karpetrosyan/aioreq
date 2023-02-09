@@ -12,7 +12,8 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 @app.on_event("startup")
 async def startup():
-    sys.stdout.write("started")
+    sys.stdout.write("started\n")
+    sys.stdout.flush()
 
 
 @app.get("/gzip", response_class=Response)
