@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import os
-import ssl
+import ssl as _ssl
 from typing import Awaitable, Dict, Union
 
 from dns import asyncresolver
@@ -14,9 +14,8 @@ res.nameservers = ["1.1.1.1", "8.8.8.8"]
 
 log = logging.getLogger(LOGGER_NAME)
 
-context = ssl.create_default_context()
+context = _ssl.create_default_context()
 context.keylog_filename = os.getenv("SSLKEYLOGFILE")  # type: ignore
-
 context.check_hostname = False
 
 
@@ -72,14 +71,11 @@ class Transport:
         self, ip: str, port: int, ssl: bool, server_hostname
     ) -> None:
         log.trace(f"{ip}, {port}")
-        reader, writer = await asyncio.wait_for(
-            asyncio.open_connection(
-                host=ip,
-                port=port,
-                ssl=context if ssl else None,
-                server_hostname=server_hostname,
-            ),
-            timeout=3,
+        reader, writer = await asyncio.open_connection(
+            host=ip,
+            port=port,
+            ssl=context if ssl else None,
+            server_hostname=server_hostname,
         )
         self.reader = reader
         self.writer = writer

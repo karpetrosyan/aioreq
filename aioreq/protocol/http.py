@@ -19,7 +19,6 @@ from rfcparser.object_abstractions import Uri3986
 
 from aioreq.protocol.connection import Transport, resolve_domain
 
-from ..errors.requests import ConnectionTimeoutError
 from ..parser.request_parser import configure_json, default_parser
 from ..parser.response_parser import ResponseParser
 from ..parser.url_parser import parse_url
@@ -224,12 +223,8 @@ class BaseClient(metaclass=ABCMeta):
                 if url.scheme == "https"
                 else {**{"ssl": False, "server_hostname": None}},
             )
-            try:
-                await connection_coroutine
-                self.transports.append(transport)
-
-            except asyncio.exceptions.TimeoutError as err:
-                raise ConnectionTimeoutError("Socket connection timeout") from err
+            await connection_coroutine
+            self.transports.append(transport)
 
             if self.persistent_connections:
                 self.connection_mapper[domain].append(transport)
