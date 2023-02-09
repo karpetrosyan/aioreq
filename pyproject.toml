@@ -17,7 +17,6 @@ dependencies = [
 ]
 
 classifiers = [
-    "Development Status :: 2 - Pre-Alpha",
     "License :: OSI Approved :: MIT License",
     "Natural Language :: English",
     "Programming Language :: Python :: 3.7",
@@ -43,7 +42,8 @@ dev = [
     "pytest",
     "pytest-asyncio",
     "uvicorn",
-    "tox"
+    "tox",
+    "mkdocs-material",
 ]
 
 uvloop = [
