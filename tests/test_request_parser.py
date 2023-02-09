@@ -102,3 +102,7 @@ class TestRequestParser:
 
         parsed_data = default_parser(request_obj)
         assert parsed_data == expected_result
+
+    def test_query_collision(self):
+        with pytest.raises(ValueError, match=".*URL or as an argument*"):
+            Request(url="https://example.com?a=1", params={"a": "2"})

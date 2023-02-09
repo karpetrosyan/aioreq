@@ -4,6 +4,7 @@ import os
 
 import pytest
 
+import aioreq
 from aioreq import parse_url
 from aioreq.errors.requests import RequestTimeoutError
 from aioreq.protocol.http import JsonRequest, Request, StreamClient
@@ -182,3 +183,12 @@ async def test_sslkeylog(temp_session_cached, tox):
     await temp_session.get("https://www.github.com")
     assert temp_session.transports
     assert os.path.exists(os.path.join(keylog_file))
+
+
+@pytest.mark.asyncio
+async def test_default_client(temp_session):
+    coro1 = temp_session.get("http://127.0.0.1:7575")
+    coro2 = temp_session.get("http://127.0.0.1:7575/ping")
+    resp3 = aioreq.get("http://127.0.0.1:7575/ping")
+    resp1, resp2 = await asyncio.gather(coro1, coro2)
+    assert resp1.status == resp2.status == resp3.status == 200

@@ -42,7 +42,7 @@ TRESP = TypeVar("TRESP", bound="Response")
 class BaseRequest:
     def __init__(
         self,
-        url: Uri3986,
+        url: Union[Uri3986, str],
         *,
         headers: Union[Headers, Dict[str, str], None] = None,
         method: str = "GET",
@@ -252,6 +252,8 @@ class BaseClient(metaclass=ABCMeta):
 
 
 class Client(BaseClient):
+    methods = ("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH")
+
     async def send_request_directly(self, request: Request):
         transport = await self._get_connection(request.url)
         coro = transport.send_http_request(request.get_raw_request())
@@ -297,7 +299,7 @@ class Client(BaseClient):
         url: str,
         content: Union[str, bytearray, bytes] = "",
         headers: Union[Dict[str, str], None] = None,
-        path_parameters: Dict[str, str] = None,
+        params: Dict[str, str] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
     ) -> Response:
@@ -306,7 +308,7 @@ class Client(BaseClient):
             method="GET",
             content=content,
             headers=headers,
-            params=path_parameters,
+            params=params,
             auth=auth,
             timeout=timeout,
         )
@@ -316,7 +318,7 @@ class Client(BaseClient):
         url: str,
         content: Union[str, bytearray, bytes] = "",
         headers: Union[Dict[str, str], None] = None,
-        path_parameters: Dict[str, str] = None,
+        params: Dict[str, str] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
     ) -> Response:
@@ -325,7 +327,7 @@ class Client(BaseClient):
             method="POST",
             content=content,
             headers=headers,
-            params=path_parameters,
+            params=params,
             auth=auth,
             timeout=timeout,
         )
@@ -335,7 +337,7 @@ class Client(BaseClient):
         url: str,
         content: Union[str, bytearray, bytes] = "",
         headers: Union[Dict[str, str], None] = None,
-        path_parameters: Dict[str, str] = None,
+        params: Dict[str, str] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
     ) -> Response:
@@ -344,7 +346,7 @@ class Client(BaseClient):
             method="PUT",
             content=content,
             headers=headers,
-            params=path_parameters,
+            params=params,
             auth=auth,
             timeout=timeout,
         )
@@ -354,7 +356,7 @@ class Client(BaseClient):
         url: str,
         content: Union[str, bytearray, bytes] = "",
         headers: Union[Dict[str, str], None] = None,
-        path_parameters: Dict[str, str] = None,
+        params: Dict[str, str] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
     ) -> Response:
@@ -363,7 +365,7 @@ class Client(BaseClient):
             method="DELETE",
             content=content,
             headers=headers,
-            params=path_parameters,
+            params=params,
             auth=auth,
             timeout=timeout,
         )
@@ -373,7 +375,7 @@ class Client(BaseClient):
         url: str,
         content: Union[str, bytearray, bytes] = "",
         headers: Union[Dict[str, str], None] = None,
-        path_parameters: Dict[str, str] = None,
+        params: Dict[str, str] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
     ) -> Response:
@@ -382,7 +384,7 @@ class Client(BaseClient):
             method="OPTIONS",
             content=content,
             headers=headers,
-            params=path_parameters,
+            params=params,
             auth=auth,
             timeout=timeout,
         )
@@ -392,7 +394,7 @@ class Client(BaseClient):
         url: str,
         content: Union[str, bytearray, bytes] = "",
         headers: Union[Dict[str, str], None] = None,
-        path_parameters: Dict[str, str] = None,
+        params: Dict[str, str] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
     ) -> Response:
@@ -401,7 +403,7 @@ class Client(BaseClient):
             method="HEAD",
             content=content,
             headers=headers,
-            params=path_parameters,
+            params=params,
             auth=auth,
             timeout=timeout,
         )
@@ -411,7 +413,7 @@ class Client(BaseClient):
         url: str,
         content: Union[str, bytearray, bytes] = "",
         headers: Union[Dict[str, str], None] = None,
-        path_parameters: Dict[str, str] = None,
+        params: Dict[str, str] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
     ) -> Response:
@@ -420,7 +422,7 @@ class Client(BaseClient):
             method="PATCH",
             content=content,
             headers=headers,
-            params=path_parameters,
+            params=params,
             auth=auth,
             timeout=timeout,
         )
