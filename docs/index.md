@@ -38,6 +38,14 @@ $ pip install aioreq
 
 ```
 
+or you can use the default client, which is a synchoronous wrapper for an asynchronous interface
+
+``` python
+>>> aioreq.get('https://www.google.com')
+<Response 200 OK>
+
+```
+
 Alternatively, the best practice is to use a **Context manager**.
 ``` python
 >>> import aioreq
@@ -302,7 +310,7 @@ This is the latest version features.
 * [Middlewares](#middlewares)
 * [Keylogs](#keylog)
 * [Authentication](#authentication)
+* Cookies
 * Automatic accepting and decoding responses. Using `Accept-Encoding` header
-* HTTPS support, TLS/SSL Verification using [certifi](https://github.com/certifi/python-certifi) library
+* HTTPS support, TLS/SSL Verification
 * Request Timeouts
-
