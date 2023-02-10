@@ -38,7 +38,7 @@ Source = "https://github.com/karosis88/aioreq"
 dev = [
     "hatch",
     "httpx",
-    "fastapi",
+    "starlette",
     "pytest",
     "pytest-asyncio",
     "uvicorn",
@@ -61,6 +61,29 @@ line_length = 88
 
 [tool.hatch.version]
 path = "aioreq/__init__.py"
+
+[tool.hatch.envs.tests]
+dependencies = [
+    "starlette",
+    "pytest",
+    "pytest-asyncio",
+    "uvicorn",
+    "tox",
+]
+
+[tool.hatch.envs.tests.scripts]
+aioreq = "pytest"
+doc = "pytest --doctest-modules --doctest-glob=\"*md\" README.md docs"
+full = "export SSLKEYLOGFILE=logs;pytest --tox --doctest-modules --doctest-glob=\"*md\" aioreq docs README.md tests"
+
+[tool.hatch.envs.doc]
+dependencies = [
+    "mkdocs-material"
+]
+
+[tool.hatch.envs.doc.scripts]
+build = "mkdocs build"
+deploy = "mkdocs gh-deploy"
 
 [tool.hatch.build.targets.sdist]
 include = [
