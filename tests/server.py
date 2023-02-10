@@ -2,55 +2,49 @@ import asyncio
 import sys
 import zlib
 
-from fastapi import FastAPI, Response
-from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import StreamingResponse
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.middleware.gzip import GZipMiddleware
+from starlette.responses import PlainTextResponse, RedirectResponse, StreamingResponse
+from starlette.routing import Route
 
-app = FastAPI()
-app.add_middleware(GZipMiddleware, minimum_size=1000)
+from .conftest import CONSTANTS
 
 
-@app.on_event("startup")
 async def startup():
     sys.stdout.write("started\n")
     sys.stdout.flush()
 
 
-@app.get("/gzip", response_class=Response)
-async def gzip():
-    return CONSTANTS["GZIP_RESPONSE_TEXT"]
+async def gzip(request):
+    return PlainTextResponse(CONSTANTS["GZIP_RESPONSE_TEXT"])
 
 
-@app.get("/deflate")
-async def deflate():
+async def deflate(request):
     compress = zlib.compressobj(
         9, zlib.DEFLATED, -zlib.MAX_WBITS, zlib.DEF_MEM_LEVEL, 0
     )
     deflated = compress.compress(CONSTANTS["DEFLATE_RESPONSE_TEXT"].encode())
     deflated += compress.flush()
-    return Response(content=deflated, headers={"content-encoding": "deflate"})
+    return PlainTextResponse(content=deflated, headers={"content-encoding": "deflate"})
 
 
-@app.get("/ping")
-async def ping():
-    return "pong"
+async def ping(request):
+    return PlainTextResponse("pong")
 
 
-@app.get("/redirect")
-async def redirect():
-    return Response(
-        headers={"location": "http://127.0.0.1:7575/redirected"}, status_code=301
+async def redirect(request):
+    return RedirectResponse(
+        "/redirected", status_code=301
     )
 
 
-@app.get("/redirected")
-async def redirected():
-    return 200
+async def redirected(request):
+    return PlainTextResponse("200")
 
 
-@app.get("/")
-async def root():
-    return "Hello World"
+async def root(request):
+    return PlainTextResponse("Hello World")
 
 
 async def streaming_text():
@@ -59,21 +53,33 @@ async def streaming_text():
         await asyncio.sleep(0)
 
 
-@app.get("/test_stream")
-async def stream():
+async def stream(request):
     return StreamingResponse(streaming_text())
 
 
-@app.get("/set-cookie")
-async def set_cookie(resp: Response):
+async def set_cookie(request):
+    resp = PlainTextResponse("200")
     resp.set_cookie(key="test", value="val")
-    return 200
+    return resp
 
 
-if __name__ == "__main__":
-    import uvicorn
-    from conftest import CONSTANTS
+routes = [
+    Route("/", root),
+    Route("/ping", ping),
+    Route("/gzip", gzip),
+    Route("/deflate", deflate),
+    Route("/redirect", redirect),
+    Route("/redirected", redirected),
+    Route("/test_stream", stream),
+    Route("/set-cookie", set_cookie),
+]
 
-    uvicorn.run(app, port=7575)
-else:
-    from .conftest import CONSTANTS
+middlewares = [
+    Middleware(
+        GZipMiddleware
+    )
+]
+
+app = Starlette(routes=routes,
+                middleware=middlewares,
+                on_startup=[startup])
