@@ -11,9 +11,7 @@ readme = "README.md"
 license-files = { paths = ["LICENSE"]}
 
 dependencies = [
-    "rfcparser",
     "dnspython",
-    "lark"
 ]
 
 classifiers = [

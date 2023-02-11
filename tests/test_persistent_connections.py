@@ -1,6 +1,6 @@
 import pytest
 
-from aioreq.parser.url_parser import parse_url
+from aioreq.urls import parse_url
 
 
 @pytest.mark.asyncio

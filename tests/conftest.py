@@ -7,7 +7,7 @@ import pytest
 import pytest_asyncio
 
 import aioreq
-from aioreq.protocol.middlewares import default_middlewares
+from aioreq.middlewares import default_middlewares
 from aioreq.settings import LOGGER_NAME
 
 warnings.filterwarnings("ignore")

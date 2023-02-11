@@ -3,14 +3,14 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Tuple, Union
 
-from rfcparser.core import SetCookieParser6265
+from .headers import SetCookie
 
-from aioreq.parser.url_parser import parse_url
+from aioreq.urls import parse_url
 
-from ..errors.base import UnexpectedError
-from ..errors.requests import RequestTimeoutError
-from ..settings import LOGGER_NAME
-from . import codes
+from aioreq.errors.base import UnexpectedError
+from aioreq.errors.requests import RequestTimeoutError
+from aioreq.settings import LOGGER_NAME
+from aioreq import codes
 from .auth import parse_auth_header
 from .encodings import get_avaliable_encodings
 from .headers import AuthenticationWWW, ContentEncoding, TransferEncoding
@@ -245,7 +245,7 @@ class CookiesMiddleWare(MiddleWare):
 
         if "set-cookie" in resp.headers:
             cookies = [
-                SetCookieParser6265().parse(cookie_value, request.url)
+                SetCookie().parse(cookie_value, request.url)
                 for cookie_value in resp.headers["set-cookie"]
             ]
             for cookie in cookies:

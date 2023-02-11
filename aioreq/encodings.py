@@ -1,4 +1,5 @@
 import gzip as _gzip
+import logging
 import zlib
 from abc import ABC
 from abc import abstractmethod
@@ -8,10 +9,9 @@ from typing import Type
 from typing import TypeVar
 from typing import Union
 
-E_TYPE = TypeVar("E_TYPE", bound="Encoding")
-import logging
+from aioreq.settings import LOGGER_NAME
 
-from ..settings import LOGGER_NAME
+E_TYPE = TypeVar("E_TYPE", bound="Encoding")
 
 log = logging.getLogger(LOGGER_NAME)
 

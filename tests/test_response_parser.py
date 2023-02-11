@@ -1,7 +1,7 @@
 import pytest
 
-from aioreq.parser.response_parser import ResponseParser
-from aioreq.protocol.http import Response
+from aioreq.parsers import ResponseParser
+from aioreq.http import Response
 
 
 class TestResponseParser:

@@ -15,17 +15,15 @@ from typing import (
     Union,
 )
 
-from rfcparser.object_abstractions import Uri3986
-
-from aioreq.protocol.connection import Transport, resolve_domain
-
-from ..parser.request_parser import configure_json, default_parser
-from ..parser.response_parser import ResponseParser
-from ..parser.url_parser import parse_url
-from ..settings import DEFAULT_TIMEOUT as REQUEST_TIMEOUT
-from ..settings import LOGGER_NAME, REQUEST_REDIRECT_COUNT, REQUEST_RETRY_COUNT
-from ..utils.generic import wrap_errors
-from .cookies import Cookies
+from aioreq.connection import Transport, resolve_domain
+from aioreq.cookies import Cookies
+from aioreq.generic import wrap_errors
+from aioreq.parsers import ResponseParser
+from aioreq.parsers import configure_json, default_parser
+from aioreq.settings import DEFAULT_TIMEOUT as REQUEST_TIMEOUT
+from aioreq.settings import LOGGER_NAME, REQUEST_REDIRECT_COUNT, REQUEST_RETRY_COUNT
+from aioreq.urls import Uri3986
+from aioreq.urls import parse_url
 from .headers import Headers
 from .middlewares import (
     MiddleWare,

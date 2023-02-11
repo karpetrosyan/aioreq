@@ -1,11 +1,9 @@
 import asyncio
-import logging
-from typing import Awaitable
-
-from ..errors.base import UnexpectedError
-from ..errors.requests import RequestTimeoutError
-from ..settings import LOGGER_NAME
 import contextlib
+import logging
+
+from aioreq.errors.requests import RequestTimeoutError
+from aioreq.settings import LOGGER_NAME
 
 log = logging.getLogger(LOGGER_NAME)
 

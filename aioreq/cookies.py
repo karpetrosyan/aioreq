@@ -1,6 +1,101 @@
-import datetime
+import ipaddress
 
-from rfcparser.object_abstractions import path_matches
+from datetime import datetime
+
+
+def default_path(uri):
+    uri_path = uri.path
+
+    if not uri_path or uri_path[0] != "/":
+        return "/"
+    if uri_path.count("/") == 1:
+        return "/"
+    assert len("".join(uri_path.split("/")[:-1]))
+
+    if uri_path.endswith("/"):
+        return uri_path[:-1]
+    return uri_path
+
+
+def path_matches(request_path, cookie_path):
+    if request_path == "":
+        request_path = "/"
+
+    if request_path == cookie_path:
+        return True
+
+    if len(request_path) > len(cookie_path) and request_path.startswith(cookie_path):
+        if cookie_path[-1] == "/":
+            #   The cookie-path is a prefix of the request-path, and the last
+            # 	character of the cookie-path is %x2F ("/").
+            return True
+        if request_path[0] == "/":
+            #   The cookie-path is a prefix of the request-path, and the
+            #   first character of the request-path that is not included in
+            #   the cookie-path is a %x2F ("/") character.
+            return True
+    return False
+
+
+def domain_matches(string: str, domain_string: str) -> bool:
+    string = string.lower()
+    domain_string = domain_string.lower()
+    try:
+        ipaddress.ip_address(string)
+        is_host = False
+    except ValueError:
+        is_host = True
+    return string == domain_string or (
+            string.endswith(domain_string)
+            and string[-(len(domain_string) + 1)] == "."
+            and is_host
+    )
+
+
+class Cookie6265:
+    def __init__(self, key, value, uri, attrs):
+        self.key = key
+        self.value = value
+        self.creation_time = self.last_access_time = datetime.now()
+        self.persistent_flag = False
+        self.expiry_time = None
+        self.domain = attrs.get("Domain", "")
+
+        if self.domain:
+            if not domain_matches(uri.get_domain(), self.domain):
+                raise ValueError()
+            else:
+                self.host_only_flag = False
+        else:
+            self.host_only_flag = True
+            self.domain = uri.get_domain()
+
+        max_age = attrs.get("Max-Age", None)
+        if max_age is not None:
+            self.persistent_flag = True
+            self.expiry_time = max_age
+        else:
+            expires = attrs.get("Expires", None)
+            if expires:
+                self.persistent_flag = True
+                self.expiry_time = expires
+            else:
+                self.persistent_flag = False
+                self.expiry_time = datetime.now()
+
+        path = attrs.get("Path", None)
+        if path:
+            self.path = path
+        else:
+            self.path = default_path(uri)
+        self.secure_only_flag = "Secure" in attrs
+        self.http_only_flag = "HttpOnly" in attrs
+
+    def __str__(self):
+        return f"{self.key}={self.value}"
+
+    def __repr__(self):
+        return f"<SetCookie6265 {str(self)}"
 
 
 class Cookies:
@@ -33,10 +128,10 @@ class Cookies:
             #       request-host domain-matches the cookie's domain.
 
             if not (
-                cookie.host_only_flag
-                and cookie.domain == uri.get_domain()
-                or cookie.host_only_flag
-                and path_matches(uri.get_domain(), cookie.domain)
+                    cookie.host_only_flag
+                    and cookie.domain == uri.get_domain()
+                    or cookie.host_only_flag
+                    and domain_matches(uri.get_domain(), cookie.domain)
             ):
                 continue
 
@@ -63,7 +158,7 @@ class Cookies:
         #   Update the last-access-time of each cookie in the cookie-list to
         #   the current date and time.
         for cookie in cookie_list:
-            cookie.last_access_time = datetime.datetime.now()
+            cookie.last_access_time = datetime.now()
 
         #   Serialize the cookie-list into a cookie-string by processing each
         #        cookie in the cookie-list in order:
@@ -98,7 +193,7 @@ class Cookies:
     def remove_expired_cookies(self):
         new_cookies = []
         for cookie in self._cookies:
-            if datetime.datetime.now() <= cookie.expiry_time:
+            if datetime.now() <= cookie.expiry_time:
                 new_cookies.append(cookie)
 
         self._cookies = new_cookies

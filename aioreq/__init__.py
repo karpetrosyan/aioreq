@@ -1,10 +1,9 @@
 __version__ = "1.0.3"
 
-import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
-from .protocol import headers, http, middlewares
-from .protocol.http import *
+from aioreq import http
+from aioreq.http import *
 
 try:
     import uvloop

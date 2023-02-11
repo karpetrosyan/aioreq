@@ -1,4 +1,4 @@
-from aioreq.protocol.http import Headers
+from aioreq.http import Headers
 
 
 def test_HeaderDict_base():
