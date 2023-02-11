@@ -1,9 +1,9 @@
+import json as _json
 import logging
-from datetime import datetime
 import re
+from datetime import datetime
 
 from aioreq.settings import LOGGER_NAME
-import json as _json
 
 log = logging.getLogger(LOGGER_NAME)
 

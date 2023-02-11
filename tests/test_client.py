@@ -7,7 +7,9 @@ import pytest
 import aioreq
 from aioreq import parse_url
 from aioreq.errors.requests import RequestTimeoutError
-from aioreq.http import JsonRequest, Request, StreamClient
+from aioreq.http import JsonRequest
+from aioreq.http import Request
+from aioreq.http import StreamClient
 from aioreq.middlewares import MiddleWare
 from aioreq.settings import LOGGER_NAME
 

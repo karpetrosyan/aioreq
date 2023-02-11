@@ -3,6 +3,7 @@ import pytest
 from aioreq.urls import Uri3986
 from aioreq.urls import UriParser3986
 
+
 class TestUri3986:
     @pytest.mark.parametrize(
         "value, expected",

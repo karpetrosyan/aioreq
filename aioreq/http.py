@@ -2,35 +2,36 @@ import asyncio
 import logging
 from abc import ABCMeta
 from collections import defaultdict
-from typing import (
-    AsyncGenerator,
-    AsyncIterator,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-)
+from typing import AsyncGenerator
+from typing import AsyncIterator
+from typing import Dict
+from typing import Iterable
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import Type
+from typing import TypeVar
+from typing import Union
 
-from aioreq.connection import Transport, resolve_domain
+from aioreq.connection import Transport
+from aioreq.connection import resolve_domain
 from aioreq.cookies import Cookies
 from aioreq.generic import wrap_errors
 from aioreq.parsers import ResponseParser
-from aioreq.parsers import configure_json, default_parser
+from aioreq.parsers import configure_json
+from aioreq.parsers import default_parser
 from aioreq.settings import DEFAULT_TIMEOUT as REQUEST_TIMEOUT
-from aioreq.settings import LOGGER_NAME, REQUEST_REDIRECT_COUNT, REQUEST_RETRY_COUNT
+from aioreq.settings import LOGGER_NAME
+from aioreq.settings import REQUEST_REDIRECT_COUNT
+from aioreq.settings import REQUEST_RETRY_COUNT
 from aioreq.urls import Uri3986
 from aioreq.urls import parse_url
+
 from .headers import Headers
-from .middlewares import (
-    MiddleWare,
-    RedirectMiddleWare,
-    RetryMiddleWare,
-    default_middlewares,
-)
+from .middlewares import MiddleWare
+from .middlewares import RedirectMiddleWare
+from .middlewares import RetryMiddleWare
+from .middlewares import default_middlewares
 
 log = logging.getLogger(LOGGER_NAME)
 

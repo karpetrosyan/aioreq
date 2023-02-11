@@ -1,19 +1,22 @@
 import asyncio
 import logging
-from abc import ABC, abstractmethod
-from typing import Tuple, Union
+from abc import ABC
+from abc import abstractmethod
+from typing import Tuple
+from typing import Union
 
-from .headers import SetCookie
-
-from aioreq.urls import parse_url
-
+from aioreq import codes
 from aioreq.errors.base import UnexpectedError
 from aioreq.errors.requests import RequestTimeoutError
 from aioreq.settings import LOGGER_NAME
-from aioreq import codes
+from aioreq.urls import parse_url
+
 from .auth import parse_auth_header
 from .encodings import get_avaliable_encodings
-from .headers import AuthenticationWWW, ContentEncoding, TransferEncoding
+from .headers import AuthenticationWWW
+from .headers import ContentEncoding
+from .headers import SetCookie
+from .headers import TransferEncoding
 
 log = logging.getLogger(LOGGER_NAME)
 

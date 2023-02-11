@@ -1,6 +1,7 @@
-from .headers import AuthenticationWWW
 from base64 import b64encode
 from enum import Enum
+
+from .headers import AuthenticationWWW
 
 
 def authenticate_basic(params, request) -> str:

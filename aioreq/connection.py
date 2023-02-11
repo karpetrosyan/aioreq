@@ -2,7 +2,9 @@ import asyncio
 import logging
 import os
 import ssl as _ssl
-from typing import Awaitable, Dict, Union
+from typing import Awaitable
+from typing import Dict
+from typing import Union
 
 from dns import asyncresolver
 

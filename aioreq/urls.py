@@ -1,5 +1,5 @@
-import re
 import ipaddress
+import re
 
 
 def parse_url(url) -> 'Uri3986':

@@ -1,8 +1,9 @@
 import pytest
 
+from aioreq.http import JsonRequest
+from aioreq.http import Request
 from aioreq.parsers import default_parser
 from aioreq.urls import parse_url
-from aioreq.http import JsonRequest, Request
 
 
 class TestRequestParser:

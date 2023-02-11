@@ -7,15 +7,19 @@ from abc import abstractmethod
 from datetime import datetime
 from datetime import timedelta
 from enum import Enum
-from typing import Dict, List, TypeVar
+from typing import Dict
+from typing import List
 from typing import Optional
 from typing import Tuple
 from typing import Type
+from typing import TypeVar
 from typing import Union
 
-from aioreq.cookies import Cookie6265, default_path
+from aioreq.cookies import Cookie6265
+from aioreq.cookies import default_path
 from aioreq.parsers import DateParser6265
 from aioreq.settings import LOGGER_NAME
+
 from .encodings import Encoding
 from .encodings import Encodings
 

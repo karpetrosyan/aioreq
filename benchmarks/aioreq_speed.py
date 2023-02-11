@@ -1,9 +1,8 @@
+import asyncio
 import sys
+from time import perf_counter
 
 import aioreq
-import asyncio
-
-from time import perf_counter
 
 
 async def main():

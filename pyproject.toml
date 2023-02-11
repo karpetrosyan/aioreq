@@ -56,6 +56,7 @@ force_grid_wrap = 0
 use_parentheses = true
 ensure_newline_before_comments = true
 line_length = 88
+force_single_line = true
 
 [tool.hatch.version]
 path = "aioreq/__init__.py"

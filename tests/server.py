@@ -5,7 +5,9 @@ import zlib
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.gzip import GZipMiddleware
-from starlette.responses import PlainTextResponse, RedirectResponse, StreamingResponse
+from starlette.responses import PlainTextResponse
+from starlette.responses import RedirectResponse
+from starlette.responses import StreamingResponse
 from starlette.routing import Route
 
 from .conftest import CONSTANTS

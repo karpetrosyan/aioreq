@@ -1,5 +1,4 @@
 import ipaddress
-
 from datetime import datetime
 
 

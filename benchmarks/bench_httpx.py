@@ -1,6 +1,6 @@
-import httpx
 import asyncio
 
+import httpx
 from benchmark_settings import REQUESTS_COUNT
 from benchmark_settings import REQUESTS_URL
 

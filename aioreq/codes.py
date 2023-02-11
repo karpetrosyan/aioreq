@@ -35,3 +35,23 @@ NOT_ACCEPTABLE = 406
 PROXY_AUTHENTICATION_REQUIRED = 407
 REQUEST_TIMEOUT = 408
 CONFLICT = 409
+
+
+def is_informational(code: int) -> bool:
+    return code // 100 == 1
+
+
+def is_ok(code: int) -> bool:
+    return code // 100 == 2
+
+
+def is_redirect(code: int) -> bool:
+    return code // 100 == 3
+
+
+def is_client_error(code: int) -> bool:
+    return code // 100 == 4
+
+
+def is_server_error(code: int) -> bool:
+    return code // 100 == 5

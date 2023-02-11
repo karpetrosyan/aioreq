@@ -1,11 +1,13 @@
-from aioreq.headers import SetCookie
-from aioreq.urls import UriParser3986
-
 from datetime import datetime
 from datetime import timedelta
-from aioreq.cookies import Cookie6265
-from aioreq.cookies import Cookies, path_matches
+
 import pytest
+
+from aioreq.cookies import Cookie6265
+from aioreq.cookies import Cookies
+from aioreq.cookies import path_matches
+from aioreq.headers import SetCookie
+from aioreq.urls import UriParser3986
 
 
 def test_remove_cookie():

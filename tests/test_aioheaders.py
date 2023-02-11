@@ -1,10 +1,10 @@
 import pytest
 
-from aioreq.urls import UriParser3986
-from aioreq.headers import SetCookie
-from aioreq.headers import AuthenticationWWW
 from aioreq.headers import Accept
+from aioreq.headers import AuthenticationWWW
 from aioreq.headers import MimeType
+from aioreq.headers import SetCookie
+from aioreq.urls import UriParser3986
 
 
 class TestSetCookie:
@@ -126,4 +126,4 @@ class TestAccept:
         ]
     )
     def test_parse(self, value, expected):
-        return value == repr(expected)
+        assert value == expected

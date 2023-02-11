@@ -1,8 +1,9 @@
-import aioreq
 import asyncio
 
 from benchmark_settings import REQUESTS_COUNT
 from benchmark_settings import REQUESTS_URL
+
+import aioreq
 
 
 async def send_req(cl):
