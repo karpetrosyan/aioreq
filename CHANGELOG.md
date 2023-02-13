@@ -11,7 +11,7 @@
 ### Update
 
 * Rfcparser has been merged with the aioreq.
-* Switch from fastapi to starlette.
+* Replace fastapi with starlette. 
 
 ### Added
 
