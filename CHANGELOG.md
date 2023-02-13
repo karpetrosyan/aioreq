@@ -1,5 +1,24 @@
 # CHANGELOG
 
+## 1.0.4
+
+### Removed
+
+* Lark has been removed from the dependencies.
+* Rfcparser has been removed from the dependencies.
+* Fastapi has been removed from the optional dependencies.
+
+### Update
+
+* Rfcparser has been merged with the aioreq.
+* Switch from fastapi to starlette.
+
+### Added
+
+* Python3.8 and Python3.9 testing with tox.
+* Synchronous interface for aioreq.
+* Starlette has been added as an optional dependency.
+
 ## 1.0.2
 
 ### Added
