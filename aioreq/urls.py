@@ -2,7 +2,7 @@ import ipaddress
 import re
 
 
-def parse_url(url) -> 'Uri3986':
+def parse_url(url) -> "Uri3986":
     return UriParser3986().parse(url)
 
 
@@ -52,6 +52,7 @@ class Uri3986:
             else ""
         )
         return path + attrs
+
     def get_domain(self):
         if self.ip:
             return self.ip
@@ -111,13 +112,13 @@ class UriParser3986:
         sep_ind = authority.find("@")
         if sep_ind != -1:
             userinfo = authority[:sep_ind]
-            authority = authority[sep_ind + 1:]
+            authority = authority[sep_ind + 1 :]
         else:
             userinfo = None
 
         sep_ind = authority.find(":")
         if sep_ind != -1:
-            port = int(authority[sep_ind + 1:])
+            port = int(authority[sep_ind + 1 :])
             authority = authority[:sep_ind]
         else:
             port = None

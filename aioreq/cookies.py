@@ -45,9 +45,9 @@ def domain_matches(string: str, domain_string: str) -> bool:
     except ValueError:
         is_host = True
     return string == domain_string or (
-            string.endswith(domain_string)
-            and string[-(len(domain_string) + 1)] == "."
-            and is_host
+        string.endswith(domain_string)
+        and string[-(len(domain_string) + 1)] == "."
+        and is_host
     )
 
 
@@ -127,10 +127,10 @@ class Cookies:
             #       request-host domain-matches the cookie's domain.
 
             if not (
-                    cookie.host_only_flag
-                    and cookie.domain == uri.get_domain()
-                    or cookie.host_only_flag
-                    and domain_matches(uri.get_domain(), cookie.domain)
+                cookie.host_only_flag
+                and cookie.domain == uri.get_domain()
+                or cookie.host_only_flag
+                and domain_matches(uri.get_domain(), cookie.domain)
             ):
                 continue
 

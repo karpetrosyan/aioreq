@@ -10,6 +10,7 @@ from aioreq.errors.base import UnexpectedError
 from aioreq.errors.requests import RequestTimeoutError
 from aioreq.settings import LOGGER_NAME
 from aioreq.urls import parse_url
+
 from .auth import parse_auth_header
 from .encodings import get_avaliable_encodings
 from .headers import AuthenticationWWW

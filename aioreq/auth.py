@@ -31,19 +31,18 @@ def unq(text):
 
 def authenticate_basic(params, request, response) -> str:
     return (
-            "Basic " + b64encode(
-        f"{request.auth[0]}:{request.auth[1]}".encode()).decode()
+        "Basic " + b64encode(f"{request.auth[0]}:{request.auth[1]}".encode()).decode()
     )
 
 
 def authenticate_digest(params, request, response) -> str:
-    realm = unq(params.get('realm', "").encode())
-    nonce = unq(params.get('nonce', "").encode())
+    realm = unq(params.get("realm", "").encode())
+    nonce = unq(params.get("nonce", "").encode())
     # nonce = b"12635b0eae60983d6701fb47c1252c42"
     # realm = b"IPCAM"
-    opaque = unq(params.get('opaque', "").encode())
-    algorithm = params.get('algorithm', "MD5")
-    qop = unq(params.get('qop', "").encode())
+    opaque = unq(params.get("opaque", "").encode())
+    algorithm = params.get("algorithm", "MD5")
+    qop = unq(params.get("qop", "").encode())
     nc = 1
     nc_value = b"%08x" % nc
     cnonce = get_client_nonce(nc, nonce)
@@ -60,12 +59,14 @@ def authenticate_digest(params, request, response) -> str:
 
     path = request.url.path_and_query().encode()
 
-    if algorithm.lower().endswith('-sess'):
+    if algorithm.lower().endswith("-sess"):
         A1 = (digest(A1), nonce, cnonce)
     A2 = b":".join((request.method.encode(), path))
 
     if qop:
-        response = digest(b":".join((digest(A1), nonce, nc_value, cnonce, qop, digest(A2))))
+        response = digest(
+            b":".join((digest(A1), nonce, nc_value, cnonce, qop, digest(A2)))
+        )
     else:
         response = digest(b":".join((digest(A1), nonce, digest(A2))))
     response = response.decode()
@@ -79,7 +80,8 @@ def authenticate_digest(params, request, response) -> str:
     path = path.decode()
     authorization_string = (
         f'Digest username="{username}", realm="{realm}", nonce="{nonce}", '
-        f'uri="{path}"')
+        f'uri="{path}"'
+    )
     if qop:
         authorization_string += f', qop={qop}, nc={nc_value}, cnonce="{cnonce}", '
     authorization_string += f', response="{response}"'
@@ -93,7 +95,6 @@ class AuthenticationSchemes(Enum):
     DIGEST = "Digest"
 
     def authenticate(self, *args, **kwargs):
-
         if self == AuthenticationSchemes.BASIC:
             return authenticate_basic(*args, **kwargs)
         elif self == AuthenticationSchemes.DIGEST:

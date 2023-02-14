@@ -32,14 +32,14 @@ def default_parser(request):
 
     path += query
     message = (
-            "\r\n".join(
-                (
-                    f"{request.method} {path} HTTP/1.1",
-                    f"host:  {domain}",
-                    request.headers.get_parsed(),
-                )
+        "\r\n".join(
+            (
+                f"{request.method} {path} HTTP/1.1",
+                f"host:  {domain}",
+                request.headers.get_parsed(),
             )
-            + "\r\n"
+        )
+        + "\r\n"
     )
 
     message += request.content or ""
@@ -108,7 +108,8 @@ class ResponseParser:
 
     @classmethod
     def search_transfer_encoding(cls, text):
-        return 'transfer-encoding' in text.lower()
+        return "transfer-encoding" in text.lower()
+
 
 class DateParser6265:
     non_delimiter_ranges = (
@@ -120,9 +121,8 @@ class DateParser6265:
         (65, 91),
     )
     non_delimiter = {
-                        ":",
-                    } | set(
-        chr(i) for start, end in non_delimiter_ranges for i in range(start, end))
+        ":",
+    } | set(chr(i) for start, end in non_delimiter_ranges for i in range(start, end))
 
     hms_time_regex = re.compile(r"(\d{1,2}:){2}\d{1,2}")
     year_regex = re.compile(r"\d{2,4}")
@@ -143,16 +143,16 @@ class DateParser6265:
     }
 
     def validate(
-            self,
-            year_value,
-            minute_value,
-            second_value,
-            day_of_month_value,
-            month_value,
-            hour_value,
-            found_month,
-            found_year,
-            found_time,
+        self,
+        year_value,
+        minute_value,
+        second_value,
+        day_of_month_value,
+        month_value,
+        hour_value,
+        found_month,
+        found_year,
+        found_time,
     ):
         if 70 <= year_value <= 99:
             year_value += 1900
@@ -160,12 +160,12 @@ class DateParser6265:
             year_value += 2000
 
         if (
-                not (all((day_of_month_value, found_month, found_year, found_time)))
-                and (1 <= day_of_month_value <= 31)
-                and (year_value < 1601)
-                and (hour_value > 23)
-                and (minute_value > 59)
-                and (second_value > 59)
+            not (all((day_of_month_value, found_month, found_year, found_time)))
+            and (1 <= day_of_month_value <= 31)
+            and (year_value < 1601)
+            and (hour_value > 23)
+            and (minute_value > 59)
+            and (second_value > 59)
         ):
             raise ValueError("Invalid date")
         return datetime(

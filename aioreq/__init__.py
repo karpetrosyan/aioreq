@@ -1,5 +1,6 @@
 __version__ = "1.0.4"
 
+import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
 from aioreq import http
@@ -7,6 +8,7 @@ from aioreq.http import *
 
 try:
     import uvloop
+
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 except ImportError:
     ...

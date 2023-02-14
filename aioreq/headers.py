@@ -31,8 +31,8 @@ T = TypeVar("T", bound="Headers")
 class MetaHeaders(type):
     def __call__(cls, initial_headers=None):
         """
-        If 'initial headers' passed through 'Headers' is already an instance of 'Headers,'
-        return it rather than creating a new one.
+        If 'initial headers' passed through 'Headers' is already an instance
+        of 'Headers,' return it rather than creating a new one.
         """
         if isinstance(initial_headers, Headers):
             return initial_headers
@@ -51,7 +51,6 @@ class Headers(metaclass=MetaHeaders):
                 self[key] = value
 
     def __setitem__(self, key: str, value: str):
-
         self.cache = None
         key = key.lower()
         if key in self.multivalue_headers:
@@ -71,8 +70,8 @@ class Headers(metaclass=MetaHeaders):
             return self.cache
 
         headers = (
-                "\r\n".join(f"{key}:  {value}" for key, value in self._headers.items())
-                + "\r\n"
+            "\r\n".join(f"{key}:  {value}" for key, value in self._headers.items())
+            + "\r\n"
         )
         self.cache = headers
         return headers
@@ -92,7 +91,8 @@ class Headers(metaclass=MetaHeaders):
     def __or__(self, other):
         if not isinstance(other, Headers):
             raise ValueError(
-                f"Can't combine {self.__class__.__name__} object with {type(other).__name__}"
+                f"Can't combine {self.__class__.__name__} "
+                f"object with {type(other).__name__}"
             )
 
         self._headers.update(other._headers)
@@ -105,7 +105,7 @@ class Headers(metaclass=MetaHeaders):
             return False
         for header in self._headers:
             if header not in other.dict() or (
-                    header and other.dict()[header] != self._headers[header]
+                header and other.dict()[header] != self._headers[header]
             ):
                 return False
         return True
@@ -114,7 +114,7 @@ class Headers(metaclass=MetaHeaders):
         return len(self._headers)
 
     def __repr__(self):
-        return f"Headers:\n" + "\n".join(
+        return "Headers:\n" + "\n".join(
             (f" {key}: {value}" for key, value in self._headers.items())
         )
 
@@ -162,7 +162,7 @@ class AcceptEncoding(BaseHeader):
     key = "Accept-Encoding"
 
     def __init__(
-            self, *codings: Tuple[Union[Type[Encoding], Encodings], Union[None, int]]
+        self, *codings: Tuple[Union[Type[Encoding], Encodings], Union[None, int]]
     ):
         self._codings: Dict[str, str] = {}
         for coding in codings:
@@ -196,7 +196,6 @@ class Accept(BaseHeader):
     key = "Accept"
 
     def __init__(self, *types: Tuple[MimeType, Optional[Union[int, float]]]):
-
         self.media_ranges: Dict[MimeType, str] = {}
         for media_range in types:
             m_type, qvalue = media_range
@@ -252,24 +251,22 @@ class ContentEncoding(ServerEncoding):
 
 
 class AuthenticationWWW(ServerHeader):
-
     def __init__(self):
         self.auth_schemes: Dict[str, dict] = {}
 
     @classmethod
     def parse(cls, values: List[str]):
-
         self = cls()
         for value in values:
             cleaned_attrs = {}
             sp_ind = value.find(" ")
             if sp_ind != -1:
                 auth_scheme = value[:sp_ind]
-                value = value[sp_ind + 1:]
+                value = value[sp_ind + 1 :]
             else:
                 auth_scheme = value
 
-            attrs = value.split(',')
+            attrs = value.split(",")
             for attr in attrs:
                 attr = attr.strip()
                 key, value = attr.split("=")
@@ -341,7 +338,7 @@ class SetCookie(ServerHeader):
     def parse(self, value, uri):
         if ";" in value:
             name_value_pair = value.split(";")[0]
-            unparsed_attributes = value[value.find(";"):]
+            unparsed_attributes = value[value.find(";") :]
         else:
             name_value_pair = value
             unparsed_attributes = ""
@@ -349,7 +346,7 @@ class SetCookie(ServerHeader):
         if eq_ind == -1:
             return None
         name = name_value_pair[:eq_ind].strip()
-        value = name_value_pair[eq_ind + 1:].strip()
+        value = name_value_pair[eq_ind + 1 :].strip()
         attrs = {}
 
         if not name:
@@ -365,7 +362,7 @@ class SetCookie(ServerHeader):
             eq_ind = cookie_av.find("=")
             if eq_ind != -1:
                 attribute_name = cookie_av[:eq_ind]
-                attribute_value = cookie_av[eq_ind + 1:]
+                attribute_value = cookie_av[eq_ind + 1 :]
             else:
                 attribute_name = cookie_av
                 attribute_value = ""
