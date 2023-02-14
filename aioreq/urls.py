@@ -37,6 +37,21 @@ class Uri3986:
             newvalue = "/" + newvalue
         self._path = newvalue
 
+    def ignored_query_and_path(self):
+        hostname = self.ip or ".".join(self.host)
+        port = f":{self.port}" if self.port else ""
+        userinfo = f"{self.userinfo}@" if self.userinfo else ""
+        fragment = f"#{self.fragment}" if self.fragment else ""
+        return f"{self.scheme}://{userinfo}{hostname}{port}{fragment}"
+
+    def path_and_query(self):
+        path = self.path if self.path else "/"
+        attrs = (
+            ("?" + "&".join([f"{key}={value}" for key, value in self.query.items()]))
+            if self.query
+            else ""
+        )
+        return path + attrs
     def get_domain(self):
         if self.ip:
             return self.ip
