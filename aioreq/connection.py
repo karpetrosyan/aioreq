@@ -102,7 +102,7 @@ class Transport:
 
         if content_length is not None:
             content = await self.reader.readexactly(content_length)
-        else:
+        elif ResponseParser.search_transfer_encoding(headers_line):
             while True:
                 chunk = await self.reader.readuntil(b"\r\n")
                 chunk_size = chunk[:-2]
@@ -114,7 +114,7 @@ class Transport:
                 data = await self.reader.readexactly(chunk_size)
                 await self.reader.readexactly(2)  # crlf
                 content += data
-
+        self.used = False
         return status_line, headers_line, content
 
     async def send_http_stream_request(self, raw_data: bytes):
@@ -143,6 +143,7 @@ class Transport:
                 data = await self.reader.readexactly(chunk_size)
                 await self.reader.readexactly(2)  # crlf
                 yield data
+        self.used = False
 
     def is_closing(self) -> bool:
         """

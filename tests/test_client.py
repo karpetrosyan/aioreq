@@ -18,8 +18,8 @@ log = logging.getLogger(LOGGER_NAME)
 
 @pytest.mark.asyncio
 async def test_few_requests(
-    SERVER_URL,
-    temp_session,
+        SERVER_URL,
+        temp_session,
 ):
     t1 = temp_session.get(SERVER_URL)
     t2 = temp_session.get(SERVER_URL)
@@ -194,3 +194,10 @@ async def test_default_client(temp_session):
     resp3 = aioreq.get("http://127.0.0.1:7575/ping")
     resp1, resp2 = await asyncio.gather(coro1, coro2)
     assert resp1.status == resp2.status == resp3.status == 200
+
+
+@pytest.mark.asyncio
+async def test_digest_auth(temp_session):
+    resp = await temp_session.get("https://httpbin.org/digest-auth/auth/test/pass",
+                                  auth=("test", "pass"))
+    assert resp.status == 200

@@ -10,7 +10,6 @@ from aioreq.errors.base import UnexpectedError
 from aioreq.errors.requests import RequestTimeoutError
 from aioreq.settings import LOGGER_NAME
 from aioreq.urls import parse_url
-
 from .auth import parse_auth_header
 from .encodings import get_avaliable_encodings
 from .headers import AuthenticationWWW
@@ -221,7 +220,7 @@ class AuthenticationMiddleWare(MiddleWare):
                     )
                 )
             header_obj = AuthenticationWWW.parse(resp.headers["www-authenticate"])
-            for authentication_header in parse_auth_header(header_obj, request):
+            for authentication_header in parse_auth_header(header_obj, request, resp):
                 request.headers["authorization"] = authentication_header
                 resp = await self.next_middleware.process(request, client)
                 if resp.status != codes.UNAUTHORIZED:
