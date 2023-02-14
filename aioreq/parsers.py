@@ -106,6 +106,9 @@ class ResponseParser:
         content_length = match.group("length")
         return int(content_length)
 
+    @classmethod
+    def search_transfer_encoding(cls, text):
+        return 'transfer-encoding' in text.lower()
 
 class DateParser6265:
     non_delimiter_ranges = (
