@@ -78,8 +78,8 @@ class TestRequestParser:
                     "host:  chxko.am\r\n"
                     "testheader:  testvalue\r\n"
                     "testchxko:  chxko\r\n"
-                    "content-length:  32\r\n"
                     "content-type:  application/json\r\n"
+                    "content-length:  32\r\n"
                     "\r\n"
                     '{"this is a test body data": 20}'
                 ),

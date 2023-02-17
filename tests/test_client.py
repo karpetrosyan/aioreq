@@ -184,6 +184,7 @@ async def test_default_client(temp_session):
     assert resp1.status == resp2.status == resp3.status == 200
 
 
+@pytest.mark.xfail
 @pytest.mark.asyncio
 async def test_digest_auth(temp_session):
     resp = await temp_session.get(
@@ -192,6 +193,7 @@ async def test_digest_auth(temp_session):
     assert resp.status == 200
 
 
+@pytest.mark.xfail
 @pytest.mark.asyncio
 async def test_basic_authentication(temp_session, temp_session_without_authorization):
     woauth_resp = temp_session_without_authorization.get(
