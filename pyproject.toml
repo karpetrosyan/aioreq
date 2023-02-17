@@ -42,6 +42,7 @@ dev = [
     "uvicorn",
     "tox",
     "mkdocs-material",
+    "pytest-randomly"
 ]
 
 uvloop = [
@@ -88,3 +89,6 @@ deploy = "mkdocs gh-deploy"
 include = [
     "/aioreq",
 ]
+
+[tool.pytest.ini_options]
+addopts = ""

@@ -7,12 +7,6 @@ from aioreq.urls import parse_url
 
 
 class TestRequestParser:
-    """
-    Check if aioreq.parser.request_parser works fine,
-    do some parsing and compare with the expected results,
-    checking some exceptions
-    """
-
     @pytest.mark.parametrize(
         argnames=("request_obj", "expected_result"),
         argvalues=[
@@ -36,7 +30,7 @@ class TestRequestParser:
                 Request(
                     url=parse_url("http://youtube.com"),
                     method="GET",
-                    params={"a": 1, "b": 2},
+                    params={"a": "1", "b": "2"},
                     headers={},
                 ),
                 "GET /?a=1&b=2 HTTP/1.1\r\n" "host:  youtube.com\r\n" "\r\n",
@@ -93,14 +87,6 @@ class TestRequestParser:
         ],
     )
     def test_parse(self, request_obj: Request, expected_result: str):
-        """
-        Check if request parsing works correctly
-
-        :param request_obj: The Request object representing http request
-        :param expected_result: String which is expected result for parsed request_obj
-        :returns: None
-        """
-
         parsed_data = default_parser(request_obj)
         assert parsed_data == expected_result
 

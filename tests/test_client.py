@@ -18,8 +18,8 @@ log = logging.getLogger(LOGGER_NAME)
 
 @pytest.mark.asyncio
 async def test_few_requests(
-        SERVER_URL,
-        temp_session,
+    SERVER_URL,
+    temp_session,
 ):
     t1 = temp_session.get(SERVER_URL)
     t2 = temp_session.get(SERVER_URL)
@@ -122,18 +122,6 @@ async def test_root_with_stream(SERVER_URL, constants, get_stream_test_url):
 
 
 @pytest.mark.asyncio
-async def test_basic_authentication(temp_session, temp_session_without_authorization):
-    woauth_resp = temp_session_without_authorization.get(
-        "http://httpbin.org/basic-auth/foo/bar", auth=("foo", "bar")
-    )
-    resp = temp_session.get(
-        "http://httpbin.org/basic-auth/foo/bar", auth=("foo", "bar")
-    )
-    woauth_resp, resp = await asyncio.gather(woauth_resp, resp)
-    assert resp.status == 200 and woauth_resp.status == 401
-
-
-@pytest.mark.asyncio
 async def test_add_custom_middleware(temp_session):
     class CustomMiddleWare(MiddleWare):
         async def process(self, request, client):
@@ -162,7 +150,7 @@ async def test_set_cookie(SERVER_URL, temp_session, set_cookie_url):
 
 
 @pytest.mark.asyncio
-async def test_stream_req_to_youtube():
+async def test_stream_youtube_req():
     req = Request(url="https://www.youtube.com", method="GET")
     async with StreamClient(req) as resp:
         assert resp.status == 200
@@ -171,7 +159,7 @@ async def test_stream_req_to_youtube():
 
 
 @pytest.mark.asyncio
-async def test_req_to_youtube(temp_session):
+async def test_youtube_req(temp_session):
     await temp_session.get("https://youtube.com")
 
 
@@ -198,6 +186,19 @@ async def test_default_client(temp_session):
 
 @pytest.mark.asyncio
 async def test_digest_auth(temp_session):
-    resp = await temp_session.get("https://httpbin.org/digest-auth/auth/test/pass",
-                                  auth=("test", "pass"))
+    resp = await temp_session.get(
+        "https://httpbin.org/digest-auth/auth/test/pass", auth=("test", "pass")
+    )
     assert resp.status == 200
+
+
+@pytest.mark.asyncio
+async def test_basic_authentication(temp_session, temp_session_without_authorization):
+    woauth_resp = temp_session_without_authorization.get(
+        "http://httpbin.org/basic-auth/foo/bar", auth=("foo", "bar")
+    )
+    resp = temp_session.get(
+        "http://httpbin.org/basic-auth/foo/bar", auth=("foo", "bar")
+    )
+    woauth_resp, resp = await asyncio.gather(woauth_resp, resp)
+    assert resp.status == 200 and woauth_resp.status == 401

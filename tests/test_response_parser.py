@@ -5,12 +5,6 @@ from aioreq.parsers import ResponseParser
 
 
 class TestResponseParser:
-    """
-    Check if aioreq.parser.request_parser works fine,
-    do some parsing and compare with the expected results,
-    checking some exceptions
-    """
-
     @pytest.mark.parametrize(
         argnames=("status_line", "header_line", "content", "expected_result"),
         argvalues=[
