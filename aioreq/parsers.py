@@ -24,11 +24,11 @@ def default_parser(request):
     if type(request.content) in (bytes, bytearray):
         request.content = request.content.decode()
 
-    if request.content:
-        request.headers["Content-Length"] = len(request.content)
-
     if request.parse_config:
         request.parse_config()
+
+    if request.content:
+        request.headers["Content-Length"] = len(request.content)
 
     path += query
     message = (

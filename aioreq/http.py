@@ -10,7 +10,6 @@ from typing import List
 from typing import Optional
 from typing import Tuple
 from typing import Type
-from typing import TypeVar
 from typing import Union
 
 from aioreq.connection import Transport
@@ -34,8 +33,6 @@ from .middlewares import RetryMiddleWare
 from .middlewares import default_middlewares
 
 log = logging.getLogger(LOGGER_NAME)
-
-TRESP = TypeVar("TRESP", bound="Response")
 
 
 class BaseRequest:
@@ -271,13 +268,27 @@ class Client(BaseClient):
         url: str,
         method: str,
         content: Union[str, bytearray, bytes] = "",
+        json: Union[str, bytearray, bytes] = "",
         params: Union[Iterable[Iterable[str]], None] = None,
         headers: Union[None, Dict[str, str], Headers] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
     ) -> Response:
         headers = Headers(initial_headers=headers)
-        request = Request(
+        if json and content:
+            msg = (
+                "You cannot use both the `json` and `content` attributes "
+                "simultaneously. Only one of them should be used at a time."
+            )
+            raise ValueError(msg)
+
+        if json:
+            request_class = JsonRequest
+            content = json
+        else:
+            request_class = Request
+
+        request = request_class(
             url=url,
             method=method,
             headers=self.headers | headers,
@@ -297,6 +308,7 @@ class Client(BaseClient):
         self,
         url: str,
         content: Union[str, bytearray, bytes] = "",
+        json: Union[str, bytearray, bytes] = "",
         headers: Union[Dict[str, str], None] = None,
         params: Dict[str, str] = None,
         auth: Union[Tuple[str, str], None] = None,
@@ -306,6 +318,7 @@ class Client(BaseClient):
             url=url,
             method="GET",
             content=content,
+            json=json,
             headers=headers,
             params=params,
             auth=auth,
@@ -316,6 +329,7 @@ class Client(BaseClient):
         self,
         url: str,
         content: Union[str, bytearray, bytes] = "",
+        json: Union[str, bytearray, bytes] = "",
         headers: Union[Dict[str, str], None] = None,
         params: Dict[str, str] = None,
         auth: Union[Tuple[str, str], None] = None,
@@ -325,6 +339,7 @@ class Client(BaseClient):
             url=url,
             method="POST",
             content=content,
+            json=json,
             headers=headers,
             params=params,
             auth=auth,
@@ -335,6 +350,7 @@ class Client(BaseClient):
         self,
         url: str,
         content: Union[str, bytearray, bytes] = "",
+        json: Union[str, bytearray, bytes] = "",
         headers: Union[Dict[str, str], None] = None,
         params: Dict[str, str] = None,
         auth: Union[Tuple[str, str], None] = None,
@@ -344,6 +360,7 @@ class Client(BaseClient):
             url=url,
             method="PUT",
             content=content,
+            json=json,
             headers=headers,
             params=params,
             auth=auth,
@@ -354,6 +371,7 @@ class Client(BaseClient):
         self,
         url: str,
         content: Union[str, bytearray, bytes] = "",
+        json: Union[str, bytearray, bytes] = "",
         headers: Union[Dict[str, str], None] = None,
         params: Dict[str, str] = None,
         auth: Union[Tuple[str, str], None] = None,
@@ -363,6 +381,7 @@ class Client(BaseClient):
             url=url,
             method="DELETE",
             content=content,
+            json=json,
             headers=headers,
             params=params,
             auth=auth,
@@ -373,6 +392,7 @@ class Client(BaseClient):
         self,
         url: str,
         content: Union[str, bytearray, bytes] = "",
+        json: Union[str, bytearray, bytes] = "",
         headers: Union[Dict[str, str], None] = None,
         params: Dict[str, str] = None,
         auth: Union[Tuple[str, str], None] = None,
@@ -382,6 +402,7 @@ class Client(BaseClient):
             url=url,
             method="OPTIONS",
             content=content,
+            json=json,
             headers=headers,
             params=params,
             auth=auth,
@@ -392,6 +413,7 @@ class Client(BaseClient):
         self,
         url: str,
         content: Union[str, bytearray, bytes] = "",
+        json: Union[str, bytearray, bytes] = "",
         headers: Union[Dict[str, str], None] = None,
         params: Dict[str, str] = None,
         auth: Union[Tuple[str, str], None] = None,
@@ -401,6 +423,7 @@ class Client(BaseClient):
             url=url,
             method="HEAD",
             content=content,
+            json=json,
             headers=headers,
             params=params,
             auth=auth,
@@ -411,6 +434,7 @@ class Client(BaseClient):
         self,
         url: str,
         content: Union[str, bytearray, bytes] = "",
+        json: Union[str, bytearray, bytes] = "",
         headers: Union[Dict[str, str], None] = None,
         params: Dict[str, str] = None,
         auth: Union[Tuple[str, str], None] = None,
@@ -420,6 +444,7 @@ class Client(BaseClient):
             url=url,
             method="PATCH",
             content=content,
+            json=json,
             headers=headers,
             params=params,
             auth=auth,
@@ -468,5 +493,6 @@ class StreamClient:
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         if self.transport:
-            self.transport.writer.close()
-            await self.transport.writer.wait_closed()
+            if self.transport.is_closing():
+                self.transport.writer.close()
+                await self.transport.writer.wait_closed()

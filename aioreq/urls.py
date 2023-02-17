@@ -109,6 +109,8 @@ class UriParser3986:
         query = match.group(7)
         fragment = match.group(9)
 
+        if not authority or not scheme:
+            raise ValueError("Invalid url")
         sep_ind = authority.find("@")
         if sep_ind != -1:
             userinfo = authority[:sep_ind]
