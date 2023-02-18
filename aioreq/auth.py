@@ -38,8 +38,6 @@ def authenticate_basic(params, request, response) -> str:
 def authenticate_digest(params, request, response) -> str:
     realm = unq(params.get("realm", "").encode())
     nonce = unq(params.get("nonce", "").encode())
-    # nonce = b"12635b0eae60983d6701fb47c1252c42"
-    # realm = b"IPCAM"
     opaque = unq(params.get("opaque", "").encode())
     algorithm = params.get("algorithm", "MD5")
     qop = unq(params.get("qop", "").encode())
@@ -51,6 +49,9 @@ def authenticate_digest(params, request, response) -> str:
     algorithm_function = HASH_FUNCTIONS_MAP[algorithm.upper()]
     username = username.encode()
     password = password.encode()
+
+    if qop and qop != b"auth":
+        raise ValueError("Aioreq does not support `auth-int` qop yet.")
 
     def digest(data):
         return algorithm_function(data).hexdigest().encode()

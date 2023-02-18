@@ -104,3 +104,16 @@ class TestUri3986:
     def test_update_relative_path(self, value, newvalue, expected):
         new_value = value.updated_relative_ref(newvalue)
         assert new_value == expected
+
+    @pytest.mark.parametrize(
+        argnames=["url"],
+        argvalues=[
+            ("google.com",),
+            ("/google.com",),
+            ("httd//google.com",),
+            ("htt//google.com",),
+        ],
+    )
+    def test_invalid_urls(self, url):
+        with pytest.raises(ValueError, match=("Invalid uri was passed through .*")):
+            UriParser3986().parse(url)

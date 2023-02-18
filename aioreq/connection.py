@@ -60,8 +60,8 @@ async def resolve_domain(
 
 class Transport:
     def __init__(self):
-        self.reader: asyncio.StreamReader | None = None
-        self.writer: asyncio.StreamWriter | None = None
+        self.reader: Union[asyncio.StreamReader, None] = None
+        self.writer: Union[asyncio.StreamWriter, None] = None
         self.used: bool = False
 
     async def _send_data(self, raw_data: bytes) -> None:

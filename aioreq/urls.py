@@ -99,8 +99,12 @@ class UriParser3986:
 
     def parse(self, value):
         match = self.uri_parsing_regex.search(value)
+        msg = (
+            "Invalid uri was passed through `UriParser`.\n"
+            "Valid uri examples: [http://127.0.0.1:443, https://google.com]"
+        )
         if not match:
-            raise ValueError("Invalid uri")
+            raise ValueError(msg)
 
         query_dict = {}
         scheme = match.group(2)
@@ -108,9 +112,11 @@ class UriParser3986:
         path = match.group(5)
         query = match.group(7)
         fragment = match.group(9)
+        if scheme not in ("https", "http"):
+            raise ValueError(msg)
 
         if not authority or not scheme:
-            raise ValueError("Invalid url")
+            raise ValueError(msg)
         sep_ind = authority.find("@")
         if sep_ind != -1:
             userinfo = authority[:sep_ind]
