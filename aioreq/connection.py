@@ -18,7 +18,8 @@ log = logging.getLogger(LOGGER_NAME)
 
 context = _ssl.create_default_context()
 context.keylog_filename = os.getenv("SSLKEYLOGFILE")  # type: ignore
-context.check_hostname = False
+context.check_hostname = True
+context.verify_mode = True
 
 
 async def get_address(host):

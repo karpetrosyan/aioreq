@@ -122,6 +122,19 @@ async def test_root_with_stream(SERVER_URL, constants, get_stream_test_url):
 
 
 @pytest.mark.asyncio
+async def test_stream_get_method(SERVER_URL, constants, get_stream_test_url):
+    t2 = bytearray()
+    async with StreamClient.get(
+        url=get_stream_test_url,
+    ) as response:
+        assert response.status == 200
+        async for chunk in response.content:
+            for char in chunk:
+                t2.append(char)
+    assert t2 == constants["STREAMING_RESPONSE_CHUNK_COUNT"] * b"test"
+
+
+@pytest.mark.asyncio
 async def test_add_custom_middleware(temp_session):
     class CustomMiddleWare(MiddleWare):
         async def process(self, request, client):

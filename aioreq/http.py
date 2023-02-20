@@ -193,40 +193,41 @@ class BaseClient(metaclass=ABCMeta):
         self.transports: List[Transport] = []
         self.persistent_connections = persistent_connections
 
-    async def _get_connection(self, url):
-        transport = None
-        domain = url.get_domain()
-        if self.persistent_connections:
-            log.trace(f"{self.connection_mapper} searching into mapped connections")
-
-            for transport in self.connection_mapper[domain]:
-                if not transport.used:
-                    if transport.is_closing():
-                        del self.connection_mapper[domain]
-                    else:
-                        break
-            else:
-                transport = None
-
-        if not transport:
-            ip, port = await resolve_domain(url)
-
-            transport = Transport()
-            connection_coroutine = transport.make_connection(
-                ip,
-                port,
-                **{"ssl": True, "server_hostname": domain}
-                if url.scheme == "https"
-                else {**{"ssl": False, "server_hostname": None}},
+    def _build_request(
+        self,
+        url: str,
+        method: str,
+        content: Union[str, bytearray, bytes] = "",
+        json: Union[str, bytearray, bytes] = "",
+        params: Union[Iterable[Iterable[str]], None] = None,
+        headers: Union[None, Dict[str, str], Headers] = None,
+        auth: Union[Tuple[str, str], None] = None,
+        timeout: Union[int, float, None] = None,
+    ) -> Request:
+        headers = Headers(initial_headers=headers)
+        if json and content:
+            msg = (
+                "You cannot use both the `json` and `content` attributes "
+                "simultaneously. Only one of them should be used at a time."
             )
-            await connection_coroutine
-            self.transports.append(transport)
+            raise ValueError(msg)
 
-            if self.persistent_connections:
-                self.connection_mapper[domain].append(transport)
+        if json:
+            request_class = JsonRequest
+            content = json
         else:
-            log.debug("Using already opened connection")
-        return transport
+            request_class = Request
+
+        request = request_class(
+            url=url,
+            method=method,
+            headers=self.headers | headers,
+            params=params,
+            content=content,
+            auth=auth,
+            timeout=timeout,
+        )
+        return request
 
     async def __aenter__(self):
         return self
@@ -263,6 +264,41 @@ class Client(BaseClient):
         response = await self.middlewares.process(request, client=self)
         return response
 
+    async def _get_connection(self, url):
+        transport = None
+        domain = url.get_domain()
+        if self.persistent_connections:
+            log.trace(f"{self.connection_mapper} searching into mapped connections")
+
+            for transport in self.connection_mapper[domain]:
+                if not transport.used:
+                    if transport.is_closing():
+                        del self.connection_mapper[domain]
+                    else:
+                        break
+            else:
+                transport = None
+
+        if not transport:
+            ip, port = await resolve_domain(url)
+
+            transport = Transport()
+            connection_coroutine = transport.make_connection(
+                ip,
+                port,
+                **{"ssl": True, "server_hostname": domain}
+                if url.scheme == "https"
+                else {**{"ssl": False, "server_hostname": None}},
+            )
+            await connection_coroutine
+            self.transports.append(transport)
+
+            if self.persistent_connections:
+                self.connection_mapper[domain].append(transport)
+        else:
+            log.debug("Using already opened connection")
+        return transport
+
     async def _send_request(
         self,
         url: str,
@@ -274,26 +310,13 @@ class Client(BaseClient):
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
     ) -> Response:
-        headers = Headers(initial_headers=headers)
-        if json and content:
-            msg = (
-                "You cannot use both the `json` and `content` attributes "
-                "simultaneously. Only one of them should be used at a time."
-            )
-            raise ValueError(msg)
-
-        if json:
-            request_class = JsonRequest
-            content = json
-        else:
-            request_class = Request
-
-        request = request_class(
+        request = self._build_request(
             url=url,
             method=method,
-            headers=self.headers | headers,
-            params=params,
             content=content,
+            json=json,
+            params=params,
+            headers=headers,
             auth=auth,
             timeout=timeout,
         )
@@ -452,10 +475,186 @@ class Client(BaseClient):
         )
 
 
-class StreamClient:
+class StreamClient(BaseClient):
     def __init__(self, request):
         self.request = request
         self.transport = None
+        super().__init__()
+
+    @classmethod
+    def get(
+        cls,
+        url: str,
+        content: Union[str, bytearray, bytes] = "",
+        json: Union[str, bytearray, bytes] = "",
+        headers: Union[Dict[str, str], None] = None,
+        params: Dict[str, str] = None,
+        auth: Union[Tuple[str, str], None] = None,
+        timeout: Union[int, float, None] = None,
+    ):
+        self = cls(None)
+        request = self._build_request(
+            url=url,
+            method="GET",
+            content=content,
+            json=json,
+            headers=headers,
+            params=params,
+            auth=auth,
+            timeout=timeout,
+        )
+        self.request = request
+        return self
+
+    @classmethod
+    def post(
+        cls,
+        url: str,
+        content: Union[str, bytearray, bytes] = "",
+        json: Union[str, bytearray, bytes] = "",
+        headers: Union[Dict[str, str], None] = None,
+        params: Dict[str, str] = None,
+        auth: Union[Tuple[str, str], None] = None,
+        timeout: Union[int, float, None] = None,
+    ):
+        self = cls(None)
+        request = self._build_request(
+            url=url,
+            method="POST",
+            content=content,
+            json=json,
+            headers=headers,
+            params=params,
+            auth=auth,
+            timeout=timeout,
+        )
+        self.request = request
+        return self
+
+    @classmethod
+    def put(
+        cls,
+        url: str,
+        content: Union[str, bytearray, bytes] = "",
+        json: Union[str, bytearray, bytes] = "",
+        headers: Union[Dict[str, str], None] = None,
+        params: Dict[str, str] = None,
+        auth: Union[Tuple[str, str], None] = None,
+        timeout: Union[int, float, None] = None,
+    ):
+        self = cls(None)
+        request = self._build_request(
+            url=url,
+            method="PUT",
+            content=content,
+            json=json,
+            headers=headers,
+            params=params,
+            auth=auth,
+            timeout=timeout,
+        )
+        self.request = request
+        return self
+
+    @classmethod
+    def delete(
+        cls,
+        url: str,
+        content: Union[str, bytearray, bytes] = "",
+        json: Union[str, bytearray, bytes] = "",
+        headers: Union[Dict[str, str], None] = None,
+        params: Dict[str, str] = None,
+        auth: Union[Tuple[str, str], None] = None,
+        timeout: Union[int, float, None] = None,
+    ):
+        self = cls(None)
+        request = self._build_request(
+            url=url,
+            method="DELETE",
+            content=content,
+            json=json,
+            headers=headers,
+            params=params,
+            auth=auth,
+            timeout=timeout,
+        )
+        self.request = request
+        return self
+
+    @classmethod
+    def patch(
+        cls,
+        url: str,
+        content: Union[str, bytearray, bytes] = "",
+        json: Union[str, bytearray, bytes] = "",
+        headers: Union[Dict[str, str], None] = None,
+        params: Dict[str, str] = None,
+        auth: Union[Tuple[str, str], None] = None,
+        timeout: Union[int, float, None] = None,
+    ):
+        self = cls(None)
+        request = self._build_request(
+            url=url,
+            method="PATCH",
+            content=content,
+            json=json,
+            headers=headers,
+            params=params,
+            auth=auth,
+            timeout=timeout,
+        )
+        self.request = request
+        return self
+
+    @classmethod
+    def options(
+        cls,
+        url: str,
+        content: Union[str, bytearray, bytes] = "",
+        json: Union[str, bytearray, bytes] = "",
+        headers: Union[Dict[str, str], None] = None,
+        params: Dict[str, str] = None,
+        auth: Union[Tuple[str, str], None] = None,
+        timeout: Union[int, float, None] = None,
+    ):
+        self = cls(None)
+        request = self._build_request(
+            url=url,
+            method="OPTIONS",
+            content=content,
+            json=json,
+            headers=headers,
+            params=params,
+            auth=auth,
+            timeout=timeout,
+        )
+        self.request = request
+        return self
+
+    @classmethod
+    def head(
+        cls,
+        url: str,
+        content: Union[str, bytearray, bytes] = "",
+        json: Union[str, bytearray, bytes] = "",
+        headers: Union[Dict[str, str], None] = None,
+        params: Dict[str, str] = None,
+        auth: Union[Tuple[str, str], None] = None,
+        timeout: Union[int, float, None] = None,
+    ):
+        self = cls(None)
+        request = self._build_request(
+            url=url,
+            method="HEAD",
+            content=content,
+            json=json,
+            headers=headers,
+            params=params,
+            auth=auth,
+            timeout=timeout,
+        )
+        self.request = request
+        return self
 
     async def __aenter__(self):
         request = self.request
