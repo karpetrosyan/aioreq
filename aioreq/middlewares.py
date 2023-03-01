@@ -243,7 +243,8 @@ class TimeoutMiddleWare(MiddleWare):
 class CookiesMiddleWare(MiddleWare):
     async def process(self, request, client):
         cookies = client.cookies.get_raw_cookies(request.url)
-        request.headers["cookie"] = cookies
+        if cookies:
+            request.headers["cookie"] = cookies
         resp = await self.next_middleware.process(request, client)
 
         if "set-cookie" in resp.headers:
@@ -252,5 +253,6 @@ class CookiesMiddleWare(MiddleWare):
                 for cookie_value in resp.headers["set-cookie"]
             ]
             for cookie in cookies:
-                client.cookies.add_cookie(cookie)
+                if cookie is not None:  # SetCookie returns `None` if cookie is invalid
+                    client.cookies.add_cookie(cookie)
         return resp

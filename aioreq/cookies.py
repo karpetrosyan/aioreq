@@ -200,7 +200,3 @@ class Cookies:
     def get_raw_cookies(self, uri):
         self.remove_expired_cookies()
         return self._get_cookie_string(uri)
-
-    def __repr__(self):
-        raw_cookies = self.get_raw_cookies()
-        return f"<Cookie: {raw_cookies}>"

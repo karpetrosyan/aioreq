@@ -55,7 +55,7 @@ class Headers(metaclass=MetaHeaders):
         key = key.lower()
         if key in self.multivalue_headers:
             values = self._headers.setdefault(key, [])
-            values.append(value)
+            values.append(value)  # type: ignore
         else:
             self._headers[key.lower()] = value
 
@@ -145,7 +145,7 @@ class MimeType(Enum):
 class ServerHeader(ABC):
     @classmethod
     @abstractmethod
-    def parse(self, value: str):
+    def parse(self, value):
         ...
 
 

@@ -61,7 +61,7 @@ def authenticate_digest(params, request, response) -> str:
     path = request.url.path_and_query().encode()
 
     if algorithm.lower().endswith("-sess"):
-        A1 = (digest(A1), nonce, cnonce)
+        A1 = (digest(A1), nonce, cnonce)  # type: ignore
     A2 = b":".join((request.method.encode(), path))
 
     if qop:
@@ -76,7 +76,7 @@ def authenticate_digest(params, request, response) -> str:
     cnonce = cnonce.decode()
     realm = realm.decode()
     username = username.decode()
-    nc_value = nc_value.decode()
+    nc_value = nc_value.decode()  # type: ignore
     opaque = opaque.decode()
     path = path.decode()
     authorization_string = (
@@ -84,7 +84,7 @@ def authenticate_digest(params, request, response) -> str:
         f'uri="{path}"'
     )
     if qop:
-        authorization_string += f', qop={qop}, nc={nc_value}, cnonce="{cnonce}", '
+        authorization_string += f', qop={qop}, nc={nc_value}, cnonce="{cnonce}", '  # type: ignore
     authorization_string += f', response="{response}"'
     if opaque:
         authorization_string += f', opaque="{opaque}"'

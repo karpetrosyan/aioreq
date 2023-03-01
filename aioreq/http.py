@@ -2,7 +2,7 @@ import asyncio
 import logging
 from abc import ABCMeta
 from collections import defaultdict
-from typing import AsyncGenerator
+from typing import AsyncGenerator, TypeVar
 from typing import AsyncIterator
 from typing import Dict
 from typing import Iterable
@@ -32,6 +32,7 @@ from .middlewares import RedirectMiddleWare
 from .middlewares import RetryMiddleWare
 from .middlewares import default_middlewares
 
+BR = TypeVar("BR", bound="BaseRequest")
 log = logging.getLogger(LOGGER_NAME)
 
 
@@ -70,11 +71,11 @@ class BaseRequest:
         self._raw_request: Optional[bytes] = None
 
     @property
-    def url(self):
+    def url(self) -> Union[Uri3986]:
         return self._url
 
     @url.setter
-    def url(self, value):
+    def url(self, value) -> None:
         self._url = parse_url(value)
         self.params = self._url.query
 
@@ -100,14 +101,18 @@ class BaseResponse:
 
 
 class Request(BaseRequest):
+    """HTTP Request with no additional configurations."""
     parse_config = None
 
 
 class JsonRequest(BaseRequest):
+    """JSON Request that dumps the context using a json encoder."""
     parse_config = configure_json
 
 
 class Response(BaseResponse):
+    """This object represents a simple HTTP response."""
+
     def __init__(
         self,
         status: int,
@@ -141,6 +146,7 @@ class Response(BaseResponse):
 
 
 class StreamResponse(BaseResponse):
+    """Represents a Streaming Response that can iterate through the incoming data asynchronously."""
     def __init__(
         self,
         status: int,
@@ -157,6 +163,7 @@ class StreamResponse(BaseResponse):
 
 
 class BaseClient(metaclass=ABCMeta):
+    """The base client for all HTTP clients, implementing all core methods."""
     def __init__(
         self,
         headers: Union[Dict[str, str], Headers, None] = None,
@@ -166,14 +173,12 @@ class BaseClient(metaclass=ABCMeta):
         timeout: Union[int, float] = REQUEST_TIMEOUT,
         auth: Optional[Tuple[str, str]] = None,
         middlewares: Optional[Tuple[Union[str, Type[MiddleWare]], ...]] = None,
-        cookies: Optional[Union[Cookies, Dict]] = None,
+        cookies: Optional[Cookies] = None,
     ):
         headers = Headers(initial_headers=headers)
 
         if isinstance(cookies, Cookies):
             self.cookies = cookies
-        elif isinstance(cookies, dict):
-            self.cookies = Cookies(cookies)
         elif cookies is None:
             self.cookies = Cookies()
 
@@ -199,11 +204,13 @@ class BaseClient(metaclass=ABCMeta):
         method: str,
         content: Union[str, bytearray, bytes] = "",
         json: Union[str, bytearray, bytes] = "",
-        params: Union[Iterable[Iterable[str]], None] = None,
+        params: Optional[Dict[str, str]] = None,
         headers: Union[None, Dict[str, str], Headers] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
-    ) -> Request:
+    ) -> BaseRequest:
+        """Creates one of the "Request" instances based on attributes."""
+
         headers = Headers(initial_headers=headers)
         if json and content:
             msg = (
@@ -213,12 +220,12 @@ class BaseClient(metaclass=ABCMeta):
             raise ValueError(msg)
 
         if json:
-            request_class = JsonRequest
+            request_class: BaseRequest = JsonRequest  # type: ignore
             content = json
         else:
-            request_class = Request
+            request_class: BaseRequest = Request  # type: ignore
 
-        request = request_class(
+        request = request_class(  # type: ignore
             url=url,
             method=method,
             headers=self.headers | headers,
@@ -240,8 +247,9 @@ class BaseClient(metaclass=ABCMeta):
         )
 
     async def __aexit__(self, *args, **kwargs):
-        tasks = []
+        """Closes all open connections for this Client."""
 
+        tasks = []
         for transport in self.transports:
             transport.writer.close()
             tasks.append(transport.writer.wait_closed())
@@ -252,6 +260,8 @@ class Client(BaseClient):
     methods = ("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH")
 
     async def send_request_directly(self, request: Request):
+        """The only method that sends HTTP requests to servers via `Transport` instances."""
+
         transport = await self._get_connection(request.url)
         coro = transport.send_http_request(request.get_raw_request())
         with wrap_errors():
@@ -260,15 +270,20 @@ class Client(BaseClient):
         resp.request = request
         return resp
 
-    async def _send_request_via_middleware(self, request: Request):
+    async def _send_request_via_middleware(self, request: BaseRequest):
+        """Sends Request instances to the middlewares chain.l"""
+
         response = await self.middlewares.process(request, client=self)
         return response
 
-    async def _get_connection(self, url):
+    async def _get_connection(self, url) -> Transport:
+        """If a connection to the same IP and port was not found in the
+        "connection_mapper", this method returns the newly opened connection;
+         otherwise, it returns the previously opened one."""
         transport = None
         domain = url.get_domain()
         if self.persistent_connections:
-            log.trace(f"{self.connection_mapper} searching into mapped connections")
+            log.trace(f"{self.connection_mapper} searching into mapped connections")  # type: ignore
 
             for transport in self.connection_mapper[domain]:
                 if not transport.used:
@@ -305,11 +320,15 @@ class Client(BaseClient):
         method: str,
         content: Union[str, bytearray, bytes] = "",
         json: Union[str, bytearray, bytes] = "",
-        params: Union[Iterable[Iterable[str]], None] = None,
+        params: Optional[Dict[str, str]] = None,
         headers: Union[None, Dict[str, str], Headers] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
     ) -> Response:
+        """
+        Builds and sends newly created requests to middlewares.
+        Clients' GET, POST, PATCH, and other methods use this method by default to send requests.
+        """
         request = self._build_request(
             url=url,
             method=method,
@@ -323,6 +342,7 @@ class Client(BaseClient):
         return await self._send_request_via_middleware(request)
 
     async def send_request(self, request: Request) -> Response:
+        """Send the Request instance to the middlewares."""
         return await self._send_request_via_middleware(
             request=request,
         )
@@ -333,7 +353,7 @@ class Client(BaseClient):
         content: Union[str, bytearray, bytes] = "",
         json: Union[str, bytearray, bytes] = "",
         headers: Union[Dict[str, str], None] = None,
-        params: Dict[str, str] = None,
+        params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
     ) -> Response:
@@ -354,7 +374,7 @@ class Client(BaseClient):
         content: Union[str, bytearray, bytes] = "",
         json: Union[str, bytearray, bytes] = "",
         headers: Union[Dict[str, str], None] = None,
-        params: Dict[str, str] = None,
+        params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
     ) -> Response:
@@ -375,7 +395,7 @@ class Client(BaseClient):
         content: Union[str, bytearray, bytes] = "",
         json: Union[str, bytearray, bytes] = "",
         headers: Union[Dict[str, str], None] = None,
-        params: Dict[str, str] = None,
+        params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
     ) -> Response:
@@ -396,7 +416,7 @@ class Client(BaseClient):
         content: Union[str, bytearray, bytes] = "",
         json: Union[str, bytearray, bytes] = "",
         headers: Union[Dict[str, str], None] = None,
-        params: Dict[str, str] = None,
+        params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
     ) -> Response:
@@ -417,7 +437,7 @@ class Client(BaseClient):
         content: Union[str, bytearray, bytes] = "",
         json: Union[str, bytearray, bytes] = "",
         headers: Union[Dict[str, str], None] = None,
-        params: Dict[str, str] = None,
+        params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
     ) -> Response:
@@ -438,7 +458,7 @@ class Client(BaseClient):
         content: Union[str, bytearray, bytes] = "",
         json: Union[str, bytearray, bytes] = "",
         headers: Union[Dict[str, str], None] = None,
-        params: Dict[str, str] = None,
+        params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
     ) -> Response:
@@ -459,7 +479,7 @@ class Client(BaseClient):
         content: Union[str, bytearray, bytes] = "",
         json: Union[str, bytearray, bytes] = "",
         headers: Union[Dict[str, str], None] = None,
-        params: Dict[str, str] = None,
+        params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
     ) -> Response:
@@ -488,7 +508,7 @@ class StreamClient(BaseClient):
         content: Union[str, bytearray, bytes] = "",
         json: Union[str, bytearray, bytes] = "",
         headers: Union[Dict[str, str], None] = None,
-        params: Dict[str, str] = None,
+        params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
     ):
@@ -513,7 +533,7 @@ class StreamClient(BaseClient):
         content: Union[str, bytearray, bytes] = "",
         json: Union[str, bytearray, bytes] = "",
         headers: Union[Dict[str, str], None] = None,
-        params: Dict[str, str] = None,
+        params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
     ):
@@ -538,7 +558,7 @@ class StreamClient(BaseClient):
         content: Union[str, bytearray, bytes] = "",
         json: Union[str, bytearray, bytes] = "",
         headers: Union[Dict[str, str], None] = None,
-        params: Dict[str, str] = None,
+        params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
     ):
@@ -563,7 +583,7 @@ class StreamClient(BaseClient):
         content: Union[str, bytearray, bytes] = "",
         json: Union[str, bytearray, bytes] = "",
         headers: Union[Dict[str, str], None] = None,
-        params: Dict[str, str] = None,
+        params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
     ):
@@ -588,7 +608,7 @@ class StreamClient(BaseClient):
         content: Union[str, bytearray, bytes] = "",
         json: Union[str, bytearray, bytes] = "",
         headers: Union[Dict[str, str], None] = None,
-        params: Dict[str, str] = None,
+        params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
     ):
@@ -613,7 +633,7 @@ class StreamClient(BaseClient):
         content: Union[str, bytearray, bytes] = "",
         json: Union[str, bytearray, bytes] = "",
         headers: Union[Dict[str, str], None] = None,
-        params: Dict[str, str] = None,
+        params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
     ):
@@ -638,7 +658,7 @@ class StreamClient(BaseClient):
         content: Union[str, bytearray, bytes] = "",
         json: Union[str, bytearray, bytes] = "",
         headers: Union[Dict[str, str], None] = None,
-        params: Dict[str, str] = None,
+        params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
     ):
@@ -656,7 +676,12 @@ class StreamClient(BaseClient):
         self.request = request
         return self
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> StreamResponse:
+        """
+        Creates the Request instance and sends it through the stream, returning
+        a StreamResponse instance with status code, status message, headers,
+        and content that can be iterated asynchronously.
+        """
         request = self.request
         parsed_url = self.request.url
         transport = Transport()
@@ -681,12 +706,12 @@ class StreamClient(BaseClient):
         return StreamResponse(
             status=status_code,
             status_message=status_message,
-            content=self.content_iter(iterable),
+            content=self._content_iter(iterable),
             headers=headers,
             request=request,
         )
 
-    async def content_iter(self, async_generator: AsyncIterator):
+    async def _content_iter(self, async_generator: AsyncIterator):
         async for chunk in async_generator:
             yield chunk
 

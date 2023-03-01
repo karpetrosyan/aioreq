@@ -6,7 +6,7 @@ from typing import Awaitable
 from typing import Dict
 from typing import Union
 
-from dns import asyncresolver
+from dns import asyncresolver  # type: ignore
 
 from aioreq.errors.requests import AsyncRequestsError
 from aioreq.settings import LOGGER_NAME
@@ -19,7 +19,7 @@ log = logging.getLogger(LOGGER_NAME)
 context = _ssl.create_default_context()
 context.keylog_filename = os.getenv("SSLKEYLOGFILE")  # type: ignore
 context.check_hostname = True
-context.verify_mode = True
+context.verify_mode = True  # type: ignore
 
 
 async def get_address(host):
@@ -73,7 +73,7 @@ class Transport:
     async def make_connection(
         self, ip: str, port: int, ssl: bool, server_hostname
     ) -> None:
-        log.trace(f"{ip}, {port}")
+        log.trace(f"{ip}, {port}")  # type: ignore
         reader, writer = await asyncio.open_connection(
             host=ip,
             port=port,
@@ -95,9 +95,9 @@ class Transport:
 
         assert self.reader
         status_line = await self.reader.readuntil(b"\r\n")
-        status_line = status_line.decode()
+        status_line = status_line.decode()  # type: ignore
         headers_line = await self.reader.readuntil(b"\r\n\r\n")
-        headers_line = headers_line.decode()
+        headers_line = headers_line.decode()  # type: ignore
         content_length = ResponseParser.search_content_length(headers_line)
         content = b""
 
@@ -109,10 +109,10 @@ class Transport:
                 chunk_size = chunk[:-2]
                 if b";" in chunk_size:
                     chunk_size = chunk_size.split(b";")[0].strip()
-                chunk_size = int(chunk_size, 16)
+                chunk_size = int(chunk_size, 16)  # type: ignore
                 if chunk_size == 0:
                     break
-                data = await self.reader.readexactly(chunk_size)
+                data = await self.reader.readexactly(chunk_size)  # type: ignore
                 await self.reader.readexactly(2)  # crlf
                 content += data
         self.used = False
@@ -125,9 +125,9 @@ class Transport:
         await self._send_data(raw_data)
         assert self.reader
         status_line = await self.reader.readuntil(b"\r\n")
-        status_line = status_line.decode()
+        status_line = status_line.decode()  # type: ignore
         headers_line = await self.reader.readuntil(b"\r\n\r\n")
-        headers_line = headers_line.decode()
+        headers_line = headers_line.decode()  # type: ignore
         content_length = ResponseParser.search_content_length(headers_line)
 
         yield status_line, headers_line
@@ -138,10 +138,10 @@ class Transport:
                 chunk = await self.reader.readuntil(b"\r\n")
                 chunk_size = chunk[:-2]
 
-                chunk_size = int(chunk_size, 16)
+                chunk_size = int(chunk_size, 16)  # type: ignore
                 if chunk_size == 0:
                     break
-                data = await self.reader.readexactly(chunk_size)
+                data = await self.reader.readexactly(chunk_size)  # type: ignore
                 await self.reader.readexactly(2)  # crlf
                 yield data
         self.used = False
