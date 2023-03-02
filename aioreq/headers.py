@@ -19,6 +19,7 @@ from aioreq.cookies import Cookie6265
 from aioreq.cookies import default_path
 from aioreq.parsers import DateParser6265
 from aioreq.settings import LOGGER_NAME
+from .urls import Uri3986
 
 from .encodings import Encoding
 from .encodings import Encodings
@@ -96,7 +97,7 @@ class Headers(metaclass=MetaHeaders):
             )
 
         self._headers.update(other._headers)
-        return Headers(initial_headers=self._headers)
+        return Headers(initial_headers=self._headers)  # type: ignore
 
     def __eq__(self, other):
         if type(self) != type(other):
@@ -145,7 +146,7 @@ class MimeType(Enum):
 class ServerHeader(ABC):
     @classmethod
     @abstractmethod
-    def parse(self, value):
+    def parse(cls, value):  # type: ignore
         ...
 
 
@@ -281,7 +282,7 @@ class AuthenticationWWW(ServerHeader):
 
 
 class SetCookie(ServerHeader):
-    def _validate(self, attrs, uri):
+    def _validate(self, attrs: Dict, uri: Uri3986) -> Dict:
         cleaned_attrs = {}
 
         for attribute_name, attribute_value in attrs.items():
@@ -335,7 +336,7 @@ class SetCookie(ServerHeader):
 
         return cleaned_attrs
 
-    def parse(self, value, uri):
+    def parse(self, value: str, uri: Uri3986) -> Optional[Cookie6265]:  # type: ignore
         if ";" in value:
             name_value_pair = value.split(";")[0]
             unparsed_attributes = value[value.find(";") :]
@@ -350,7 +351,7 @@ class SetCookie(ServerHeader):
         attrs = {}
 
         if not name:
-            raise None
+            return None
 
         while unparsed_attributes:
             unparsed_attributes = unparsed_attributes[1:]

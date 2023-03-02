@@ -24,7 +24,7 @@ context.verify_mode = True  # type: ignore
 
 async def get_address(host):
     answers = await res.resolve(host)
-    return answers.rrset[0].address
+    return answers.rrset[0].address  # type: ignore
 
 
 dns_cache: Dict[str, Union[str, Awaitable]] = dict()

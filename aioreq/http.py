@@ -251,6 +251,7 @@ class BaseClient(metaclass=ABCMeta):
 
         tasks = []
         for transport in self.transports:
+            assert transport.writer
             transport.writer.close()
             tasks.append(transport.writer.wait_closed())
         await asyncio.gather(*tasks)
@@ -717,6 +718,6 @@ class StreamClient(BaseClient):
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         if self.transport:
-            if self.transport.is_closing():
+            if not self.transport.is_closing():
                 self.transport.writer.close()
                 await self.transport.writer.wait_closed()
