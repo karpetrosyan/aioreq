@@ -2,13 +2,15 @@ import asyncio
 import logging
 import os
 import ssl as _ssl
+from contextlib import contextmanager
 from typing import Awaitable
 from typing import Dict
+from typing import Optional
+from typing import Tuple
 from typing import Union
 
 from dns import asyncresolver  # type: ignore
 
-from aioreq.errors.requests import AsyncRequestsError
 from aioreq.settings import LOGGER_NAME
 
 res = asyncresolver.Resolver()
@@ -30,9 +32,16 @@ async def get_address(host):
 dns_cache: Dict[str, Union[str, Awaitable]] = dict()
 
 
+@contextmanager
+def mock_transport(transport):
+    transport.used = True
+    yield
+    transport.used = False
+
+
 async def resolve_domain(
     url,
-):
+) -> Tuple[str, int]:
     hostname = url.ip or ".".join(url.host)
 
     port = url.port
@@ -61,8 +70,8 @@ async def resolve_domain(
 
 class Transport:
     def __init__(self):
-        self.reader: Union[asyncio.StreamReader, None] = None
-        self.writer: Union[asyncio.StreamWriter, None] = None
+        self.reader: Optional[asyncio.StreamReader] = None
+        self.writer: Optional[asyncio.StreamWriter] = None
         self.used: bool = False
 
     async def _send_data(self, raw_data: bytes) -> None:
@@ -83,68 +92,61 @@ class Transport:
         self.reader = reader
         self.writer = writer
 
-    def _check_used(self):
-        if self.used:
-            raise AsyncRequestsError("Using transport which is already in use")
-        self.used = True
-
     async def send_http_request(self, raw_data: bytes):
-        self._check_used()
-        await self._send_data(raw_data)
-        from aioreq import ResponseParser
+        with mock_transport(self):
+            await self._send_data(raw_data)
+            from aioreq import ResponseParser
 
-        assert self.reader
-        status_line = await self.reader.readuntil(b"\r\n")
-        status_line = status_line.decode()  # type: ignore
-        headers_line = await self.reader.readuntil(b"\r\n\r\n")
-        headers_line = headers_line.decode()  # type: ignore
-        content_length = ResponseParser.search_content_length(headers_line)
-        content = b""
+            assert self.reader
+            status_line = await self.reader.readuntil(b"\r\n")
+            status_line = status_line.decode()  # type: ignore
+            headers_line = await self.reader.readuntil(b"\r\n\r\n")
+            headers_line = headers_line.decode()  # type: ignore
+            content_length = ResponseParser.search_content_length(headers_line)
+            content = b""
 
-        if content_length is not None:
-            content = await self.reader.readexactly(content_length)
-        elif ResponseParser.search_transfer_encoding(headers_line):
-            while True:
-                chunk = await self.reader.readuntil(b"\r\n")
-                chunk_size = chunk[:-2]
-                if b";" in chunk_size:
-                    chunk_size = chunk_size.split(b";")[0].strip()
-                chunk_size = int(chunk_size, 16)  # type: ignore
-                if chunk_size == 0:
-                    break
-                data = await self.reader.readexactly(chunk_size)  # type: ignore
-                await self.reader.readexactly(2)  # crlf
-                content += data
-        self.used = False
-        return status_line, headers_line, content
+            if content_length is not None:
+                content = await self.reader.readexactly(content_length)
+            elif ResponseParser.search_transfer_encoding(headers_line):
+                while True:
+                    chunk = await self.reader.readuntil(b"\r\n")
+                    chunk_size = chunk[:-2]
+                    if b";" in chunk_size:
+                        chunk_size = chunk_size.split(b";")[0].strip()
+                    chunk_size = int(chunk_size, 16)  # type: ignore
+                    if chunk_size == 0:
+                        break
+                    data = await self.reader.readexactly(chunk_size)  # type: ignore
+                    await self.reader.readexactly(2)  # crlf
+                    content += data
+            return status_line, headers_line, content
 
     async def send_http_stream_request(self, raw_data: bytes):
         from aioreq import ResponseParser
 
-        self._check_used()
-        await self._send_data(raw_data)
-        assert self.reader
-        status_line = await self.reader.readuntil(b"\r\n")
-        status_line = status_line.decode()  # type: ignore
-        headers_line = await self.reader.readuntil(b"\r\n\r\n")
-        headers_line = headers_line.decode()  # type: ignore
-        content_length = ResponseParser.search_content_length(headers_line)
+        with mock_transport(self):
+            await self._send_data(raw_data)
+            assert self.reader
+            status_line = await self.reader.readuntil(b"\r\n")
+            status_line = status_line.decode()  # type: ignore
+            headers_line = await self.reader.readuntil(b"\r\n\r\n")
+            headers_line = headers_line.decode()  # type: ignore
+            content_length = ResponseParser.search_content_length(headers_line)
 
-        yield status_line, headers_line
-        if content_length is not None:
-            raise TypeError("Stream request should use chunked")
-        else:
-            while True:
-                chunk = await self.reader.readuntil(b"\r\n")
-                chunk_size = chunk[:-2]
+            yield status_line, headers_line
+            if content_length is not None:
+                raise TypeError("Stream request should use chunked")
+            else:
+                while True:
+                    chunk = await self.reader.readuntil(b"\r\n")
+                    chunk_size = chunk[:-2]
 
-                chunk_size = int(chunk_size, 16)  # type: ignore
-                if chunk_size == 0:
-                    break
-                data = await self.reader.readexactly(chunk_size)  # type: ignore
-                await self.reader.readexactly(2)  # crlf
-                yield data
-        self.used = False
+                    chunk_size = int(chunk_size, 16)  # type: ignore
+                    if chunk_size == 0:
+                        break
+                    data = await self.reader.readexactly(chunk_size)  # type: ignore
+                    await self.reader.readexactly(2)  # crlf
+                    yield data
 
     def is_closing(self) -> bool:
         """

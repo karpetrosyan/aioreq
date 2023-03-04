@@ -2,6 +2,8 @@ import asyncio
 import logging
 from abc import ABC
 from abc import abstractmethod
+from typing import TYPE_CHECKING
+from typing import Optional
 from typing import Tuple
 from typing import Union
 
@@ -18,6 +20,11 @@ from .headers import ContentEncoding
 from .headers import SetCookie
 from .headers import TransferEncoding
 
+if TYPE_CHECKING:
+    from .http import Client
+    from .http import Request
+    from .http import Response
+
 log = logging.getLogger(LOGGER_NAME)
 
 default_middlewares = (
@@ -29,7 +36,7 @@ default_middlewares = (
 )
 
 
-def load_class(name):
+def load_class(name: str):
     if "." not in name:
         return globals()[name]
     components = name.split(".")
@@ -40,11 +47,11 @@ def load_class(name):
 
 
 class MiddleWare(ABC):
-    def __init__(self, next_middleware):
+    def __init__(self, next_middleware: Optional["MiddleWare"]):
         self.next_middleware = next_middleware
 
     @abstractmethod
-    async def process(self, request, client):
+    async def process(self, request: "Request", client: "Client"):
         ...
 
     @staticmethod
@@ -59,7 +66,7 @@ class MiddleWare(ABC):
 
 
 class RequestMiddleWare(MiddleWare):
-    async def process(self, request, client):
+    async def process(self, request: "Request", client: "Client") -> "Response":
         resp = await client.send_request_directly(request)
         return resp
 
@@ -75,10 +82,10 @@ class RedirectMiddleWare(MiddleWare):
         self.memory = {}
         super().__init__(*args, **kwargs)
 
-    def contains_location(self, response):
+    def contains_location(self, response: "Response") -> bool:
         return "location" in response.headers
 
-    async def handle_301(self, request, response):
+    async def handle_301(self, request: "Request", response: "Response") -> bool:
         if not self.contains_location(response):
             return False
         new_location = response.headers["location"]
@@ -91,7 +98,7 @@ class RedirectMiddleWare(MiddleWare):
         self.memory[old_url] = str(request.url)
         return True
 
-    async def handle_302(self, request, response):
+    async def handle_302(self, request: "Request", response: "Response") -> bool:
         if not self.contains_location(response):
             return False
         new_location = response.headers["location"]
@@ -100,7 +107,7 @@ class RedirectMiddleWare(MiddleWare):
         request.url = new_location
         return True
 
-    async def handle_303(self, request, response):
+    async def handle_303(self, request: "Request", response: "Response") -> bool:
         if not self.contains_location(response):
             return False
         new_location = response.headers["location"]
@@ -109,26 +116,27 @@ class RedirectMiddleWare(MiddleWare):
 
         request.url = parse_url(new_location)
         request.method = "GET"
-        request.context = b""
+        request.content = b""
         request.url = new_location
         return True
 
-    async def handle_304(self, request, response):
+    async def handle_304(self, request: "Request", response: "Response") -> bool:
         assert True, "304 status code received by the server"
+        return True
 
-    async def handle_305(self, *args, **kwargs):
+    async def handle_305(self, request: "Request", response: "Response") -> bool:
         return False
 
-    async def handle_306(self, request, response):
+    async def handle_306(self, request: "Request", response: "Response") -> bool:
         return False
 
-    async def handle_307(self, request, response):
+    async def handle_307(self, request: "Request", response: "Response") -> bool:
         return await self.handle_302(request, response)
 
-    async def handle_308(self, request, response):
+    async def handle_308(self, request: "Request", response: "Response") -> bool:
         return await self.handle_301(request, response)
 
-    async def process(self, request, client):
+    async def process(self, request: "Request", client: "Client") -> "Response":
         redirect = self.redirect
         response = None
         redirects = []
@@ -140,6 +148,7 @@ class RedirectMiddleWare(MiddleWare):
                 str(request.url) in self.memory
             ):  # take from the memory if it's permanent redirected
                 request.url = self.memory[str(request.url)]
+            assert self.next_middleware
             response = await self.next_middleware.process(request, client)
             if redirect_uri:
                 redirects.append(redirect_uri)
@@ -164,7 +173,7 @@ class RedirectMiddleWare(MiddleWare):
 
 
 class DecodeMiddleWare(MiddleWare):
-    def decode(self, response):
+    def decode(self, response: "Response") -> None:
         for parser, header in (
             (TransferEncoding, "transfer-encoding"),
             (ContentEncoding, "content-encoding"),
@@ -176,9 +185,9 @@ class DecodeMiddleWare(MiddleWare):
                 for encoding in encodings:
                     response.content = encoding.decompress(response.content)
 
-    async def process(self, request, client):
+    async def process(self, request: "Request", client: "Client") -> "Response":
         request.headers.add_header(get_avaliable_encodings())
-
+        assert self.next_middleware
         response = await self.next_middleware.process(request, client)
         self.decode(response)
         return response
@@ -191,12 +200,13 @@ class RetryMiddleWare(MiddleWare):
         self.retry_count = max(self.retry_count + 1, 1)
         super().__init__(*args, **kwargs)
 
-    async def process(self, request, client):
+    async def process(self, request: "Request", client: "Client") -> "Response":
         retry_count = self.retry_count
         response = None
         while retry_count != -1:
             retry_count -= 1
             try:
+                assert self.next_middleware
                 response = await self.next_middleware.process(request, client)
                 break
             except Exception as e:
@@ -204,11 +214,13 @@ class RetryMiddleWare(MiddleWare):
                     raise e
                 if retry_count == -1:
                     raise e
+        assert response
         return response
 
 
 class AuthenticationMiddleWare(MiddleWare):
-    async def process(self, request, client):
+    async def process(self, request: "Request", client: "Client") -> "Response":
+        assert self.next_middleware
         resp = await self.next_middleware.process(request, client)
         if request.auth:
             if resp.status != codes.UNAUTHORIZED:
@@ -223,6 +235,7 @@ class AuthenticationMiddleWare(MiddleWare):
             header_obj = AuthenticationWWW.parse(resp.headers["www-authenticate"])
             for authentication_header in parse_auth_header(header_obj, request, resp):
                 request.headers["authorization"] = authentication_header
+                assert self.next_middleware
                 resp = await self.next_middleware.process(request, client)
                 if resp.status != codes.UNAUTHORIZED:
                     break
@@ -230,8 +243,9 @@ class AuthenticationMiddleWare(MiddleWare):
 
 
 class TimeoutMiddleWare(MiddleWare):
-    async def process(self, request, client):
+    async def process(self, request: "Request", client: "Client") -> "Response":
         try:
+            assert self.next_middleware
             return await asyncio.wait_for(
                 self.next_middleware.process(request, client),
                 timeout=request.timeout or client.timeout,
@@ -241,10 +255,11 @@ class TimeoutMiddleWare(MiddleWare):
 
 
 class CookiesMiddleWare(MiddleWare):
-    async def process(self, request, client):
+    async def process(self, request: "Request", client: "Client") -> "Response":
         cookies = client.cookies.get_raw_cookies(request.url)
         if cookies:
             request.headers["cookie"] = cookies
+        assert self.next_middleware
         resp = await self.next_middleware.process(request, client)
 
         if "set-cookie" in resp.headers:

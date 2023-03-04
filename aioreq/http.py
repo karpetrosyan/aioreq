@@ -2,14 +2,14 @@ import asyncio
 import logging
 from abc import ABCMeta
 from collections import defaultdict
-from typing import AsyncGenerator, TypeVar
+from typing import AsyncGenerator
 from typing import AsyncIterator
 from typing import Dict
-from typing import Iterable
 from typing import List
 from typing import Optional
 from typing import Tuple
 from typing import Type
+from typing import TypeVar
 from typing import Union
 
 from aioreq.connection import Transport
@@ -102,11 +102,13 @@ class BaseResponse:
 
 class Request(BaseRequest):
     """HTTP Request with no additional configurations."""
+
     parse_config = None
 
 
 class JsonRequest(BaseRequest):
     """JSON Request that dumps the context using a json encoder."""
+
     parse_config = configure_json
 
 
@@ -146,7 +148,9 @@ class Response(BaseResponse):
 
 
 class StreamResponse(BaseResponse):
-    """Represents a Streaming Response that can iterate through the incoming data asynchronously."""
+    """Represents a Streaming Response that can
+    iterate through the incoming data asynchronously."""
+
     def __init__(
         self,
         status: int,
@@ -164,6 +168,7 @@ class StreamResponse(BaseResponse):
 
 class BaseClient(metaclass=ABCMeta):
     """The base client for all HTTP clients, implementing all core methods."""
+
     def __init__(
         self,
         headers: Union[Dict[str, str], Headers, None] = None,
@@ -260,8 +265,9 @@ class BaseClient(metaclass=ABCMeta):
 class Client(BaseClient):
     methods = ("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH")
 
-    async def send_request_directly(self, request: Request):
-        """The only method that sends HTTP requests to servers via `Transport` instances."""
+    async def send_request_directly(self, request: Request) -> Response:
+        """The only method that sends HTTP
+        requests to servers via `Transport` instances."""
 
         transport = await self._get_connection(request.url)
         coro = transport.send_http_request(request.get_raw_request())
@@ -271,20 +277,23 @@ class Client(BaseClient):
         resp.request = request
         return resp
 
-    async def _send_request_via_middleware(self, request: BaseRequest):
+    async def _send_request_via_middleware(self, request: BaseRequest) -> Response:
         """Sends Request instances to the middlewares chain.l"""
 
         response = await self.middlewares.process(request, client=self)
         return response
 
-    async def _get_connection(self, url) -> Transport:
+    async def _get_connection(self, url: Uri3986) -> Transport:
         """If a connection to the same IP and port was not found in the
         "connection_mapper", this method returns the newly opened connection;
          otherwise, it returns the previously opened one."""
+
         transport = None
         domain = url.get_domain()
         if self.persistent_connections:
-            log.trace(f"{self.connection_mapper} searching into mapped connections")  # type: ignore
+            log.trace(  # type: ignore
+                f"{self.connection_mapper} " "searching into mapped connections"
+            )
 
             for transport in self.connection_mapper[domain]:
                 if not transport.used:
@@ -299,12 +308,10 @@ class Client(BaseClient):
             ip, port = await resolve_domain(url)
 
             transport = Transport()
-            connection_coroutine = transport.make_connection(
-                ip,
-                port,
-                **{"ssl": True, "server_hostname": domain}
+            connection_coroutine = (
+                transport.make_connection(ip, port, ssl=True, server_hostname=domain)
                 if url.scheme == "https"
-                else {**{"ssl": False, "server_hostname": None}},
+                else transport.make_connection(ip, port, False, None)
             )
             await connection_coroutine
             self.transports.append(transport)
@@ -328,7 +335,8 @@ class Client(BaseClient):
     ) -> Response:
         """
         Builds and sends newly created requests to middlewares.
-        Clients' GET, POST, PATCH, and other methods use this method by default to send requests.
+        Clients' GET, POST, PATCH, and other methods
+        use this method by default to send requests.
         """
         request = self._build_request(
             url=url,
