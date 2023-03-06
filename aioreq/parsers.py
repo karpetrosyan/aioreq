@@ -55,7 +55,19 @@ def configure_json(request):
         payload = _json.dumps(payload)
 
         request.headers["content-type"] = "application/json"
-        request.headers["Content-Length"] = len(payload)
+        request.headers["content-length"] = len(payload)
+        request.content = payload
+
+
+def configure_urlencoded(request):
+    payload = request.content
+
+    if payload:
+        iterable = payload.items() if isinstance(payload, dict) else payload
+        payload = "&".join(f"{key}={value}" for key, value in iterable)
+
+        request.headers["content-type"] = "application/x-www-form-urlencoded"
+        request.headers["content-length"] = len(payload)
         request.content = payload
 
 

@@ -2,7 +2,7 @@ import asyncio
 import logging
 from abc import ABCMeta
 from collections import defaultdict
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Any, Iterable
 from typing import AsyncIterator
 from typing import Dict
 from typing import List
@@ -16,7 +16,7 @@ from aioreq.connection import Transport
 from aioreq.connection import resolve_domain
 from aioreq.cookies import Cookies
 from aioreq.generic import wrap_errors
-from aioreq.parsers import ResponseParser
+from aioreq.parsers import ResponseParser, configure_urlencoded
 from aioreq.parsers import configure_json
 from aioreq.parsers import default_parser
 from aioreq.settings import DEFAULT_TIMEOUT as REQUEST_TIMEOUT
@@ -38,15 +38,15 @@ log = logging.getLogger(LOGGER_NAME)
 
 class BaseRequest:
     def __init__(
-        self,
-        url: Union[Uri3986, str],
-        *,
-        headers: Union[Headers, Dict[str, str], None] = None,
-        method: str = "GET",
-        content: Union[str, bytearray, bytes] = "",
-        params: Optional[Dict[str, str]] = None,
-        auth: Optional[Tuple[str, str]] = None,
-        timeout: Union[int, float, None] = None,
+            self,
+            url: Union[Uri3986, str],
+            *,
+            headers: Union[Headers, Dict[str, str], None] = None,
+            method: str = "GET",
+            content: Any = "",
+            params: Optional[Dict[str, str]] = None,
+            auth: Optional[Tuple[str, str]] = None,
+            timeout: Union[int, float, None] = None,
     ) -> None:
         if isinstance(url, Uri3986):
             self._url = url
@@ -105,23 +105,42 @@ class Request(BaseRequest):
 
     parse_config = None
 
+    def __init__(self, content: Union[str, bytes, bytearray, None] = None,
+                 *args, **kwargs):
+        kwargs["content"] = content
+        super().__init__(*args, **kwargs)
+
 
 class JsonRequest(BaseRequest):
     """JSON Request that dumps the context using a json encoder."""
 
     parse_config = configure_json
 
+    def __init__(self, content: Optional[Dict] = None,
+                 *args, **kwargs):
+        kwargs["content"] = content
+        super().__init__(*args, **kwargs)
+
+
+class UrlEncodedRequest(BaseRequest):
+    parse_config = configure_urlencoded
+
+    def __init__(self, content: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+                 *args, **kwargs):
+        kwargs["content"] = content
+        super().__init__(*args, **kwargs)
+
 
 class Response(BaseResponse):
     """This object represents a simple HTTP response."""
 
     def __init__(
-        self,
-        status: int,
-        status_message: str,
-        headers: Union[Headers, Dict[str, str]],
-        content: bytes,
-        request: Union[Request, None] = None,
+            self,
+            status: int,
+            status_message: str,
+            headers: Union[Headers, Dict[str, str]],
+            content: bytes,
+            request: Union[Request, None] = None,
     ):
         self.status = status
         self.status_message = status_message
@@ -136,11 +155,11 @@ class Response(BaseResponse):
                 f"Can't compare `{type(self).__name__}` with `{type(_value).__name__}`"
             )
         return (
-            self.status == _value.status
-            and self.status_message == _value.status_message
-            and self.headers == _value.headers
-            and self.content == _value.content
-            and self.request == _value.request
+                self.status == _value.status
+                and self.status_message == _value.status_message
+                and self.headers == _value.headers
+                and self.content == _value.content
+                and self.request == _value.request
         )
 
     def __repr__(self) -> str:
@@ -152,12 +171,12 @@ class StreamResponse(BaseResponse):
     iterate through the incoming data asynchronously."""
 
     def __init__(
-        self,
-        status: int,
-        status_message: str,
-        headers: Headers,
-        content: AsyncGenerator,
-        request: Request,
+            self,
+            status: int,
+            status_message: str,
+            headers: Headers,
+            content: AsyncGenerator,
+            request: Request,
     ):
         self.status = status
         self.status_message = status_message
@@ -170,15 +189,15 @@ class BaseClient(metaclass=ABCMeta):
     """The base client for all HTTP clients, implementing all core methods."""
 
     def __init__(
-        self,
-        headers: Union[Dict[str, str], Headers, None] = None,
-        persistent_connections: bool = False,
-        redirect_count: int = REQUEST_REDIRECT_COUNT,
-        retry_count: int = REQUEST_RETRY_COUNT,
-        timeout: Union[int, float] = REQUEST_TIMEOUT,
-        auth: Optional[Tuple[str, str]] = None,
-        middlewares: Optional[Tuple[Union[str, Type[MiddleWare]], ...]] = None,
-        cookies: Optional[Cookies] = None,
+            self,
+            headers: Union[Dict[str, str], Headers, None] = None,
+            persistent_connections: bool = False,
+            redirect_count: int = REQUEST_REDIRECT_COUNT,
+            retry_count: int = REQUEST_RETRY_COUNT,
+            timeout: Union[int, float] = REQUEST_TIMEOUT,
+            auth: Optional[Tuple[str, str]] = None,
+            middlewares: Optional[Tuple[Union[str, Type[MiddleWare]], ...]] = None,
+            cookies: Optional[Cookies] = None,
     ):
         headers = Headers(initial_headers=headers)
 
@@ -204,31 +223,40 @@ class BaseClient(metaclass=ABCMeta):
         self.persistent_connections = persistent_connections
 
     def _build_request(
-        self,
-        url: str,
-        method: str,
-        content: Union[str, bytearray, bytes] = "",
-        json: Union[str, bytearray, bytes] = "",
-        params: Optional[Dict[str, str]] = None,
-        headers: Union[None, Dict[str, str], Headers] = None,
-        auth: Union[Tuple[str, str], None] = None,
-        timeout: Union[int, float, None] = None,
+            self,
+            url: str,
+            method: str,
+            content: Union[str, bytearray, bytes] = "",
+            json: Optional[Dict] = None,
+            urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+            params: Optional[Dict[str, str]] = None,
+            headers: Union[None, Dict[str, str], Headers] = None,
+            auth: Union[Tuple[str, str], None] = None,
+            timeout: Union[int, float, None] = None,
     ) -> BaseRequest:
         """Creates one of the "Request" instances based on attributes."""
 
         headers = Headers(initial_headers=headers)
-        if json and content:
-            msg = (
-                "You cannot use both the `json` and `content` attributes "
-                "simultaneously. Only one of them should be used at a time."
-            )
-            raise ValueError(msg)
+        content_found = False
+
+        for cnt in (content, json, urlencoded):
+            if cnt:
+                if content_found:
+                    msg = (
+                        "You cannot use both the `json` and `content` attributes "
+                        "simultaneously. Only one of them should be used at a time."
+                    )
+                    raise ValueError(msg)
+                content_found = True
 
         if json:
-            request_class: BaseRequest = JsonRequest  # type: ignore
-            content = json
+            request_class: Type[BaseRequest] = JsonRequest  # type: ignore[no-redef]
+            content = json  # type: ignore
+        elif urlencoded:
+            request_class: Type[BaseRequest] = UrlEncodedRequest  # type: ignore[no-redef]
+            content = urlencoded  # type: ignore
         else:
-            request_class: BaseRequest = Request  # type: ignore
+            request_class: Type[BaseRequest] = Request  # type: ignore[no-redef]
 
         request = request_class(  # type: ignore
             url=url,
@@ -323,15 +351,16 @@ class Client(BaseClient):
         return transport
 
     async def _send_request(
-        self,
-        url: str,
-        method: str,
-        content: Union[str, bytearray, bytes] = "",
-        json: Union[str, bytearray, bytes] = "",
-        params: Optional[Dict[str, str]] = None,
-        headers: Union[None, Dict[str, str], Headers] = None,
-        auth: Union[Tuple[str, str], None] = None,
-        timeout: Union[int, float, None] = None,
+            self,
+            url: str,
+            method: str,
+            content: Union[str, bytearray, bytes] = "",
+            json: Optional[Dict] = None,
+            urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+            params: Optional[Dict[str, str]] = None,
+            headers: Union[None, Dict[str, str], Headers] = None,
+            auth: Union[Tuple[str, str], None] = None,
+            timeout: Union[int, float, None] = None,
     ) -> Response:
         """
         Builds and sends newly created requests to middlewares.
@@ -343,6 +372,7 @@ class Client(BaseClient):
             method=method,
             content=content,
             json=json,
+            urlencoded=urlencoded,
             params=params,
             headers=headers,
             auth=auth,
@@ -357,20 +387,22 @@ class Client(BaseClient):
         )
 
     async def get(
-        self,
-        url: str,
-        content: Union[str, bytearray, bytes] = "",
-        json: Union[str, bytearray, bytes] = "",
-        headers: Union[Dict[str, str], None] = None,
-        params: Union[Dict[str, str], None] = None,
-        auth: Union[Tuple[str, str], None] = None,
-        timeout: Union[int, float, None] = None,
+            self,
+            url: str,
+            content: Union[str, bytearray, bytes] = "",
+            json: Optional[Dict] = None,
+            urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+            headers: Union[Dict[str, str], None] = None,
+            params: Union[Dict[str, str], None] = None,
+            auth: Union[Tuple[str, str], None] = None,
+            timeout: Union[int, float, None] = None,
     ) -> Response:
         return await self._send_request(
             url=url,
             method="GET",
             content=content,
             json=json,
+            urlencoded=urlencoded,
             headers=headers,
             params=params,
             auth=auth,
@@ -378,20 +410,22 @@ class Client(BaseClient):
         )
 
     async def post(
-        self,
-        url: str,
-        content: Union[str, bytearray, bytes] = "",
-        json: Union[str, bytearray, bytes] = "",
-        headers: Union[Dict[str, str], None] = None,
-        params: Union[Dict[str, str], None] = None,
-        auth: Union[Tuple[str, str], None] = None,
-        timeout: Union[int, float, None] = None,
+            self,
+            url: str,
+            content: Union[str, bytearray, bytes] = "",
+            json: Optional[Dict] = None,
+            urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+            headers: Union[Dict[str, str], None] = None,
+            params: Union[Dict[str, str], None] = None,
+            auth: Union[Tuple[str, str], None] = None,
+            timeout: Union[int, float, None] = None,
     ) -> Response:
         return await self._send_request(
             url=url,
             method="POST",
             content=content,
             json=json,
+            urlencoded=urlencoded,
             headers=headers,
             params=params,
             auth=auth,
@@ -399,20 +433,22 @@ class Client(BaseClient):
         )
 
     async def put(
-        self,
-        url: str,
-        content: Union[str, bytearray, bytes] = "",
-        json: Union[str, bytearray, bytes] = "",
-        headers: Union[Dict[str, str], None] = None,
-        params: Union[Dict[str, str], None] = None,
-        auth: Union[Tuple[str, str], None] = None,
-        timeout: Union[int, float, None] = None,
+            self,
+            url: str,
+            content: Union[str, bytearray, bytes] = "",
+            json: Optional[Dict] = None,
+            urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+            headers: Union[Dict[str, str], None] = None,
+            params: Union[Dict[str, str], None] = None,
+            auth: Union[Tuple[str, str], None] = None,
+            timeout: Union[int, float, None] = None,
     ) -> Response:
         return await self._send_request(
             url=url,
             method="PUT",
             content=content,
             json=json,
+            urlencoded=urlencoded,
             headers=headers,
             params=params,
             auth=auth,
@@ -420,20 +456,22 @@ class Client(BaseClient):
         )
 
     async def delete(
-        self,
-        url: str,
-        content: Union[str, bytearray, bytes] = "",
-        json: Union[str, bytearray, bytes] = "",
-        headers: Union[Dict[str, str], None] = None,
-        params: Union[Dict[str, str], None] = None,
-        auth: Union[Tuple[str, str], None] = None,
-        timeout: Union[int, float, None] = None,
+            self,
+            url: str,
+            content: Union[str, bytearray, bytes] = "",
+            json: Optional[Dict] = None,
+            urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+            headers: Union[Dict[str, str], None] = None,
+            params: Union[Dict[str, str], None] = None,
+            auth: Union[Tuple[str, str], None] = None,
+            timeout: Union[int, float, None] = None,
     ) -> Response:
         return await self._send_request(
             url=url,
             method="DELETE",
             content=content,
             json=json,
+            urlencoded=urlencoded,
             headers=headers,
             params=params,
             auth=auth,
@@ -441,20 +479,22 @@ class Client(BaseClient):
         )
 
     async def options(
-        self,
-        url: str,
-        content: Union[str, bytearray, bytes] = "",
-        json: Union[str, bytearray, bytes] = "",
-        headers: Union[Dict[str, str], None] = None,
-        params: Union[Dict[str, str], None] = None,
-        auth: Union[Tuple[str, str], None] = None,
-        timeout: Union[int, float, None] = None,
+            self,
+            url: str,
+            content: Union[str, bytearray, bytes] = "",
+            json: Optional[Dict] = None,
+            urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+            headers: Union[Dict[str, str], None] = None,
+            params: Union[Dict[str, str], None] = None,
+            auth: Union[Tuple[str, str], None] = None,
+            timeout: Union[int, float, None] = None,
     ) -> Response:
         return await self._send_request(
             url=url,
             method="OPTIONS",
             content=content,
             json=json,
+            urlencoded=urlencoded,
             headers=headers,
             params=params,
             auth=auth,
@@ -462,20 +502,22 @@ class Client(BaseClient):
         )
 
     async def head(
-        self,
-        url: str,
-        content: Union[str, bytearray, bytes] = "",
-        json: Union[str, bytearray, bytes] = "",
-        headers: Union[Dict[str, str], None] = None,
-        params: Union[Dict[str, str], None] = None,
-        auth: Union[Tuple[str, str], None] = None,
-        timeout: Union[int, float, None] = None,
+            self,
+            url: str,
+            content: Union[str, bytearray, bytes] = "",
+            json: Optional[Dict] = None,
+            urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+            headers: Union[Dict[str, str], None] = None,
+            params: Union[Dict[str, str], None] = None,
+            auth: Union[Tuple[str, str], None] = None,
+            timeout: Union[int, float, None] = None,
     ) -> Response:
         return await self._send_request(
             url=url,
             method="HEAD",
             content=content,
             json=json,
+            urlencoded=urlencoded,
             headers=headers,
             params=params,
             auth=auth,
@@ -483,20 +525,22 @@ class Client(BaseClient):
         )
 
     async def patch(
-        self,
-        url: str,
-        content: Union[str, bytearray, bytes] = "",
-        json: Union[str, bytearray, bytes] = "",
-        headers: Union[Dict[str, str], None] = None,
-        params: Union[Dict[str, str], None] = None,
-        auth: Union[Tuple[str, str], None] = None,
-        timeout: Union[int, float, None] = None,
+            self,
+            url: str,
+            content: Union[str, bytearray, bytes] = "",
+            json: Optional[Dict] = None,
+            urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+            headers: Union[Dict[str, str], None] = None,
+            params: Union[Dict[str, str], None] = None,
+            auth: Union[Tuple[str, str], None] = None,
+            timeout: Union[int, float, None] = None,
     ) -> Response:
         return await self._send_request(
             url=url,
             method="PATCH",
             content=content,
             json=json,
+            urlencoded=urlencoded,
             headers=headers,
             params=params,
             auth=auth,
@@ -512,14 +556,15 @@ class StreamClient(BaseClient):
 
     @classmethod
     def get(
-        cls,
-        url: str,
-        content: Union[str, bytearray, bytes] = "",
-        json: Union[str, bytearray, bytes] = "",
-        headers: Union[Dict[str, str], None] = None,
-        params: Union[Dict[str, str], None] = None,
-        auth: Union[Tuple[str, str], None] = None,
-        timeout: Union[int, float, None] = None,
+            cls,
+            url: str,
+            content: Union[str, bytearray, bytes] = "",
+            json: Optional[Dict] = None,
+            urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+            headers: Union[Dict[str, str], None] = None,
+            params: Union[Dict[str, str], None] = None,
+            auth: Union[Tuple[str, str], None] = None,
+            timeout: Union[int, float, None] = None,
     ):
         self = cls(None)
         request = self._build_request(
@@ -527,6 +572,7 @@ class StreamClient(BaseClient):
             method="GET",
             content=content,
             json=json,
+            urlencoded=urlencoded,
             headers=headers,
             params=params,
             auth=auth,
@@ -537,14 +583,15 @@ class StreamClient(BaseClient):
 
     @classmethod
     def post(
-        cls,
-        url: str,
-        content: Union[str, bytearray, bytes] = "",
-        json: Union[str, bytearray, bytes] = "",
-        headers: Union[Dict[str, str], None] = None,
-        params: Union[Dict[str, str], None] = None,
-        auth: Union[Tuple[str, str], None] = None,
-        timeout: Union[int, float, None] = None,
+            cls,
+            url: str,
+            content: Union[str, bytearray, bytes] = "",
+            json: Optional[Dict] = None,
+            urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+            headers: Union[Dict[str, str], None] = None,
+            params: Union[Dict[str, str], None] = None,
+            auth: Union[Tuple[str, str], None] = None,
+            timeout: Union[int, float, None] = None,
     ):
         self = cls(None)
         request = self._build_request(
@@ -552,6 +599,7 @@ class StreamClient(BaseClient):
             method="POST",
             content=content,
             json=json,
+            urlencoded=urlencoded,
             headers=headers,
             params=params,
             auth=auth,
@@ -562,14 +610,15 @@ class StreamClient(BaseClient):
 
     @classmethod
     def put(
-        cls,
-        url: str,
-        content: Union[str, bytearray, bytes] = "",
-        json: Union[str, bytearray, bytes] = "",
-        headers: Union[Dict[str, str], None] = None,
-        params: Union[Dict[str, str], None] = None,
-        auth: Union[Tuple[str, str], None] = None,
-        timeout: Union[int, float, None] = None,
+            cls,
+            url: str,
+            content: Union[str, bytearray, bytes] = "",
+            json: Optional[Dict] = None,
+            urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+            headers: Union[Dict[str, str], None] = None,
+            params: Union[Dict[str, str], None] = None,
+            auth: Union[Tuple[str, str], None] = None,
+            timeout: Union[int, float, None] = None,
     ):
         self = cls(None)
         request = self._build_request(
@@ -577,6 +626,7 @@ class StreamClient(BaseClient):
             method="PUT",
             content=content,
             json=json,
+            urlencoded=urlencoded,
             headers=headers,
             params=params,
             auth=auth,
@@ -587,14 +637,15 @@ class StreamClient(BaseClient):
 
     @classmethod
     def delete(
-        cls,
-        url: str,
-        content: Union[str, bytearray, bytes] = "",
-        json: Union[str, bytearray, bytes] = "",
-        headers: Union[Dict[str, str], None] = None,
-        params: Union[Dict[str, str], None] = None,
-        auth: Union[Tuple[str, str], None] = None,
-        timeout: Union[int, float, None] = None,
+            cls,
+            url: str,
+            content: Union[str, bytearray, bytes] = "",
+            json: Optional[Dict] = None,
+            urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+            headers: Union[Dict[str, str], None] = None,
+            params: Union[Dict[str, str], None] = None,
+            auth: Union[Tuple[str, str], None] = None,
+            timeout: Union[int, float, None] = None,
     ):
         self = cls(None)
         request = self._build_request(
@@ -602,6 +653,7 @@ class StreamClient(BaseClient):
             method="DELETE",
             content=content,
             json=json,
+            urlencoded=urlencoded,
             headers=headers,
             params=params,
             auth=auth,
@@ -612,14 +664,15 @@ class StreamClient(BaseClient):
 
     @classmethod
     def patch(
-        cls,
-        url: str,
-        content: Union[str, bytearray, bytes] = "",
-        json: Union[str, bytearray, bytes] = "",
-        headers: Union[Dict[str, str], None] = None,
-        params: Union[Dict[str, str], None] = None,
-        auth: Union[Tuple[str, str], None] = None,
-        timeout: Union[int, float, None] = None,
+            cls,
+            url: str,
+            content: Union[str, bytearray, bytes] = "",
+            json: Optional[Dict] = None,
+            urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+            headers: Union[Dict[str, str], None] = None,
+            params: Union[Dict[str, str], None] = None,
+            auth: Union[Tuple[str, str], None] = None,
+            timeout: Union[int, float, None] = None,
     ):
         self = cls(None)
         request = self._build_request(
@@ -627,6 +680,7 @@ class StreamClient(BaseClient):
             method="PATCH",
             content=content,
             json=json,
+            urlencoded=urlencoded,
             headers=headers,
             params=params,
             auth=auth,
@@ -637,14 +691,15 @@ class StreamClient(BaseClient):
 
     @classmethod
     def options(
-        cls,
-        url: str,
-        content: Union[str, bytearray, bytes] = "",
-        json: Union[str, bytearray, bytes] = "",
-        headers: Union[Dict[str, str], None] = None,
-        params: Union[Dict[str, str], None] = None,
-        auth: Union[Tuple[str, str], None] = None,
-        timeout: Union[int, float, None] = None,
+            cls,
+            url: str,
+            content: Union[str, bytearray, bytes] = "",
+            json: Optional[Dict] = None,
+            urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+            headers: Union[Dict[str, str], None] = None,
+            params: Union[Dict[str, str], None] = None,
+            auth: Union[Tuple[str, str], None] = None,
+            timeout: Union[int, float, None] = None,
     ):
         self = cls(None)
         request = self._build_request(
@@ -652,6 +707,7 @@ class StreamClient(BaseClient):
             method="OPTIONS",
             content=content,
             json=json,
+            urlencoded=urlencoded,
             headers=headers,
             params=params,
             auth=auth,
@@ -662,14 +718,15 @@ class StreamClient(BaseClient):
 
     @classmethod
     def head(
-        cls,
-        url: str,
-        content: Union[str, bytearray, bytes] = "",
-        json: Union[str, bytearray, bytes] = "",
-        headers: Union[Dict[str, str], None] = None,
-        params: Union[Dict[str, str], None] = None,
-        auth: Union[Tuple[str, str], None] = None,
-        timeout: Union[int, float, None] = None,
+            cls,
+            url: str,
+            content: Union[str, bytearray, bytes] = "",
+            json: Optional[Dict] = None,
+            urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+            headers: Union[Dict[str, str], None] = None,
+            params: Union[Dict[str, str], None] = None,
+            auth: Union[Tuple[str, str], None] = None,
+            timeout: Union[int, float, None] = None,
     ):
         self = cls(None)
         request = self._build_request(
@@ -677,6 +734,7 @@ class StreamClient(BaseClient):
             method="HEAD",
             content=content,
             json=json,
+            urlencoded=urlencoded,
             headers=headers,
             params=params,
             auth=auth,
