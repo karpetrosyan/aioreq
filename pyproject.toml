@@ -92,3 +92,6 @@ include = [
 
 [tool.pytest.ini_options]
 addopts = ""
+
+[tool.mypy]
+allow_redefinition = true

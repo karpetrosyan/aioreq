@@ -87,10 +87,10 @@ def _trace(message, *args, **kwargs):
 main_logger = logging.getLogger(LOGGER_NAME)
 main_logger.trace = _trace  # type: ignore
 main_logger.propagate = False
-main_logger.setLevel(MAIN_LOGGER_LEVEL)
+main_logger.setLevel(MAIN_LOGGER_LEVEL)  # type: ignore
 
 handler = logging.StreamHandler()
-handler.setLevel(STREAM_HANDLER_LEVEL)
+handler.setLevel(STREAM_HANDLER_LEVEL)  # type: ignore
 
 formatter = logging.Formatter(FORMAT)
 
