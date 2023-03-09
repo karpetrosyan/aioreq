@@ -294,8 +294,8 @@ class BaseClient(metaclass=ABCMeta):
             if cnt:
                 if content_found:
                     msg = (
-                        "You cannot use both the `json` and `content` attributes "
-                        "simultaneously. Only one of them should be used at a time."
+                        "You can only use one of those parameters"
+                        " (`content`, `json`, `urlencoded`)"
                     )
                     raise ValueError(msg)
                 content_found = True
