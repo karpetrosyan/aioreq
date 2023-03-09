@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 1.0.5
+
+### Added
+
+* `urlencoded` parameter for (get, post, ...) methods
+* `UrlEncodedRequest` class
+* `json` parameter for (get, post, ...) methods
+* Digest authorization support
+
 ## 1.0.4
 
 ### Removed
