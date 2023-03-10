@@ -18,10 +18,17 @@ res.nameservers = ["1.1.1.1", "8.8.8.8"]
 
 log = logging.getLogger(LOGGER_NAME)
 
-context = _ssl.create_default_context()
-context.keylog_filename = os.getenv("SSLKEYLOGFILE")  # type: ignore
-context.check_hostname = True
-context.verify_mode = True  # type: ignore
+
+def load_ssl_context(
+    check_hostname: bool = True,
+    verify_mode: bool = True,
+    keylog_filename: Optional[str] = None,
+) -> _ssl.SSLContext:
+    context = _ssl.create_default_context()
+    context.keylog_filename = keylog_filename or os.getenv("SSLKEYLOGFILE")
+    context.check_hostname = check_hostname
+    context.verify_mode = verify_mode  # type: ignore
+    return context
 
 
 async def get_address(host):
@@ -80,15 +87,36 @@ class Transport:
         await self.writer.drain()
 
     async def make_connection(
-        self, ip: str, port: int, ssl: bool, server_hostname
+        self,
+        ip: str,
+        port: int,
+        ssl: bool,
+        server_hostname: Optional[str],
+        verify_mode: bool,
+        check_hostname: bool,
+        keylog_filename: Optional[str],
     ) -> None:
         log.trace(f"{ip}, {port}")  # type: ignore
-        reader, writer = await asyncio.open_connection(
-            host=ip,
-            port=port,
-            ssl=context if ssl else None,
-            server_hostname=server_hostname,
-        )
+
+        if ssl:
+            context = load_ssl_context(
+                verify_mode=verify_mode,
+                check_hostname=check_hostname,
+                keylog_filename=keylog_filename,
+            )
+            reader, writer = await asyncio.open_connection(
+                host=ip,
+                port=port,
+                ssl=context,
+                server_hostname=server_hostname,
+            )
+        else:
+            reader, writer = await asyncio.open_connection(
+                host=ip,
+                port=port,
+                ssl=None,
+                server_hostname=None,
+            )
         self.reader = reader
         self.writer = writer
 

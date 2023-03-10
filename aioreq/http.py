@@ -50,6 +50,9 @@ class BaseRequest:
         params: Optional[Dict[str, str]] = None,
         auth: Optional[Tuple[str, str]] = None,
         timeout: Union[int, float, None] = None,
+        check_hostname: bool = True,
+        verify_mode: bool = True,
+        keylog_filename: Optional[str] = None,
     ) -> None:
         if isinstance(url, Uri3986):
             self._url = url
@@ -72,6 +75,9 @@ class BaseRequest:
         self.method = method
         self.content = content
         self._raw_request: Optional[bytes] = None
+        self.check_hostname = check_hostname
+        self.verify_mode = verify_mode
+        self.keylog_filename = keylog_filename
 
     @property
     def url(self) -> Union[Uri3986]:
@@ -118,6 +124,9 @@ class Request(BaseRequest):
         params: Optional[Dict[str, str]] = None,
         auth: Optional[Tuple[str, str]] = None,
         timeout: Union[int, float, None] = None,
+        check_hostname: bool = True,
+        verify_mode: bool = True,
+        keylog_filename: Optional[str] = None,
     ):
         super().__init__(
             url=url,
@@ -127,6 +136,9 @@ class Request(BaseRequest):
             params=params,
             auth=auth,
             timeout=timeout,
+            check_hostname=check_hostname,
+            verify_mode=verify_mode,
+            keylog_filename=keylog_filename,
         )
 
 
@@ -145,6 +157,9 @@ class JsonRequest(BaseRequest):
         params: Optional[Dict[str, str]] = None,
         auth: Optional[Tuple[str, str]] = None,
         timeout: Union[int, float, None] = None,
+        check_hostname: bool = True,
+        verify_mode: bool = True,
+        keylog_filename: Optional[str] = None,
     ):
         super().__init__(
             url=url,
@@ -154,6 +169,9 @@ class JsonRequest(BaseRequest):
             params=params,
             auth=auth,
             timeout=timeout,
+            check_hostname=check_hostname,
+            verify_mode=verify_mode,
+            keylog_filename=keylog_filename,
         )
 
 
@@ -170,6 +188,9 @@ class UrlEncodedRequest(BaseRequest):
         params: Optional[Dict[str, str]] = None,
         auth: Optional[Tuple[str, str]] = None,
         timeout: Union[int, float, None] = None,
+        check_hostname: bool = True,
+        verify_mode: bool = True,
+        keylog_filename: Optional[str] = None,
     ):
         super().__init__(
             url=url,
@@ -179,6 +200,9 @@ class UrlEncodedRequest(BaseRequest):
             params=params,
             auth=auth,
             timeout=timeout,
+            check_hostname=check_hostname,
+            verify_mode=verify_mode,
+            keylog_filename=keylog_filename,
         )
 
 
@@ -284,6 +308,9 @@ class BaseClient(metaclass=ABCMeta):
         headers: Union[None, Dict[str, str], Headers] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
+        check_hostname: bool = True,
+        verify_mode: bool = True,
+        keylog_filename: Optional[str] = None,
     ) -> BaseRequest:
         """Creates one of the "Request" instances based on attributes."""
 
@@ -317,6 +344,9 @@ class BaseClient(metaclass=ABCMeta):
             content=content,
             auth=auth,
             timeout=timeout,
+            check_hostname=check_hostname,
+            verify_mode=verify_mode,
+            keylog_filename=keylog_filename,
         )
         return request
 
@@ -348,7 +378,12 @@ class Client(BaseClient):
         """The only method that sends HTTP
         requests to servers via `Transport` instances."""
 
-        transport = await self._get_connection(request.url)
+        transport = await self._get_connection(
+            url=request.url,
+            check_hostname=request.check_hostname,
+            verify_mode=request.verify_mode,
+            keylog_filename=request.keylog_filename,
+        )
         coro = transport.send_http_request(request.get_raw_request())
         with wrap_errors():
             status_line, header_line, content = await coro
@@ -362,7 +397,13 @@ class Client(BaseClient):
         response = await self.middlewares.process(request, client=self)
         return response
 
-    async def _get_connection(self, url: Uri3986) -> Transport:
+    async def _get_connection(
+        self,
+        url: Uri3986,
+        verify_mode: bool,
+        check_hostname: bool,
+        keylog_filename: Optional[str],
+    ) -> Transport:
         """If a connection to the same IP and port was not found in the
         "connection_mapper", this method returns the newly opened connection;
          otherwise, it returns the previously opened one."""
@@ -387,11 +428,16 @@ class Client(BaseClient):
             ip, port = await resolve_domain(url)
 
             transport = Transport()
-            connection_coroutine = (
-                transport.make_connection(ip, port, ssl=True, server_hostname=domain)
-                if url.scheme == "https"
-                else transport.make_connection(ip, port, False, None)
+            connection_coroutine = transport.make_connection(
+                ip,
+                port,
+                ssl=url.scheme == "https",
+                server_hostname=domain,
+                check_hostname=check_hostname,
+                verify_mode=verify_mode,
+                keylog_filename=keylog_filename,
             )
+
             await connection_coroutine
             self.transports.append(transport)
 
@@ -412,6 +458,9 @@ class Client(BaseClient):
         headers: Union[None, Dict[str, str], Headers] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
+        check_hostname: bool = True,
+        verify_mode: bool = True,
+        keylog_filename: Optional[str] = None,
     ) -> Response:
         """
         Builds and sends newly created requests to middlewares.
@@ -428,6 +477,9 @@ class Client(BaseClient):
             headers=headers,
             auth=auth,
             timeout=timeout,
+            check_hostname=check_hostname,
+            verify_mode=verify_mode,
+            keylog_filename=keylog_filename,
         )
         return await self._send_request_via_middleware(request)
 
@@ -447,6 +499,9 @@ class Client(BaseClient):
         params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
+        check_hostname: bool = True,
+        verify_mode: bool = True,
+        keylog_filename: Optional[str] = None,
     ) -> Response:
         return await self._send_request(
             url=url,
@@ -458,6 +513,9 @@ class Client(BaseClient):
             params=params,
             auth=auth,
             timeout=timeout,
+            check_hostname=check_hostname,
+            verify_mode=verify_mode,
+            keylog_filename=keylog_filename,
         )
 
     async def post(
@@ -470,6 +528,9 @@ class Client(BaseClient):
         params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
+        check_hostname: bool = True,
+        verify_mode: bool = True,
+        keylog_filename: Optional[str] = None,
     ) -> Response:
         return await self._send_request(
             url=url,
@@ -481,6 +542,9 @@ class Client(BaseClient):
             params=params,
             auth=auth,
             timeout=timeout,
+            check_hostname=check_hostname,
+            verify_mode=verify_mode,
+            keylog_filename=keylog_filename,
         )
 
     async def put(
@@ -493,6 +557,9 @@ class Client(BaseClient):
         params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
+        check_hostname: bool = True,
+        verify_mode: bool = True,
+        keylog_filename: Optional[str] = None,
     ) -> Response:
         return await self._send_request(
             url=url,
@@ -504,6 +571,9 @@ class Client(BaseClient):
             params=params,
             auth=auth,
             timeout=timeout,
+            check_hostname=check_hostname,
+            verify_mode=verify_mode,
+            keylog_filename=keylog_filename,
         )
 
     async def delete(
@@ -516,6 +586,9 @@ class Client(BaseClient):
         params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
+        check_hostname: bool = True,
+        verify_mode: bool = True,
+        keylog_filename: Optional[str] = None,
     ) -> Response:
         return await self._send_request(
             url=url,
@@ -527,6 +600,9 @@ class Client(BaseClient):
             params=params,
             auth=auth,
             timeout=timeout,
+            check_hostname=check_hostname,
+            verify_mode=verify_mode,
+            keylog_filename=keylog_filename,
         )
 
     async def options(
@@ -539,6 +615,9 @@ class Client(BaseClient):
         params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
+        check_hostname: bool = True,
+        verify_mode: bool = True,
+        keylog_filename: Optional[str] = None,
     ) -> Response:
         return await self._send_request(
             url=url,
@@ -550,6 +629,9 @@ class Client(BaseClient):
             params=params,
             auth=auth,
             timeout=timeout,
+            check_hostname=check_hostname,
+            verify_mode=verify_mode,
+            keylog_filename=keylog_filename,
         )
 
     async def head(
@@ -562,6 +644,9 @@ class Client(BaseClient):
         params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
+        check_hostname: bool = True,
+        verify_mode: bool = True,
+        keylog_filename: Optional[str] = None,
     ) -> Response:
         return await self._send_request(
             url=url,
@@ -573,6 +658,9 @@ class Client(BaseClient):
             params=params,
             auth=auth,
             timeout=timeout,
+            check_hostname=check_hostname,
+            verify_mode=verify_mode,
+            keylog_filename=keylog_filename,
         )
 
     async def patch(
@@ -585,6 +673,9 @@ class Client(BaseClient):
         params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
+        check_hostname: bool = True,
+        verify_mode: bool = True,
+        keylog_filename: Optional[str] = None,
     ) -> Response:
         return await self._send_request(
             url=url,
@@ -596,6 +687,38 @@ class Client(BaseClient):
             params=params,
             auth=auth,
             timeout=timeout,
+            check_hostname=check_hostname,
+            verify_mode=verify_mode,
+            keylog_filename=keylog_filename,
+        )
+
+    async def link(
+        self,
+        url: str,
+        content: Union[str, bytearray, bytes] = "",
+        json: Optional[Dict] = None,
+        urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+        headers: Union[Dict[str, str], None] = None,
+        params: Union[Dict[str, str], None] = None,
+        auth: Union[Tuple[str, str], None] = None,
+        timeout: Union[int, float, None] = None,
+        check_hostname: bool = True,
+        verify_mode: bool = True,
+        keylog_filename: Optional[str] = None,
+    ) -> Response:
+        return await self._send_request(
+            url=url,
+            method="LINK",
+            content=content,
+            json=json,
+            urlencoded=urlencoded,
+            headers=headers,
+            params=params,
+            auth=auth,
+            timeout=timeout,
+            check_hostname=check_hostname,
+            verify_mode=verify_mode,
+            keylog_filename=keylog_filename,
         )
 
 
@@ -616,6 +739,9 @@ class StreamClient(BaseClient):
         params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
+        check_hostname: bool = True,
+        verify_mode: bool = True,
+        keylog_filename: Optional[str] = None,
     ):
         self = cls(None)
         request = self._build_request(
@@ -628,6 +754,9 @@ class StreamClient(BaseClient):
             params=params,
             auth=auth,
             timeout=timeout,
+            check_hostname=check_hostname,
+            verify_mode=verify_mode,
+            keylog_filename=keylog_filename,
         )
         self.request = request
         return self
@@ -643,6 +772,9 @@ class StreamClient(BaseClient):
         params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
+        check_hostname: bool = True,
+        verify_mode: bool = True,
+        keylog_filename: Optional[str] = None,
     ):
         self = cls(None)
         request = self._build_request(
@@ -655,6 +787,9 @@ class StreamClient(BaseClient):
             params=params,
             auth=auth,
             timeout=timeout,
+            check_hostname=check_hostname,
+            verify_mode=verify_mode,
+            keylog_filename=keylog_filename,
         )
         self.request = request
         return self
@@ -670,6 +805,9 @@ class StreamClient(BaseClient):
         params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
+        check_hostname: bool = True,
+        verify_mode: bool = True,
+        keylog_filename: Optional[str] = None,
     ):
         self = cls(None)
         request = self._build_request(
@@ -682,6 +820,9 @@ class StreamClient(BaseClient):
             params=params,
             auth=auth,
             timeout=timeout,
+            check_hostname=check_hostname,
+            verify_mode=verify_mode,
+            keylog_filename=keylog_filename,
         )
         self.request = request
         return self
@@ -697,6 +838,9 @@ class StreamClient(BaseClient):
         params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
+        check_hostname: bool = True,
+        verify_mode: bool = True,
+        keylog_filename: Optional[str] = None,
     ):
         self = cls(None)
         request = self._build_request(
@@ -709,6 +853,9 @@ class StreamClient(BaseClient):
             params=params,
             auth=auth,
             timeout=timeout,
+            check_hostname=check_hostname,
+            verify_mode=verify_mode,
+            keylog_filename=keylog_filename,
         )
         self.request = request
         return self
@@ -724,6 +871,9 @@ class StreamClient(BaseClient):
         params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
+        check_hostname: bool = True,
+        verify_mode: bool = True,
+        keylog_filename: Optional[str] = None,
     ):
         self = cls(None)
         request = self._build_request(
@@ -736,6 +886,9 @@ class StreamClient(BaseClient):
             params=params,
             auth=auth,
             timeout=timeout,
+            check_hostname=check_hostname,
+            verify_mode=verify_mode,
+            keylog_filename=keylog_filename,
         )
         self.request = request
         return self
@@ -751,6 +904,9 @@ class StreamClient(BaseClient):
         params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
+        check_hostname: bool = True,
+        verify_mode: bool = True,
+        keylog_filename: Optional[str] = None,
     ):
         self = cls(None)
         request = self._build_request(
@@ -763,6 +919,9 @@ class StreamClient(BaseClient):
             params=params,
             auth=auth,
             timeout=timeout,
+            check_hostname=check_hostname,
+            verify_mode=verify_mode,
+            keylog_filename=keylog_filename,
         )
         self.request = request
         return self
@@ -778,6 +937,9 @@ class StreamClient(BaseClient):
         params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
         timeout: Union[int, float, None] = None,
+        check_hostname: bool = True,
+        verify_mode: bool = True,
+        keylog_filename: Optional[str] = None,
     ):
         self = cls(None)
         request = self._build_request(
@@ -790,6 +952,42 @@ class StreamClient(BaseClient):
             params=params,
             auth=auth,
             timeout=timeout,
+            check_hostname=check_hostname,
+            verify_mode=verify_mode,
+            keylog_filename=keylog_filename,
+        )
+        self.request = request
+        return self
+
+    @classmethod
+    def link(
+        cls,
+        url: str,
+        content: Union[str, bytearray, bytes] = "",
+        json: Optional[Dict] = None,
+        urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+        headers: Union[Dict[str, str], None] = None,
+        params: Union[Dict[str, str], None] = None,
+        auth: Union[Tuple[str, str], None] = None,
+        timeout: Union[int, float, None] = None,
+        check_hostname: bool = True,
+        verify_mode: bool = True,
+        keylog_filename: Optional[str] = None,
+    ):
+        self = cls(None)
+        request = self._build_request(
+            url=url,
+            method="LINK",
+            content=content,
+            json=json,
+            urlencoded=urlencoded,
+            headers=headers,
+            params=params,
+            auth=auth,
+            timeout=timeout,
+            check_hostname=check_hostname,
+            verify_mode=verify_mode,
+            keylog_filename=keylog_filename,
         )
         self.request = request
         return self
@@ -809,9 +1007,11 @@ class StreamClient(BaseClient):
         await transport.make_connection(
             ip,
             port,
-            **{"ssl": True, "server_hostname": domain}
-            if request.url.scheme == "https"
-            else {**{"ssl": False, "server_hostname": None}},
+            ssl=request.url.scheme == "https",
+            server_hostname=domain,
+            check_hostname=request.check_hostname,
+            verify_mode=request.verify_mode,
+            keylog_filename=request.keylog_filename,
         )
         self.transport = transport
         coro = transport.send_http_stream_request(request.get_raw_request())

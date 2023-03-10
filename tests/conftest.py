@@ -62,7 +62,7 @@ def tox(pytestconfig):
 
 
 @pytest.fixture(scope="session")
-def SERVER_URL():
+def SERVER_URL(session_start):
     return CONSTANTS["SERVER_URL"]
 
 
