@@ -63,4 +63,4 @@ def get_avaliable_encodings():
     from .headers import AcceptEncoding
 
     encodings = tuple((encoding, 1) for encoding in Encoding.all_encodings)
-    return AcceptEncoding(encodings[0])
+    return AcceptEncoding(*encodings)

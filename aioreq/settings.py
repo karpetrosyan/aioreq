@@ -40,6 +40,8 @@ log_format_mapper = {
     "$message": "%(message)s",
 }
 
+DEFAULT_HEADERS = {"user-agent": "python/aioreq", "Accept": "*/*"}
+
 LOGGER_NAME = parser.get("Logging", "logger_name")
 
 MAIN_LOGGER_LEVEL = parser.get("Logging", "logger_level")

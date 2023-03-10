@@ -1,4 +1,6 @@
+import aioreq
 from aioreq.http import Headers
+from aioreq.settings import DEFAULT_HEADERS
 
 
 def test_HeaderDict_base():
@@ -29,3 +31,8 @@ def test_header_or():
     headers = Headers({"1": "2"})
     headers1 = Headers({"1": "3", "2": "4"})
     assert (headers | headers1)._headers == {"1": "3", "2": "4"}
+
+
+def test_default_headers():
+    cl = aioreq.Client()
+    cl.headers == DEFAULT_HEADERS
