@@ -27,6 +27,9 @@ classifiers = [
     "Framework :: AsyncIO",
 ]
 
+[project.scripts]
+aioreq = "aioreq.cli:main"
+
 [project.urls]
 Homepage = "https://github.com/karosis88/aioerq"
 Source = "https://github.com/karosis88/aioreq"

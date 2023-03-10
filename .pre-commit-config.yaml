@@ -26,4 +26,4 @@ repos:
     rev: v0.5.0
     hooks:
       - id: remove-print-statements
-        args: [ '--verbose' ]   # Show all the print statements to be removed
+        args: [ '--verbose', '--ignore', 'aioreq/cli.py' ]   # Show all the print statements to be removed

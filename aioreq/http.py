@@ -34,6 +34,7 @@ from .middlewares import MiddleWare
 from .middlewares import RedirectMiddleWare
 from .middlewares import RetryMiddleWare
 from .middlewares import default_middlewares
+from .settings import DEFAULT_HEADERS
 
 BR = TypeVar("BR", bound="BaseRequest")
 log = logging.getLogger(LOGGER_NAME)
@@ -274,7 +275,9 @@ class BaseClient(metaclass=ABCMeta):
         middlewares: Optional[Tuple[Union[str, Type[MiddleWare]], ...]] = None,
         cookies: Optional[Cookies] = None,
     ):
-        headers = Headers(initial_headers=headers)
+        headers = Headers(initial_headers=DEFAULT_HEADERS) | Headers(
+            initial_headers=headers
+        )
 
         if isinstance(cookies, Cookies):
             self.cookies = cookies
