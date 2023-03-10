@@ -36,9 +36,7 @@ async def ping(request):
 
 
 async def redirect(request):
-    return RedirectResponse(
-        "/redirected", status_code=301
-    )
+    return RedirectResponse("/redirected", status_code=301)
 
 
 async def redirected(request):
@@ -76,12 +74,6 @@ routes = [
     Route("/set-cookie", set_cookie),
 ]
 
-middlewares = [
-    Middleware(
-        GZipMiddleware
-    )
-]
+middlewares = [Middleware(GZipMiddleware)]
 
-app = Starlette(routes=routes,
-                middleware=middlewares,
-                on_startup=[startup])
+app = Starlette(routes=routes, middleware=middlewares, on_startup=[startup])

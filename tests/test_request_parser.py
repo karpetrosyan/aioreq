@@ -1,7 +1,8 @@
 import pytest
 
-from aioreq.http import JsonRequest, UrlEncodedRequest
+from aioreq.http import JsonRequest
 from aioreq.http import Request
+from aioreq.http import UrlEncodedRequest
 from aioreq.parsers import default_parser
 from aioreq.urls import parse_url
 
@@ -85,22 +86,22 @@ class TestRequestParser:
                 ),
             ),
             (
-                    UrlEncodedRequest(
-                        url=parse_url("http://chxko.am/chxkopath"),
-                        method="LINK",
-                        headers={"testheader": "testvalue", "testchxko": "chxko"},
-                        content=(('a', 'b'), ('c', 'd')),
-                    ),
-                    (
-                            "LINK /chxkopath HTTP/1.1\r\n"
-                            "host:  chxko.am\r\n"
-                            "testheader:  testvalue\r\n"
-                            "testchxko:  chxko\r\n"
-                            "content-type:  application/x-www-form-urlencoded\r\n"
-                            "content-length:  7\r\n"
-                            "\r\n"
-                            'a=b&c=d'
-                    ),
+                UrlEncodedRequest(
+                    url=parse_url("http://chxko.am/chxkopath"),
+                    method="LINK",
+                    headers={"testheader": "testvalue", "testchxko": "chxko"},
+                    content=(("a", "b"), ("c", "d")),
+                ),
+                (
+                    "LINK /chxkopath HTTP/1.1\r\n"
+                    "host:  chxko.am\r\n"
+                    "testheader:  testvalue\r\n"
+                    "testchxko:  chxko\r\n"
+                    "content-type:  application/x-www-form-urlencoded\r\n"
+                    "content-length:  7\r\n"
+                    "\r\n"
+                    "a=b&c=d"
+                ),
             ),
         ],
     )

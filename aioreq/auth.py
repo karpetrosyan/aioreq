@@ -84,7 +84,9 @@ def authenticate_digest(params, request, response) -> str:
         f'uri="{path}"'
     )
     if qop:
-        authorization_string += f', qop={qop}, nc={nc_value}, cnonce="{cnonce}", '  # type: ignore
+        authorization_string += (
+            f", qop={qop}, " f'nc={nc_value}, cnonce="{cnonce}", '  # type: ignore
+        )
     authorization_string += f', response="{response}"'
     if opaque:
         authorization_string += f', opaque="{opaque}"'

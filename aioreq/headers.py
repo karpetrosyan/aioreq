@@ -19,10 +19,10 @@ from aioreq.cookies import Cookie6265
 from aioreq.cookies import default_path
 from aioreq.parsers import DateParser6265
 from aioreq.settings import LOGGER_NAME
-from .urls import Uri3986
 
 from .encodings import Encoding
 from .encodings import Encodings
+from .urls import Uri3986
 
 log = logging.getLogger(LOGGER_NAME)
 

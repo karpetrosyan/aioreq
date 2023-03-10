@@ -5,7 +5,10 @@ from .base import AioreqError
 
 class UrlParsingError(AioreqError):
     def __init__(self, *args):
-        text = "Can't handle this URL parsing error, please report your problem and help this project to be better"
+        text = (
+            "Can't handle this URL parsing error,"
+            " please report your problem and help this project to be better"
+        )
 
         for i in range(1):
             (url,) = args
