@@ -61,7 +61,7 @@ def preview(func=None, text=""):
 
 
 @preview(text="HEADERS")
-def write_headers(http_unit, /):
+def write_headers(http_unit):
     for key, value in http_unit.headers._headers.items():
         print(f"{key}: {value}")
 
@@ -104,7 +104,9 @@ def build_headers(parsed_headers):
 
 
 async def _main():
-    async with aioreq.Client(persistent_connections=False) as client:
+    async with aioreq.Client(
+        persistent_connections=False, redirect_count=0, retry_count=0
+    ) as client:
         url = args.url
         data = args.data
         method = args.method
@@ -112,7 +114,10 @@ async def _main():
         parsed_headers = build_headers(client.headers)
 
         request = aioreq.Request(
-            url=url, method=method, content=data, headers=parsed_headers
+            url=url,
+            method=method,
+            content=data,
+            headers=parsed_headers,
         )
 
         response = await client.send_request(request)

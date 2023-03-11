@@ -7,13 +7,14 @@ from aioreq.connection import load_ssl_context
 
 
 def test_load_context():
-    context = load_ssl_context(
-        check_hostname=True, verify_mode=True, keylog_filename="test.log"
-    )
+    with tempfile.NamedTemporaryFile() as tf:
+        context = load_ssl_context(
+            check_hostname=True, verify_mode=True, keylog_filename=tf.name
+        )
 
-    assert context.check_hostname
-    assert context.verify_mode
-    assert context.keylog_filename == "test.log"
+        assert context.check_hostname
+        assert context.verify_mode
+        assert context.keylog_filename == tf.name
 
 
 @pytest.mark.asyncio

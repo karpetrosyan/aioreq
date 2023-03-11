@@ -12,3 +12,4 @@ oldvenv
 .idea
 site
 .tox
+.coverage

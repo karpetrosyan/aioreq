@@ -25,7 +25,9 @@ def load_ssl_context(
     keylog_filename: Optional[str] = None,
 ) -> _ssl.SSLContext:
     context = _ssl.create_default_context()
-    context.keylog_filename = keylog_filename or os.getenv("SSLKEYLOGFILE")
+    context.keylog_filename = keylog_filename or os.getenv(  # type: ignore
+        "SSLKEYLOGFILE"
+    )
     context.check_hostname = check_hostname
     context.verify_mode = verify_mode  # type: ignore
     return context

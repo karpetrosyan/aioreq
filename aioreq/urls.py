@@ -1,6 +1,7 @@
 import ipaddress
 import re
-from typing import Optional, Dict, List
+from typing import Dict
+from typing import Optional
 
 
 def parse_url(url: str) -> "Uri3986":
@@ -8,8 +9,17 @@ def parse_url(url: str) -> "Uri3986":
 
 
 class Uri3986:
-    def __init__(self, scheme: str, ip: Optional[str], port: Optional[int], host,
-                 userinfo: Optional[str], path: Optional[str], query: Dict[str, str], fragment: Optional[str]):
+    def __init__(
+        self,
+        scheme: str,
+        ip: Optional[str],
+        port: Optional[int],
+        host,
+        userinfo: Optional[str],
+        path: Optional[str],
+        query: Dict[str, str],
+        fragment: Optional[str],
+    ):
         self.scheme = scheme
         self.ip = ip
         self.port = port
@@ -122,13 +132,13 @@ class UriParser3986:
         sep_ind = authority.find("@")
         if sep_ind != -1:
             userinfo = authority[:sep_ind]
-            authority = authority[sep_ind + 1:]
+            authority = authority[sep_ind + 1 :]
         else:
             userinfo = None
 
         sep_ind = authority.find(":")
         if sep_ind != -1:
-            port = int(authority[sep_ind + 1:])
+            port = int(authority[sep_ind + 1 :])
             authority = authority[:sep_ind]
         else:
             port = None
