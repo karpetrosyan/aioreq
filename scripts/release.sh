@@ -1,3 +1,7 @@
+#!/bin/sh -e
+
+set -x
+
 VERSION=$(hatch version patch)
 NEW_VERSION=$(python -c "print('''$VERSION'''.split('New: ')[1], end='')")
 echo $NEW_VERSION
