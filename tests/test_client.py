@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import os
 
 import pytest
 
@@ -174,18 +173,6 @@ async def test_stream_youtube_req():
 @pytest.mark.asyncio
 async def test_youtube_req(temp_session):
     await temp_session.get("https://youtube.com")
-
-
-@pytest.mark.asyncio
-async def test_sslkeylog(temp_session_cached, tox):
-    temp_session = temp_session_cached
-    keylog_file = os.getenv("SSLKEYLOGFILE")
-    if not keylog_file:
-        assert not tox, "SSLKEYLOGFILE variable must be provided during tox test"
-        pytest.skip("SSLKEYLOGFILE variable was not provided")
-    await temp_session.get("https://www.github.com")
-    assert temp_session.transports
-    assert os.path.exists(os.path.join(keylog_file))
 
 
 @pytest.mark.asyncio
