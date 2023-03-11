@@ -1,7 +1,10 @@
 name: Tests
 
 on:
-  workflow_dispatch
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
 
 jobs:
   tests:
@@ -23,4 +26,3 @@ jobs:
         run: scripts/check.sh
       - name: "Run tests"
         run: scripts/test.sh
-  
