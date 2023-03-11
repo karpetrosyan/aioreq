@@ -5,6 +5,7 @@ from collections import defaultdict
 from typing import Any
 from typing import AsyncGenerator
 from typing import AsyncIterator
+from typing import DefaultDict
 from typing import Dict
 from typing import Iterable
 from typing import List
@@ -295,7 +296,7 @@ class BaseClient(metaclass=ABCMeta):
         self.redirect = redirect_count
         self.retry = retry_count
         self.auth = auth
-        self.connection_mapper: defaultdict[str, list] = defaultdict(list)
+        self.connection_mapper: DefaultDict[str, list] = defaultdict(list)
         self.headers = headers
         self.transports: List[Transport] = []
         self.persistent_connections = persistent_connections

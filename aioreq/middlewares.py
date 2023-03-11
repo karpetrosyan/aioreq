@@ -55,7 +55,7 @@ class MiddleWare(ABC):
         ...
 
     @staticmethod
-    def build(middlewares_: Union[Tuple[Union[str, type], ...],]):
+    def build(middlewares_: Union[Tuple[Union[str, type], ...]]):
         result = TimeoutMiddleWare(RequestMiddleWare(next_middleware=None))
         for middleware in reversed(middlewares_):
             if isinstance(middleware, str):

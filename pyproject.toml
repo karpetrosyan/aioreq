@@ -17,7 +17,6 @@ dependencies = [
 classifiers = [
     "License :: OSI Approved :: MIT License",
     "Natural Language :: English",
-    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
@@ -35,21 +34,6 @@ Homepage = "https://github.com/karosis88/aioerq"
 Source = "https://github.com/karosis88/aioreq"
 
 [project.optional-dependencies]
-
-dev = [
-    "hatch",
-    "httpx",
-    "starlette",
-    "pytest",
-    "pytest-asyncio",
-    "uvicorn",
-    "mkdocs-material",
-    "pytest-randomly",
-    "flake8",
-    "mypy",
-    "black",
-    "isort"
-]
 
 uvloop = [
     "uvloop",
