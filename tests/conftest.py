@@ -1,7 +1,7 @@
 import logging
-import os
 import subprocess
 import warnings
+from time import sleep
 
 import pytest
 import pytest_asyncio
@@ -26,21 +26,8 @@ def pytest_addoption(parser):
     parser.addoption("--tox", action="store_true", default=False)
 
 
-def pytest_sessionfinish(session, exitstatus):
-    fl = os.getenv("SSLKEYLOGFILE")
-    if session.config.option.tox:
-        if fl:
-            tests_logs = os.path.join("tests", fl)
-            if os.path.exists(fl):
-                os.remove(fl)
-                log.debug(f"Logs file found and removed from the {fl}")
-            if os.path.exists(tests_logs):
-                os.remove(tests_logs)
-                log.debug(f"Logs file found and removed from the {tests_logs}")
-
-
 @pytest.fixture(autouse=True, scope="session")
-def session_start():
+def sessionstart():
     log.debug("Running server process")
     with subprocess.Popen(
         ["uvicorn", "tests.server:app", "--log-level", "critical", "--port", "7575"],
@@ -49,6 +36,7 @@ def session_start():
     ) as proc:
         log.debug("Waiting signal from the server process")
         assert proc.stdout.readline() == b"started\n"
+        sleep(0.5)
         log.debug("Signal was received from the server process")
         yield
         log.debug("Teardown server process")
@@ -62,7 +50,7 @@ def tox(pytestconfig):
 
 
 @pytest.fixture(scope="session")
-def SERVER_URL(session_start):
+def SERVER_URL():
     return CONSTANTS["SERVER_URL"]
 
 

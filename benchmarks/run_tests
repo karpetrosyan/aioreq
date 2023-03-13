@@ -1,10 +1,10 @@
 
-echo "Tests with module loading"
+echo "Benchmarks"
 
 echo "---------------------------"
 echo "aioreq benchmark"
-time python bench_aioreq.py
+/usr/bin/time --format "Total time: %e" python bench_aioreq.py
 
 echo "---------------------------"
 echo "httpx benchmark"
-time python bench_httpx.py
+/usr/bin/time --format "Total time: %e" python bench_httpx.py

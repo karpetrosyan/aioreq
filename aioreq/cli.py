@@ -88,7 +88,6 @@ def write_output(output, response):
 
 def build_headers(parsed_headers):
     raw_headers = args.headers
-
     if args.data and ("content-type" not in parsed_headers):
         parsed_headers["content-type"] = "application/x-www-form-urlencoded"
 
@@ -112,7 +111,6 @@ async def _main():
         method = args.method
 
         parsed_headers = build_headers(client.headers)
-
         request = aioreq.Request(
             url=url,
             method=method,

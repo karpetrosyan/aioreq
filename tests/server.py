@@ -2,6 +2,7 @@ import asyncio
 import sys
 import zlib
 
+import uvicorn
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.gzip import GZipMiddleware
@@ -10,7 +11,10 @@ from starlette.responses import RedirectResponse
 from starlette.responses import StreamingResponse
 from starlette.routing import Route
 
-from .conftest import CONSTANTS
+try:
+    from .conftest import CONSTANTS
+except ImportError:
+    from conftest import CONSTANTS
 
 
 async def startup():
@@ -33,6 +37,16 @@ async def deflate(request):
 
 async def ping(request):
     return PlainTextResponse("pong")
+
+
+async def cli_doc(request):
+    body = await request.body()
+    if request.method == "POST":
+        response_text = f"User {body.decode()} was created!"
+        return PlainTextResponse(response_text)
+    elif request.method == "GET":
+        response_test = f"Hello {body.decode()}"
+        return PlainTextResponse(response_test)
 
 
 async def redirect(request):
@@ -67,6 +81,7 @@ routes = [
     Route("/", root),
     Route("/ping", ping),
     Route("/gzip", gzip),
+    Route("/cli_doc", cli_doc, methods=["GET", "POST"]),
     Route("/deflate", deflate),
     Route("/redirect", redirect),
     Route("/redirected", redirected),
@@ -77,3 +92,6 @@ routes = [
 middlewares = [Middleware(GZipMiddleware)]
 
 app = Starlette(routes=routes, middleware=middlewares, on_startup=[startup])
+
+if __name__ == "__main__":
+    uvicorn.run(app=app, host="127.0.0.1", port=8000)

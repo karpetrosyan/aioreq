@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## 1.0.6
+
+### Added
+
+* `Github actions` workflow for tests
+* Aioreq CLI
+
+### Removed
+
+* Python3.7 support
+* Tox
+
 ## 1.0.5
 
 ### Added
