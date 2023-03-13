@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-    <bold>Aioreq</bold> is a Python asynchronous HTTP client library. It is built on top of TCP sockets and implements the HTTP protocol entirely on his own.
+    <b>Aioreq</b> is a Python asynchronous HTTP client library. It is built on top of TCP sockets and implements the HTTP protocol entirely on his own.
 </p>
 
 [mygit]: https://github.com/karosis88/aioreq
