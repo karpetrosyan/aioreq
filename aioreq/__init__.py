@@ -1,4 +1,4 @@
-__version__ = "1.0.6"
+__version__ = "1.0.7"
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
