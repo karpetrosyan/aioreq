@@ -10,11 +10,7 @@ from starlette.responses import PlainTextResponse
 from starlette.responses import RedirectResponse
 from starlette.responses import StreamingResponse
 from starlette.routing import Route
-
-try:
-    from .conftest import CONSTANTS
-except ImportError:
-    from conftest import CONSTANTS
+from .conftest import CONSTANTS
 
 
 async def startup():

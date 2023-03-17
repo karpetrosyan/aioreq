@@ -1033,7 +1033,7 @@ class StreamClient(BaseClient):
             request=request,
         )
 
-    async def _content_iter(self, async_generator: AsyncIterator):
+    async def _content_iter(self, async_generator: AsyncIterator[bytes]):
         async for chunk in async_generator:
             yield chunk
 
