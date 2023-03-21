@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import sys
 from abc import ABCMeta
 from collections import defaultdict
 from typing import Any
@@ -12,7 +13,6 @@ from typing import List
 from typing import Optional
 from typing import Tuple
 from typing import Type
-from typing import TypeAlias
 from typing import TypeVar
 from typing import Union
 
@@ -37,6 +37,11 @@ from .middlewares import RedirectMiddleWare
 from .middlewares import RetryMiddleWare
 from .middlewares import default_middlewares
 from .settings import DEFAULT_HEADERS
+
+if sys.version_info > (3, 9):
+    from typing import TypeAlias
+else:
+    from typing_extensions import TypeAlias
 
 URLENCODED: TypeAlias = Union[Dict[str, str], Iterable[Tuple[str, str]]]
 CONTENT: TypeAlias = Union[str, bytearray, bytes]
