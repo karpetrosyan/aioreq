@@ -128,10 +128,8 @@ class Transport:
             from aioreq import ResponseParser
 
             assert self.reader
-            status_line = await self.reader.readuntil(b"\r\n")
-            status_line = status_line.decode()  # type: ignore
-            headers_line = await self.reader.readuntil(b"\r\n\r\n")
-            headers_line = headers_line.decode()  # type: ignore
+            status_line = (await self.reader.readuntil(b"\r\n")).decode()
+            headers_line = (await self.reader.readuntil(b"\r\n\r\n")).decode()
             content_length = ResponseParser.search_content_length(headers_line)
             content = b""
 
@@ -157,10 +155,8 @@ class Transport:
         with mock_transport(self):
             await self._send_data(raw_data)
             assert self.reader
-            status_line = await self.reader.readuntil(b"\r\n")
-            status_line = status_line.decode()  # type: ignore
-            headers_line = await self.reader.readuntil(b"\r\n\r\n")
-            headers_line = headers_line.decode()  # type: ignore
+            status_line = (await self.reader.readuntil(b"\r\n")).decode()
+            headers_line = (await self.reader.readuntil(b"\r\n\r\n")).decode()
             content_length = ResponseParser.search_content_length(headers_line)
 
             yield status_line, headers_line

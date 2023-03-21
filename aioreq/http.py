@@ -12,6 +12,7 @@ from typing import List
 from typing import Optional
 from typing import Tuple
 from typing import Type
+from typing import TypeAlias
 from typing import TypeVar
 from typing import Union
 
@@ -37,6 +38,8 @@ from .middlewares import RetryMiddleWare
 from .middlewares import default_middlewares
 from .settings import DEFAULT_HEADERS
 
+URLENCODED: TypeAlias = Union[Dict[str, str], Iterable[Tuple[str, str]]]
+CONTENT: TypeAlias = Union[str, bytearray, bytes]
 BR = TypeVar("BR", bound="BaseRequest")
 log = logging.getLogger(LOGGER_NAME)
 
@@ -122,7 +125,7 @@ class Request(BaseRequest):
         *,
         headers: Union[Headers, Dict[str, str], None] = None,
         method: str = "GET",
-        content: Union[str, bytes, bytearray, None] = None,
+        content: Optional[CONTENT] = None,
         params: Optional[Dict[str, str]] = None,
         auth: Optional[Tuple[str, str]] = None,
         timeout: Union[int, float, None] = None,
@@ -305,9 +308,9 @@ class BaseClient(metaclass=ABCMeta):
         self,
         url: str,
         method: str,
-        content: Union[str, bytearray, bytes] = "",
+        content: CONTENT = "",
         json: Optional[Dict] = None,
-        urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+        urlencoded: Optional[URLENCODED] = None,
         params: Optional[Dict[str, str]] = None,
         headers: Union[None, Dict[str, str], Headers] = None,
         auth: Union[Tuple[str, str], None] = None,
@@ -320,6 +323,8 @@ class BaseClient(metaclass=ABCMeta):
 
         headers = Headers(initial_headers=headers)
         content_found = False
+        mixed_content: Union[Optional[URLENCODED], Optional[CONTENT], Optional[Dict]]
+        request_class: Type[BaseRequest]
 
         for cnt in (content, json, urlencoded):
             if cnt:
@@ -332,20 +337,20 @@ class BaseClient(metaclass=ABCMeta):
                 content_found = True
 
         if json:
-            request_class: Type[BaseRequest] = JsonRequest  # type: ignore
+            request_class = JsonRequest
+            mixed_content = json
         elif urlencoded:
-            request_class: Type[BaseRequest] = UrlEncodedRequest  # type: ignore
-
-            content = urlencoded  # type: ignore
+            request_class = UrlEncodedRequest
+            mixed_content = urlencoded
         else:
-            request_class: Type[BaseRequest] = Request  # type: ignore
-
-        request = request_class(  # type: ignore
+            request_class = Request
+            mixed_content = content
+        request = request_class(
             url=url,
             method=method,
             headers=self.headers | headers,
             params=params,
-            content=content,
+            content=mixed_content,
             auth=auth,
             timeout=timeout,
             check_hostname=check_hostname,
@@ -455,9 +460,9 @@ class Client(BaseClient):
         self,
         url: str,
         method: str,
-        content: Union[str, bytearray, bytes] = "",
+        content: CONTENT = "",
         json: Optional[Dict] = None,
-        urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+        urlencoded: Optional[URLENCODED] = None,
         params: Optional[Dict[str, str]] = None,
         headers: Union[None, Dict[str, str], Headers] = None,
         auth: Union[Tuple[str, str], None] = None,
@@ -496,9 +501,9 @@ class Client(BaseClient):
     async def get(
         self,
         url: str,
-        content: Union[str, bytearray, bytes] = "",
+        content: CONTENT = "",
         json: Optional[Dict] = None,
-        urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+        urlencoded: Optional[URLENCODED] = None,
         headers: Union[Dict[str, str], None] = None,
         params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
@@ -525,9 +530,9 @@ class Client(BaseClient):
     async def post(
         self,
         url: str,
-        content: Union[str, bytearray, bytes] = "",
+        content: CONTENT = "",
         json: Optional[Dict] = None,
-        urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+        urlencoded: Optional[URLENCODED] = None,
         headers: Union[Dict[str, str], None] = None,
         params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
@@ -554,9 +559,9 @@ class Client(BaseClient):
     async def put(
         self,
         url: str,
-        content: Union[str, bytearray, bytes] = "",
+        content: CONTENT = "",
         json: Optional[Dict] = None,
-        urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+        urlencoded: Optional[URLENCODED] = None,
         headers: Union[Dict[str, str], None] = None,
         params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
@@ -583,9 +588,9 @@ class Client(BaseClient):
     async def delete(
         self,
         url: str,
-        content: Union[str, bytearray, bytes] = "",
+        content: CONTENT = "",
         json: Optional[Dict] = None,
-        urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+        urlencoded: Optional[URLENCODED] = None,
         headers: Union[Dict[str, str], None] = None,
         params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
@@ -612,9 +617,9 @@ class Client(BaseClient):
     async def options(
         self,
         url: str,
-        content: Union[str, bytearray, bytes] = "",
+        content: CONTENT = "",
         json: Optional[Dict] = None,
-        urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+        urlencoded: Optional[URLENCODED] = None,
         headers: Union[Dict[str, str], None] = None,
         params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
@@ -641,9 +646,9 @@ class Client(BaseClient):
     async def head(
         self,
         url: str,
-        content: Union[str, bytearray, bytes] = "",
+        content: CONTENT = "",
         json: Optional[Dict] = None,
-        urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+        urlencoded: Optional[URLENCODED] = None,
         headers: Union[Dict[str, str], None] = None,
         params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
@@ -670,9 +675,9 @@ class Client(BaseClient):
     async def patch(
         self,
         url: str,
-        content: Union[str, bytearray, bytes] = "",
+        content: CONTENT = "",
         json: Optional[Dict] = None,
-        urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+        urlencoded: Optional[URLENCODED] = None,
         headers: Union[Dict[str, str], None] = None,
         params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
@@ -699,9 +704,9 @@ class Client(BaseClient):
     async def link(
         self,
         url: str,
-        content: Union[str, bytearray, bytes] = "",
+        content: CONTENT = "",
         json: Optional[Dict] = None,
-        urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+        urlencoded: Optional[URLENCODED] = None,
         headers: Union[Dict[str, str], None] = None,
         params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
@@ -736,9 +741,9 @@ class StreamClient(BaseClient):
     def get(
         cls,
         url: str,
-        content: Union[str, bytearray, bytes] = "",
+        content: CONTENT = "",
         json: Optional[Dict] = None,
-        urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+        urlencoded: Optional[URLENCODED] = None,
         headers: Union[Dict[str, str], None] = None,
         params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
@@ -769,9 +774,9 @@ class StreamClient(BaseClient):
     def post(
         cls,
         url: str,
-        content: Union[str, bytearray, bytes] = "",
+        content: CONTENT = "",
         json: Optional[Dict] = None,
-        urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+        urlencoded: Optional[URLENCODED] = None,
         headers: Union[Dict[str, str], None] = None,
         params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
@@ -802,9 +807,9 @@ class StreamClient(BaseClient):
     def put(
         cls,
         url: str,
-        content: Union[str, bytearray, bytes] = "",
+        content: CONTENT = "",
         json: Optional[Dict] = None,
-        urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+        urlencoded: Optional[URLENCODED] = None,
         headers: Union[Dict[str, str], None] = None,
         params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
@@ -835,9 +840,9 @@ class StreamClient(BaseClient):
     def delete(
         cls,
         url: str,
-        content: Union[str, bytearray, bytes] = "",
+        content: CONTENT = "",
         json: Optional[Dict] = None,
-        urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+        urlencoded: Optional[URLENCODED] = None,
         headers: Union[Dict[str, str], None] = None,
         params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
@@ -868,9 +873,9 @@ class StreamClient(BaseClient):
     def patch(
         cls,
         url: str,
-        content: Union[str, bytearray, bytes] = "",
+        content: CONTENT = "",
         json: Optional[Dict] = None,
-        urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+        urlencoded: Optional[URLENCODED] = None,
         headers: Union[Dict[str, str], None] = None,
         params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
@@ -901,9 +906,9 @@ class StreamClient(BaseClient):
     def options(
         cls,
         url: str,
-        content: Union[str, bytearray, bytes] = "",
+        content: CONTENT = "",
         json: Optional[Dict] = None,
-        urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+        urlencoded: Optional[URLENCODED] = None,
         headers: Union[Dict[str, str], None] = None,
         params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
@@ -934,9 +939,9 @@ class StreamClient(BaseClient):
     def head(
         cls,
         url: str,
-        content: Union[str, bytearray, bytes] = "",
+        content: CONTENT = "",
         json: Optional[Dict] = None,
-        urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+        urlencoded: Optional[URLENCODED] = None,
         headers: Union[Dict[str, str], None] = None,
         params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
@@ -967,9 +972,9 @@ class StreamClient(BaseClient):
     def link(
         cls,
         url: str,
-        content: Union[str, bytearray, bytes] = "",
+        content: CONTENT = "",
         json: Optional[Dict] = None,
-        urlencoded: Union[Dict[str, str], Iterable[Tuple[str, str]], None] = None,
+        urlencoded: Optional[URLENCODED] = None,
         headers: Union[Dict[str, str], None] = None,
         params: Union[Dict[str, str], None] = None,
         auth: Union[Tuple[str, str], None] = None,
