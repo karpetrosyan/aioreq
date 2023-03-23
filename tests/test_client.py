@@ -8,7 +8,6 @@ from aioreq import parse_url
 from aioreq.errors.requests import RequestTimeoutError
 from aioreq.http import JsonRequest
 from aioreq.http import Request
-from aioreq.http import StreamClient
 from aioreq.middlewares import MiddleWare
 from aioreq.settings import LOGGER_NAME
 
@@ -111,10 +110,11 @@ async def test_dirctly_requests_using(temp_session, SERVER_URL):
 @pytest.mark.asyncio
 async def test_root_with_stream(SERVER_URL, constants, get_stream_test_url):
     t2 = bytearray()
-    req = Request(url=get_stream_test_url, method="GET")
-    async with StreamClient(request=req) as response:
+    req = Request(url=get_stream_test_url, method="GET", stream=True)
+    async with aioreq.Client() as client:
+        response = await client.send_request(req)
         assert response.status == 200
-        async for chunk in response.content:
+        async for chunk in response.iter_bytes(20):
             for char in chunk:
                 t2.append(char)
     assert t2 == constants["STREAMING_RESPONSE_CHUNK_COUNT"] * b"test"
@@ -123,11 +123,10 @@ async def test_root_with_stream(SERVER_URL, constants, get_stream_test_url):
 @pytest.mark.asyncio
 async def test_stream_get_method(SERVER_URL, constants, get_stream_test_url):
     t2 = bytearray()
-    async with StreamClient.get(
-        url=get_stream_test_url,
-    ) as response:
+    async with aioreq.Client() as client:
+        response = await client.get(url=get_stream_test_url, stream=True)
         assert response.status == 200
-        async for chunk in response.content:
+        async for chunk in response.iter_bytes(200):
             for char in chunk:
                 t2.append(char)
     assert t2 == constants["STREAMING_RESPONSE_CHUNK_COUNT"] * b"test"
@@ -163,12 +162,12 @@ async def test_set_cookie(SERVER_URL, temp_session, set_cookie_url):
 
 @pytest.mark.asyncio
 async def test_stream_youtube_req():
-    req = Request(url="https://www.youtube.com", method="GET")
-    async with StreamClient(req) as resp:
+    req = Request(url="https://www.youtube.com", method="GET", stream=True)
+    async with aioreq.Client() as client:
+        resp = await client.send_request(req)
         assert resp.status == 200
-        async for chunk in resp.content:
+        async for chunk in resp.iter_bytes(200):
             ...
-
 
 @pytest.mark.asyncio
 async def test_youtube_req(temp_session):

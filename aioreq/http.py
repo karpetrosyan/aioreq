@@ -3,9 +3,7 @@ import logging
 import sys
 from abc import ABCMeta
 from collections import defaultdict
-from typing import Any
-from typing import AsyncGenerator
-from typing import AsyncIterator
+from typing import Any, AsyncGenerator
 from typing import DefaultDict
 from typing import Dict
 from typing import Iterable
@@ -16,6 +14,7 @@ from typing import Type
 from typing import TypeVar
 from typing import Union
 
+from aioreq.connection import StreamReader
 from aioreq.connection import Transport
 from aioreq.connection import resolve_domain
 from aioreq.cookies import Cookies
@@ -63,6 +62,7 @@ class BaseRequest:
         check_hostname: bool = True,
         verify_mode: bool = True,
         keylog_filename: Optional[str] = None,
+        stream: bool = False,
     ) -> None:
         if isinstance(url, Uri3986):
             self._url = url
@@ -88,6 +88,7 @@ class BaseRequest:
         self.check_hostname = check_hostname
         self.verify_mode = verify_mode
         self.keylog_filename = keylog_filename
+        self.stream = stream
 
     @property
     def url(self) -> Union[Uri3986]:
@@ -137,6 +138,7 @@ class Request(BaseRequest):
         check_hostname: bool = True,
         verify_mode: bool = True,
         keylog_filename: Optional[str] = None,
+        stream: bool = False,
     ):
         super().__init__(
             url=url,
@@ -149,6 +151,7 @@ class Request(BaseRequest):
             check_hostname=check_hostname,
             verify_mode=verify_mode,
             keylog_filename=keylog_filename,
+            stream=stream,
         )
 
 
@@ -170,6 +173,7 @@ class JsonRequest(BaseRequest):
         check_hostname: bool = True,
         verify_mode: bool = True,
         keylog_filename: Optional[str] = None,
+        stream: bool = False,
     ):
         super().__init__(
             url=url,
@@ -182,6 +186,7 @@ class JsonRequest(BaseRequest):
             check_hostname=check_hostname,
             verify_mode=verify_mode,
             keylog_filename=keylog_filename,
+            stream=stream,
         )
 
 
@@ -201,6 +206,7 @@ class UrlEncodedRequest(BaseRequest):
         check_hostname: bool = True,
         verify_mode: bool = True,
         keylog_filename: Optional[str] = None,
+        stream: bool = False,
     ):
         super().__init__(
             url=url,
@@ -213,6 +219,7 @@ class UrlEncodedRequest(BaseRequest):
             check_hostname=check_hostname,
             verify_mode=verify_mode,
             keylog_filename=keylog_filename,
+            stream=stream,
         )
 
 
@@ -224,8 +231,9 @@ class Response(BaseResponse):
         status: int,
         status_message: str,
         headers: Union[Headers, Dict[str, str]],
-        content: bytes,
+        content: Optional[bytes],
         request: Union[Request, None] = None,
+        stream: Optional[StreamReader] = None,
     ):
         self.status = status
         self.status_message = status_message
@@ -233,6 +241,25 @@ class Response(BaseResponse):
         self.content = content
         self.request = request
         self.redirects = None
+        self.stream = stream
+
+    def _check_stream(self) -> None:
+        if self.content is None and self.stream:
+            raise Exception(
+                "Trying to read stream response without"
+                " reading it use `await response.read_stream()` "
+                "to do that"
+            )
+
+    @property
+    def text(self) -> str:
+        self._check_stream()
+        encoding = self.headers["Content-Encoding"]
+        return self.content.decode(encoding)  # type: ignore[union-attr]
+
+    async def iter_bytes(self, max_read: int) -> AsyncGenerator[int, None]:
+        async for chunk in self.stream.read_by_chunks(max_read=max_read):
+            yield chunk
 
     def __eq__(self, _value) -> bool:
         if type(self) != type(_value):
@@ -249,25 +276,6 @@ class Response(BaseResponse):
 
     def __repr__(self) -> str:
         return f"<Response {self.status} {self.status_message}>"
-
-
-class StreamResponse(BaseResponse):
-    """Represents a Streaming Response that can
-    iterate through the incoming data asynchronously."""
-
-    def __init__(
-        self,
-        status: int,
-        status_message: str,
-        headers: Headers,
-        content: AsyncGenerator,
-        request: Request,
-    ):
-        self.status = status
-        self.status_message = status_message
-        self.headers = headers
-        self.content = content
-        self.request = request
 
 
 class BaseClient(metaclass=ABCMeta):
@@ -323,6 +331,7 @@ class BaseClient(metaclass=ABCMeta):
         check_hostname: bool = True,
         verify_mode: bool = True,
         keylog_filename: Optional[str] = None,
+        stream: bool = False,
     ) -> BaseRequest:
         """Creates one of the "Request" instances based on attributes."""
 
@@ -361,6 +370,7 @@ class BaseClient(metaclass=ABCMeta):
             check_hostname=check_hostname,
             verify_mode=verify_mode,
             keylog_filename=keylog_filename,
+            stream=stream,
         )
         return request
 
@@ -398,9 +408,13 @@ class Client(BaseClient):
             verify_mode=request.verify_mode,
             keylog_filename=request.keylog_filename,
         )
-        coro = transport.send_http_request(request.get_raw_request())
+
+        coro = transport.send_http_request(
+            request.get_raw_request(), stream=request.stream
+        )
         with wrap_errors():
             status_line, header_line, content = await coro
+
         resp = ResponseParser.parse(status_line, header_line, content)
         resp.request = request
         return resp
@@ -475,6 +489,7 @@ class Client(BaseClient):
         check_hostname: bool = True,
         verify_mode: bool = True,
         keylog_filename: Optional[str] = None,
+        stream: bool = False,
     ) -> Response:
         """
         Builds and sends newly created requests to middlewares.
@@ -494,6 +509,7 @@ class Client(BaseClient):
             check_hostname=check_hostname,
             verify_mode=verify_mode,
             keylog_filename=keylog_filename,
+            stream=stream,
         )
         return await self._send_request_via_middleware(request)
 
@@ -516,6 +532,7 @@ class Client(BaseClient):
         check_hostname: bool = True,
         verify_mode: bool = True,
         keylog_filename: Optional[str] = None,
+        stream: bool = False,
     ) -> Response:
         return await self._send_request(
             url=url,
@@ -530,6 +547,7 @@ class Client(BaseClient):
             check_hostname=check_hostname,
             verify_mode=verify_mode,
             keylog_filename=keylog_filename,
+            stream=stream,
         )
 
     async def post(
@@ -545,6 +563,7 @@ class Client(BaseClient):
         check_hostname: bool = True,
         verify_mode: bool = True,
         keylog_filename: Optional[str] = None,
+        stream: bool = False,
     ) -> Response:
         return await self._send_request(
             url=url,
@@ -559,6 +578,7 @@ class Client(BaseClient):
             check_hostname=check_hostname,
             verify_mode=verify_mode,
             keylog_filename=keylog_filename,
+            stream=stream,
         )
 
     async def put(
@@ -574,6 +594,7 @@ class Client(BaseClient):
         check_hostname: bool = True,
         verify_mode: bool = True,
         keylog_filename: Optional[str] = None,
+        stream: bool = False,
     ) -> Response:
         return await self._send_request(
             url=url,
@@ -588,6 +609,7 @@ class Client(BaseClient):
             check_hostname=check_hostname,
             verify_mode=verify_mode,
             keylog_filename=keylog_filename,
+            stream=stream,
         )
 
     async def delete(
@@ -603,6 +625,7 @@ class Client(BaseClient):
         check_hostname: bool = True,
         verify_mode: bool = True,
         keylog_filename: Optional[str] = None,
+        stream: bool = False,
     ) -> Response:
         return await self._send_request(
             url=url,
@@ -617,6 +640,7 @@ class Client(BaseClient):
             check_hostname=check_hostname,
             verify_mode=verify_mode,
             keylog_filename=keylog_filename,
+            stream=stream,
         )
 
     async def options(
@@ -632,6 +656,7 @@ class Client(BaseClient):
         check_hostname: bool = True,
         verify_mode: bool = True,
         keylog_filename: Optional[str] = None,
+        stream: bool = False,
     ) -> Response:
         return await self._send_request(
             url=url,
@@ -646,6 +671,7 @@ class Client(BaseClient):
             check_hostname=check_hostname,
             verify_mode=verify_mode,
             keylog_filename=keylog_filename,
+            stream=stream,
         )
 
     async def head(
@@ -661,6 +687,7 @@ class Client(BaseClient):
         check_hostname: bool = True,
         verify_mode: bool = True,
         keylog_filename: Optional[str] = None,
+        stream: bool = False,
     ) -> Response:
         return await self._send_request(
             url=url,
@@ -675,6 +702,7 @@ class Client(BaseClient):
             check_hostname=check_hostname,
             verify_mode=verify_mode,
             keylog_filename=keylog_filename,
+            stream=stream,
         )
 
     async def patch(
@@ -690,6 +718,7 @@ class Client(BaseClient):
         check_hostname: bool = True,
         verify_mode: bool = True,
         keylog_filename: Optional[str] = None,
+        stream: bool = False,
     ) -> Response:
         return await self._send_request(
             url=url,
@@ -704,6 +733,7 @@ class Client(BaseClient):
             check_hostname=check_hostname,
             verify_mode=verify_mode,
             keylog_filename=keylog_filename,
+            stream=stream,
         )
 
     async def link(
@@ -719,6 +749,7 @@ class Client(BaseClient):
         check_hostname: bool = True,
         verify_mode: bool = True,
         keylog_filename: Optional[str] = None,
+        stream: bool = False,
     ) -> Response:
         return await self._send_request(
             url=url,
@@ -733,322 +764,5 @@ class Client(BaseClient):
             check_hostname=check_hostname,
             verify_mode=verify_mode,
             keylog_filename=keylog_filename,
+            stream=stream,
         )
-
-
-class StreamClient(BaseClient):
-    def __init__(self, request):
-        self.request = request
-        self.transport = None
-        super().__init__()
-
-    @classmethod
-    def get(
-        cls,
-        url: str,
-        content: CONTENT = "",
-        json: Optional[Dict] = None,
-        urlencoded: Optional[URLENCODED] = None,
-        headers: Union[Dict[str, str], None] = None,
-        params: Union[Dict[str, str], None] = None,
-        auth: Union[Tuple[str, str], None] = None,
-        timeout: Union[int, float, None] = None,
-        check_hostname: bool = True,
-        verify_mode: bool = True,
-        keylog_filename: Optional[str] = None,
-    ):
-        self = cls(None)
-        request = self._build_request(
-            url=url,
-            method="GET",
-            content=content,
-            json=json,
-            urlencoded=urlencoded,
-            headers=headers,
-            params=params,
-            auth=auth,
-            timeout=timeout,
-            check_hostname=check_hostname,
-            verify_mode=verify_mode,
-            keylog_filename=keylog_filename,
-        )
-        self.request = request
-        return self
-
-    @classmethod
-    def post(
-        cls,
-        url: str,
-        content: CONTENT = "",
-        json: Optional[Dict] = None,
-        urlencoded: Optional[URLENCODED] = None,
-        headers: Union[Dict[str, str], None] = None,
-        params: Union[Dict[str, str], None] = None,
-        auth: Union[Tuple[str, str], None] = None,
-        timeout: Union[int, float, None] = None,
-        check_hostname: bool = True,
-        verify_mode: bool = True,
-        keylog_filename: Optional[str] = None,
-    ):
-        self = cls(None)
-        request = self._build_request(
-            url=url,
-            method="POST",
-            content=content,
-            json=json,
-            urlencoded=urlencoded,
-            headers=headers,
-            params=params,
-            auth=auth,
-            timeout=timeout,
-            check_hostname=check_hostname,
-            verify_mode=verify_mode,
-            keylog_filename=keylog_filename,
-        )
-        self.request = request
-        return self
-
-    @classmethod
-    def put(
-        cls,
-        url: str,
-        content: CONTENT = "",
-        json: Optional[Dict] = None,
-        urlencoded: Optional[URLENCODED] = None,
-        headers: Union[Dict[str, str], None] = None,
-        params: Union[Dict[str, str], None] = None,
-        auth: Union[Tuple[str, str], None] = None,
-        timeout: Union[int, float, None] = None,
-        check_hostname: bool = True,
-        verify_mode: bool = True,
-        keylog_filename: Optional[str] = None,
-    ):
-        self = cls(None)
-        request = self._build_request(
-            url=url,
-            method="PUT",
-            content=content,
-            json=json,
-            urlencoded=urlencoded,
-            headers=headers,
-            params=params,
-            auth=auth,
-            timeout=timeout,
-            check_hostname=check_hostname,
-            verify_mode=verify_mode,
-            keylog_filename=keylog_filename,
-        )
-        self.request = request
-        return self
-
-    @classmethod
-    def delete(
-        cls,
-        url: str,
-        content: CONTENT = "",
-        json: Optional[Dict] = None,
-        urlencoded: Optional[URLENCODED] = None,
-        headers: Union[Dict[str, str], None] = None,
-        params: Union[Dict[str, str], None] = None,
-        auth: Union[Tuple[str, str], None] = None,
-        timeout: Union[int, float, None] = None,
-        check_hostname: bool = True,
-        verify_mode: bool = True,
-        keylog_filename: Optional[str] = None,
-    ):
-        self = cls(None)
-        request = self._build_request(
-            url=url,
-            method="DELETE",
-            content=content,
-            json=json,
-            urlencoded=urlencoded,
-            headers=headers,
-            params=params,
-            auth=auth,
-            timeout=timeout,
-            check_hostname=check_hostname,
-            verify_mode=verify_mode,
-            keylog_filename=keylog_filename,
-        )
-        self.request = request
-        return self
-
-    @classmethod
-    def patch(
-        cls,
-        url: str,
-        content: CONTENT = "",
-        json: Optional[Dict] = None,
-        urlencoded: Optional[URLENCODED] = None,
-        headers: Union[Dict[str, str], None] = None,
-        params: Union[Dict[str, str], None] = None,
-        auth: Union[Tuple[str, str], None] = None,
-        timeout: Union[int, float, None] = None,
-        check_hostname: bool = True,
-        verify_mode: bool = True,
-        keylog_filename: Optional[str] = None,
-    ):
-        self = cls(None)
-        request = self._build_request(
-            url=url,
-            method="PATCH",
-            content=content,
-            json=json,
-            urlencoded=urlencoded,
-            headers=headers,
-            params=params,
-            auth=auth,
-            timeout=timeout,
-            check_hostname=check_hostname,
-            verify_mode=verify_mode,
-            keylog_filename=keylog_filename,
-        )
-        self.request = request
-        return self
-
-    @classmethod
-    def options(
-        cls,
-        url: str,
-        content: CONTENT = "",
-        json: Optional[Dict] = None,
-        urlencoded: Optional[URLENCODED] = None,
-        headers: Union[Dict[str, str], None] = None,
-        params: Union[Dict[str, str], None] = None,
-        auth: Union[Tuple[str, str], None] = None,
-        timeout: Union[int, float, None] = None,
-        check_hostname: bool = True,
-        verify_mode: bool = True,
-        keylog_filename: Optional[str] = None,
-    ):
-        self = cls(None)
-        request = self._build_request(
-            url=url,
-            method="OPTIONS",
-            content=content,
-            json=json,
-            urlencoded=urlencoded,
-            headers=headers,
-            params=params,
-            auth=auth,
-            timeout=timeout,
-            check_hostname=check_hostname,
-            verify_mode=verify_mode,
-            keylog_filename=keylog_filename,
-        )
-        self.request = request
-        return self
-
-    @classmethod
-    def head(
-        cls,
-        url: str,
-        content: CONTENT = "",
-        json: Optional[Dict] = None,
-        urlencoded: Optional[URLENCODED] = None,
-        headers: Union[Dict[str, str], None] = None,
-        params: Union[Dict[str, str], None] = None,
-        auth: Union[Tuple[str, str], None] = None,
-        timeout: Union[int, float, None] = None,
-        check_hostname: bool = True,
-        verify_mode: bool = True,
-        keylog_filename: Optional[str] = None,
-    ):
-        self = cls(None)
-        request = self._build_request(
-            url=url,
-            method="HEAD",
-            content=content,
-            json=json,
-            urlencoded=urlencoded,
-            headers=headers,
-            params=params,
-            auth=auth,
-            timeout=timeout,
-            check_hostname=check_hostname,
-            verify_mode=verify_mode,
-            keylog_filename=keylog_filename,
-        )
-        self.request = request
-        return self
-
-    @classmethod
-    def link(
-        cls,
-        url: str,
-        content: CONTENT = "",
-        json: Optional[Dict] = None,
-        urlencoded: Optional[URLENCODED] = None,
-        headers: Union[Dict[str, str], None] = None,
-        params: Union[Dict[str, str], None] = None,
-        auth: Union[Tuple[str, str], None] = None,
-        timeout: Union[int, float, None] = None,
-        check_hostname: bool = True,
-        verify_mode: bool = True,
-        keylog_filename: Optional[str] = None,
-    ):
-        self = cls(None)
-        request = self._build_request(
-            url=url,
-            method="LINK",
-            content=content,
-            json=json,
-            urlencoded=urlencoded,
-            headers=headers,
-            params=params,
-            auth=auth,
-            timeout=timeout,
-            check_hostname=check_hostname,
-            verify_mode=verify_mode,
-            keylog_filename=keylog_filename,
-        )
-        self.request = request
-        return self
-
-    async def __aenter__(self) -> StreamResponse:
-        """
-        Creates the Request instance and sends it through the stream, returning
-        a StreamResponse instance with status code, status message, headers,
-        and content that can be iterated asynchronously.
-        """
-        request = self.request
-        parsed_url = self.request.url
-        transport = Transport()
-        domain = request.url.get_domain()
-        ip, port = await resolve_domain(parsed_url)
-
-        await transport.make_connection(
-            ip,
-            port,
-            ssl=request.url.scheme == "https",
-            server_hostname=domain,
-            check_hostname=request.check_hostname,
-            verify_mode=request.verify_mode,
-            keylog_filename=request.keylog_filename,
-        )
-        self.transport = transport
-        coro = transport.send_http_stream_request(request.get_raw_request())
-        iterable = coro.__aiter__()
-        status_line, header_line = await iterable.__anext__()
-        scheme, status_code, status_message = ResponseParser.parse_status_line(
-            status_line
-        )
-        headers = ResponseParser.parse_and_fill_headers(header_line)
-        return StreamResponse(
-            status=status_code,
-            status_message=status_message,
-            content=self._content_iter(iterable),
-            headers=headers,
-            request=request,
-        )
-
-    async def _content_iter(self, async_generator: AsyncIterator[bytes]):
-        async for chunk in async_generator:
-            yield chunk
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        if self.transport:
-            if not self.transport.is_closing():
-                self.transport.writer.close()
-                await self.transport.writer.wait_closed()

@@ -1,9 +1,14 @@
 import json as _json
 import logging
 import re
+import typing
 from datetime import datetime
+from typing import Union
 
 from aioreq.settings import LOGGER_NAME
+
+if typing.TYPE_CHECKING:
+    from aioreq import StreamReader
 
 log = logging.getLogger(LOGGER_NAME)
 
@@ -93,19 +98,30 @@ class ResponseParser:
         return scheme, int(status), status_message
 
     @classmethod
-    def parse(cls, status_line, header_line, content):
+    def parse(
+        cls, status_line: str, header_line: str, content: Union[bytes, "StreamReader"]
+    ):
         from aioreq.http import Response
 
         scheme, status, status_message = cls.parse_status_line(status_line)
         status_message = status_message[:-2]
         status = int(status)
         headers = cls.parse_and_fill_headers(header_line)
+        splited_content: Union[None, bytes, "StreamReader"]
+        stream: typing.Optional["StreamReader"]
+        if isinstance(content, bytes):
+            stream = None
+            splited_content = content
+        else:
+            stream = content  # type: ignore
+            splited_content = None
 
         response = Response(
             status=status,
             status_message=status_message,
             headers=headers,
-            content=content,
+            content=splited_content,
+            stream=stream,
         )
 
         return response

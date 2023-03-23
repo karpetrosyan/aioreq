@@ -174,19 +174,21 @@ class RedirectMiddleWare(MiddleWare):
 
 class DecodeMiddleWare(MiddleWare):
     def decode(self, response: "Response") -> None:
-        for parser, header in (
-            (TransferEncoding, "transfer-encoding"),
-            (ContentEncoding, "content-encoding"),
-        ):
-            header_content = response.headers.get(header, None)
-            if header_content:
-                encodings = parser.parse(header_content)
+        if not response.stream:
+            for parser, header in (
+                (TransferEncoding, "transfer-encoding"),
+                (ContentEncoding, "content-encoding"),
+            ):
+                header_content = response.headers.get(header, None)
+                if header_content:
+                    encodings = parser.parse(header_content)
 
-                for encoding in encodings:
-                    response.content = encoding.decompress(response.content)
+                    for encoding in encodings:
+                        response.content = encoding.decompress(response.content)
 
     async def process(self, request: "Request", client: "Client") -> "Response":
-        request.headers.add_header(get_avaliable_encodings())
+        if not request.stream:
+            request.headers.add_header(get_avaliable_encodings())
         assert self.next_middleware
         response = await self.next_middleware.process(request, client)
         self.decode(response)

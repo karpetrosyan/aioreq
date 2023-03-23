@@ -2,7 +2,10 @@ import asyncio
 import logging
 import os
 import ssl as _ssl
+from abc import ABC
+from abc import abstractmethod
 from contextlib import contextmanager
+from typing import AsyncGenerator
 from typing import Awaitable
 from typing import Dict
 from typing import Optional
@@ -13,6 +16,7 @@ from dns import asyncresolver  # type: ignore
 
 from aioreq.settings import LOGGER_NAME
 
+STREAM_BUFFER_SIZE = 1024 * 4  # 4Kb
 res = asyncresolver.Resolver()
 res.nameservers = ["1.1.1.1", "8.8.8.8"]
 
@@ -77,6 +81,50 @@ async def resolve_domain(
     return ip, port
 
 
+class StreamReader(ABC):
+    def __init__(self, reader: asyncio.StreamReader):
+        self.reader = reader
+
+    @abstractmethod
+    async def read_by_chunks(self, max_read: int) -> AsyncGenerator[bytes, None]:
+        yield b""
+
+
+class ByteStreamReader(StreamReader):
+    def __init__(self, reader: asyncio.StreamReader, to_read: int):
+        super().__init__(reader=reader)
+        self.to_read = to_read
+
+    async def read_by_chunks(self, max_read: int) -> AsyncGenerator[bytes, None]:
+        while True:
+            if max_read >= self.to_read:
+                yield await self.reader.readexactly(self.to_read)
+                break
+            yield await self.reader.read(max_read)
+            self.to_read -= max_read
+
+
+class ChunkedStreamReader(StreamReader):
+    async def read_by_chunks(self, max_read: int) -> AsyncGenerator[bytes, None]:
+        while True:
+            chunk = await self.reader.readuntil(b"\r\n")
+            chunk_size = chunk[:-2]
+            if b";" in chunk_size:
+                chunk_size = chunk_size.split(b";")[0].strip()
+            chunk_size = int(chunk_size, 16)
+            if chunk_size == 0:
+                break
+
+            while chunk_size:
+                if max_read >= chunk_size:
+                    yield await self.reader.readexactly(chunk_size)
+                    break
+                else:
+                    yield await self.reader.readexactly(max_read)
+                    chunk_size -= max_read
+            await self.reader.readexactly(2)  # skip crlf
+
+
 class Transport:
     def __init__(self):
         self.reader: Optional[asyncio.StreamReader] = None
@@ -122,7 +170,9 @@ class Transport:
         self.reader = reader
         self.writer = writer
 
-    async def send_http_request(self, raw_data: bytes):
+    async def send_http_request(
+        self, raw_data: bytes, stream: bool
+    ) -> Tuple[str, str, Union[bytes, StreamReader]]:
         with mock_transport(self):
             await self._send_data(raw_data)
             from aioreq import ResponseParser
@@ -131,48 +181,35 @@ class Transport:
             status_line = (await self.reader.readuntil(b"\r\n")).decode()
             headers_line = (await self.reader.readuntil(b"\r\n\r\n")).decode()
             content_length = ResponseParser.search_content_length(headers_line)
-            content = b""
 
             if content_length is not None:
-                content = await self.reader.readexactly(content_length)
+                if stream:
+                    return (
+                        status_line,
+                        headers_line,
+                        ByteStreamReader(reader=self.reader, to_read=content_length),
+                    )
+                else:
+                    return (
+                        status_line,
+                        headers_line,
+                        await self.reader.readexactly(content_length),
+                    )
             elif ResponseParser.search_transfer_encoding(headers_line):
-                while True:
-                    chunk = await self.reader.readuntil(b"\r\n")
-                    chunk_size = chunk[:-2]
-                    if b";" in chunk_size:
-                        chunk_size = chunk_size.split(b";")[0].strip()
-                    chunk_size = int(chunk_size, 16)  # type: ignore
-                    if chunk_size == 0:
-                        break
-                    data = await self.reader.readexactly(chunk_size)  # type: ignore
-                    await self.reader.readexactly(2)  # crlf
-                    content += data
-            return status_line, headers_line, content
-
-    async def send_http_stream_request(self, raw_data: bytes):
-        from aioreq import ResponseParser
-
-        with mock_transport(self):
-            await self._send_data(raw_data)
-            assert self.reader
-            status_line = (await self.reader.readuntil(b"\r\n")).decode()
-            headers_line = (await self.reader.readuntil(b"\r\n\r\n")).decode()
-            content_length = ResponseParser.search_content_length(headers_line)
-
-            yield status_line, headers_line
-            if content_length is not None:
-                raise TypeError("Stream request should use chunked")
+                if stream:
+                    return status_line, headers_line, ChunkedStreamReader(self.reader)
+                else:
+                    content = b""
+                    async for chunk in ChunkedStreamReader(self.reader).read_by_chunks(
+                        max_read=2048
+                    ):
+                        content += chunk
+                    return status_line, headers_line, content
             else:
-                while True:
-                    chunk = await self.reader.readuntil(b"\r\n")
-                    chunk_size = chunk[:-2]
-
-                    chunk_size = int(chunk_size, 16)  # type: ignore
-                    if chunk_size == 0:
-                        break
-                    data = await self.reader.readexactly(chunk_size)  # type: ignore
-                    await self.reader.readexactly(2)  # crlf
-                    yield data
+                raise Exception(
+                    "`Content-Length` or `Transfer-Encoding: "
+                    "Chunked` must be specified in the response headers"
+                )
 
     def is_closing(self) -> bool:
         """
