@@ -261,6 +261,13 @@ class Response(BaseResponse):
         async for chunk in self.stream.read_by_chunks(max_read=max_read):
             yield chunk
 
+    async def read_stream(self) -> bytes:
+        content = b""
+        async for chunk in self.stream.read_by_chunks(max_read=1024):
+            content += chunk
+        self.content = content
+        return content
+
     def __eq__(self, _value) -> bool:
         if type(self) != type(_value):
             raise TypeError(

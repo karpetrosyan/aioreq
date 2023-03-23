@@ -11,6 +11,8 @@ from typing import Dict
 from typing import Optional
 from typing import Tuple
 from typing import Union
+from enum import Enum
+from contextlib import contextmanager
 
 from dns import asyncresolver  # type: ignore
 
@@ -24,9 +26,9 @@ log = logging.getLogger(LOGGER_NAME)
 
 
 def load_ssl_context(
-    check_hostname: bool = True,
-    verify_mode: bool = True,
-    keylog_filename: Optional[str] = None,
+        check_hostname: bool = True,
+        verify_mode: bool = True,
+        keylog_filename: Optional[str] = None,
 ) -> _ssl.SSLContext:
     context = _ssl.create_default_context()
     context.keylog_filename = keylog_filename or os.getenv(  # type: ignore
@@ -52,8 +54,17 @@ def mock_transport(transport):
     transport.used = False
 
 
+@contextmanager
+def change_stream_state(stream: 'StreamReader'):
+    if stream.state != StreamState.CREATED:
+        raise Exception(f"Can not read the stream with the `{stream.state}` state")
+    stream.state = StreamState.READING
+    yield
+    stream.state = StreamState.CLOSED
+
+
 async def resolve_domain(
-    url,
+        url,
 ) -> Tuple[str, int]:
     hostname = url.ip or ".".join(url.host)
 
@@ -81,8 +92,15 @@ async def resolve_domain(
     return ip, port
 
 
+class StreamState(Enum):
+    CREATED = "CREATED"
+    READING = "READING"
+    CLOSED = "CLOSED"
+
+
 class StreamReader(ABC):
     def __init__(self, reader: asyncio.StreamReader):
+        self.state: StreamState = StreamState.CREATED
         self.reader = reader
 
     @abstractmethod
@@ -96,33 +114,35 @@ class ByteStreamReader(StreamReader):
         self.to_read = to_read
 
     async def read_by_chunks(self, max_read: int) -> AsyncGenerator[bytes, None]:
-        while True:
-            if max_read >= self.to_read:
-                yield await self.reader.readexactly(self.to_read)
-                break
-            yield await self.reader.read(max_read)
-            self.to_read -= max_read
+        with change_stream_state(self):
+            while True:
+                if max_read >= self.to_read:
+                    yield await self.reader.readexactly(self.to_read)
+                    break
+                yield await self.reader.read(max_read)
+                self.to_read -= max_read
 
 
 class ChunkedStreamReader(StreamReader):
     async def read_by_chunks(self, max_read: int) -> AsyncGenerator[bytes, None]:
-        while True:
-            chunk = await self.reader.readuntil(b"\r\n")
-            chunk_size = chunk[:-2]
-            if b";" in chunk_size:
-                chunk_size = chunk_size.split(b";")[0].strip()
-            chunk_size = int(chunk_size, 16)
-            if chunk_size == 0:
-                break
-
-            while chunk_size:
-                if max_read >= chunk_size:
-                    yield await self.reader.readexactly(chunk_size)
+        with change_stream_state(self):
+            while True:
+                chunk = await self.reader.readuntil(b"\r\n")
+                chunk_size = chunk[:-2]
+                if b";" in chunk_size:
+                    chunk_size = chunk_size.split(b";")[0].strip()
+                chunk_size = int(chunk_size, 16)
+                if chunk_size == 0:
                     break
-                else:
-                    yield await self.reader.readexactly(max_read)
-                    chunk_size -= max_read
-            await self.reader.readexactly(2)  # skip crlf
+
+                while chunk_size:
+                    if max_read >= chunk_size:
+                        yield await self.reader.readexactly(chunk_size)
+                        break
+                    else:
+                        yield await self.reader.readexactly(max_read)
+                        chunk_size -= max_read
+                await self.reader.readexactly(2)  # skip crlf
 
 
 class Transport:
@@ -137,14 +157,14 @@ class Transport:
         await self.writer.drain()
 
     async def make_connection(
-        self,
-        ip: str,
-        port: int,
-        ssl: bool,
-        server_hostname: Optional[str],
-        verify_mode: bool,
-        check_hostname: bool,
-        keylog_filename: Optional[str],
+            self,
+            ip: str,
+            port: int,
+            ssl: bool,
+            server_hostname: Optional[str],
+            verify_mode: bool,
+            check_hostname: bool,
+            keylog_filename: Optional[str],
     ) -> None:
         log.trace(f"{ip}, {port}")  # type: ignore
 
@@ -171,7 +191,7 @@ class Transport:
         self.writer = writer
 
     async def send_http_request(
-        self, raw_data: bytes, stream: bool
+            self, raw_data: bytes, stream: bool
     ) -> Tuple[str, str, Union[bytes, StreamReader]]:
         with mock_transport(self):
             await self._send_data(raw_data)
@@ -201,7 +221,7 @@ class Transport:
                 else:
                     content = b""
                     async for chunk in ChunkedStreamReader(self.reader).read_by_chunks(
-                        max_read=2048
+                            max_read=2048
                     ):
                         content += chunk
                     return status_line, headers_line, content

@@ -16,8 +16,8 @@ log = logging.getLogger(LOGGER_NAME)
 
 @pytest.mark.asyncio
 async def test_few_requests(
-    SERVER_URL,
-    temp_session,
+        SERVER_URL,
+        temp_session,
 ):
     t1 = temp_session.get(SERVER_URL)
     t2 = temp_session.get(SERVER_URL)
@@ -169,6 +169,7 @@ async def test_stream_youtube_req():
         async for chunk in resp.iter_bytes(200):
             ...
 
+
 @pytest.mark.asyncio
 async def test_youtube_req(temp_session):
     await temp_session.get("https://youtube.com")
@@ -203,3 +204,11 @@ async def test_basic_authentication(temp_session, temp_session_without_authoriza
     )
     woauth_resp, resp = await asyncio.gather(woauth_resp, resp)
     assert resp.status == 200 and woauth_resp.status == 401
+
+
+@pytest.mark.asyncio
+async def test_stream_reading_two_times(temp_session, get_stream_test_url):
+    resp = await temp_session.get(get_stream_test_url, stream=True)
+    await resp.read_stream()
+    with pytest.raises(Exception, match=".*Can not read.*"):
+        await resp.read_stream()
