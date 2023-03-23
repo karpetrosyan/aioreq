@@ -3,7 +3,8 @@ import logging
 import sys
 from abc import ABCMeta
 from collections import defaultdict
-from typing import Any, AsyncGenerator
+from typing import Any
+from typing import AsyncGenerator
 from typing import DefaultDict
 from typing import Dict
 from typing import Iterable
@@ -257,12 +258,14 @@ class Response(BaseResponse):
         encoding = self.headers["Content-Encoding"]
         return self.content.decode(encoding)  # type: ignore[union-attr]
 
-    async def iter_bytes(self, max_read: int) -> AsyncGenerator[int, None]:
+    async def iter_bytes(self, max_read: int) -> AsyncGenerator[bytes, None]:
+        assert self.stream
         async for chunk in self.stream.read_by_chunks(max_read=max_read):
             yield chunk
 
     async def read_stream(self) -> bytes:
         content = b""
+        assert self.stream
         async for chunk in self.stream.read_by_chunks(max_read=1024):
             content += chunk
         self.content = content

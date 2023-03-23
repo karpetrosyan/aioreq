@@ -5,14 +5,13 @@ import ssl as _ssl
 from abc import ABC
 from abc import abstractmethod
 from contextlib import contextmanager
+from enum import Enum
 from typing import AsyncGenerator
 from typing import Awaitable
 from typing import Dict
 from typing import Optional
 from typing import Tuple
 from typing import Union
-from enum import Enum
-from contextlib import contextmanager
 
 from dns import asyncresolver  # type: ignore
 
@@ -26,9 +25,9 @@ log = logging.getLogger(LOGGER_NAME)
 
 
 def load_ssl_context(
-        check_hostname: bool = True,
-        verify_mode: bool = True,
-        keylog_filename: Optional[str] = None,
+    check_hostname: bool = True,
+    verify_mode: bool = True,
+    keylog_filename: Optional[str] = None,
 ) -> _ssl.SSLContext:
     context = _ssl.create_default_context()
     context.keylog_filename = keylog_filename or os.getenv(  # type: ignore
@@ -55,7 +54,7 @@ def mock_transport(transport):
 
 
 @contextmanager
-def change_stream_state(stream: 'StreamReader'):
+def change_stream_state(stream: "StreamReader"):
     if stream.state != StreamState.CREATED:
         raise Exception(f"Can not read the stream with the `{stream.state}` state")
     stream.state = StreamState.READING
@@ -64,7 +63,7 @@ def change_stream_state(stream: 'StreamReader'):
 
 
 async def resolve_domain(
-        url,
+    url,
 ) -> Tuple[str, int]:
     hostname = url.ip or ".".join(url.host)
 
@@ -157,14 +156,14 @@ class Transport:
         await self.writer.drain()
 
     async def make_connection(
-            self,
-            ip: str,
-            port: int,
-            ssl: bool,
-            server_hostname: Optional[str],
-            verify_mode: bool,
-            check_hostname: bool,
-            keylog_filename: Optional[str],
+        self,
+        ip: str,
+        port: int,
+        ssl: bool,
+        server_hostname: Optional[str],
+        verify_mode: bool,
+        check_hostname: bool,
+        keylog_filename: Optional[str],
     ) -> None:
         log.trace(f"{ip}, {port}")  # type: ignore
 
@@ -191,7 +190,7 @@ class Transport:
         self.writer = writer
 
     async def send_http_request(
-            self, raw_data: bytes, stream: bool
+        self, raw_data: bytes, stream: bool
     ) -> Tuple[str, str, Union[bytes, StreamReader]]:
         with mock_transport(self):
             await self._send_data(raw_data)
@@ -221,7 +220,7 @@ class Transport:
                 else:
                     content = b""
                     async for chunk in ChunkedStreamReader(self.reader).read_by_chunks(
-                            max_read=2048
+                        max_read=2048
                     ):
                         content += chunk
                     return status_line, headers_line, content

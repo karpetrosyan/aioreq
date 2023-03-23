@@ -16,8 +16,8 @@ log = logging.getLogger(LOGGER_NAME)
 
 @pytest.mark.asyncio
 async def test_few_requests(
-        SERVER_URL,
-        temp_session,
+    SERVER_URL,
+    temp_session,
 ):
     t1 = temp_session.get(SERVER_URL)
     t2 = temp_session.get(SERVER_URL)
