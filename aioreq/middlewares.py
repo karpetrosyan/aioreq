@@ -174,22 +174,23 @@ class RedirectMiddleWare(MiddleWare):
 
 class DecodeMiddleWare(MiddleWare):
     def decode(self, response: "Response") -> None:
-        if not response.stream:
-            for parser, header in (
-                (TransferEncoding, "transfer-encoding"),
-                (ContentEncoding, "content-encoding"),
-            ):
-                header_content = response.headers.get(header, None)
-                if header_content:
-                    encodings = parser.parse(header_content)
+        for parser, header in (
+            (TransferEncoding, "transfer-encoding"),
+            (ContentEncoding, "content-encoding"),
+        ):
+            header_content = response.headers.get(header, None)
+            if header_content:
+                encodings = parser.parse(header_content)
 
-                    for encoding in encodings:
-                        response.content = encoding.decompress(response.content)
+                for encoding in encodings:
+                    response.content = encoding.decompress(response.content)
 
     async def process(self, request: "Request", client: "Client") -> "Response":
-        if not request.stream:
-            request.headers.add_header(get_avaliable_encodings())
         assert self.next_middleware
+        if request.stream:
+            # skip encoding/decoding if it's a stream request
+            return await self.next_middleware.process(request, client)
+        request.headers.add_header(get_avaliable_encodings())
         response = await self.next_middleware.process(request, client)
         self.decode(response)
         return response
@@ -212,9 +213,7 @@ class RetryMiddleWare(MiddleWare):
                 response = await self.next_middleware.process(request, client)
                 break
             except Exception as e:
-                if isinstance(e, UnexpectedError):
-                    raise e
-                if retry_count == -1:
+                if isinstance(e, UnexpectedError) or retry_count == -1:
                     raise e
         assert response
         return response

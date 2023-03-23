@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import sys
 from abc import ABCMeta
@@ -38,10 +39,10 @@ from .middlewares import RetryMiddleWare
 from .middlewares import default_middlewares
 from .settings import DEFAULT_HEADERS
 
-if sys.version_info > (3, 9):
-    from typing import TypeAlias
+if (sys.version_info.major, sys.version_info.minor) > (3, 9):
+    from typing import TypeAlias  # type: ignore[attr-defined]
 else:
-    from typing_extensions import TypeAlias
+    from typing_extensions import TypeAlias  # type: ignore[attr-defined]
 
 URLENCODED: TypeAlias = Union[Dict[str, str], Iterable[Tuple[str, str]]]
 CONTENT: TypeAlias = Union[str, bytearray, bytes]
@@ -247,16 +248,28 @@ class Response(BaseResponse):
     def _check_stream(self) -> None:
         if self.content is None and self.stream:
             raise Exception(
-                "Trying to read stream response without"
-                " reading it use `await response.read_stream()` "
-                "to do that"
+                "Attempting to read a stream "
+                "response without actually reading "
+                "it. use read stream() to accomplish this."
             )
 
     @property
-    def text(self) -> str:
+    def text(self, encoding: Optional[str] = None) -> str:
         self._check_stream()
-        encoding = self.headers["Content-Encoding"]
+
+        if not encoding:
+            encoding = self.headers.get("Content-Encoding")
+        encoding = encoding or "ascii"
         return self.content.decode(encoding)  # type: ignore[union-attr]
+
+    @property
+    def json(self, encoding: Optional[str] = None) -> dict:
+        self._check_stream()
+
+        if not encoding:
+            encoding = self.headers.get("Content-Encoding")
+        encoding = encoding or "ascii"
+        return json.loads(self.content.decode(encoding))  # type: ignore[union-attr]
 
     async def iter_bytes(self, max_read: int) -> AsyncGenerator[bytes, None]:
         assert self.stream

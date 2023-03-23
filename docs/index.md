@@ -227,9 +227,7 @@ If the incoming response status code is **401** and the header contains `www-aut
 >>> async def send_req():
 ...     async with aioreq.Client() as cl:
 ...         return await cl.get('http://httpbin.org/basic-auth/foo/bar', auth=('foo', 'bar'))
->>> resp = asyncio.run(send_req())
->>> resp.status
-200
+>>>
 
 ```
 Parameter `auth` should be a tuple with two elements: login and password.

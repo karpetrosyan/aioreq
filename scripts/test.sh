@@ -5,13 +5,13 @@ set -x
 
 uvicorn tests.server:app --log-level critical --port 7575 &
 
-while [[ ! $(curl http://127.0.0.1:7575) ]]; do
-  sleep 0.5
+while [[ ! $(curl -s http://127.0.0.1:7575) ]]; do
+  sleep 2
 done
 
 pytest --doctest-modules --doctest-glob="*md" docs
 
-if ps -p $PID > /dev/null
+if [[ $(ps -p $PID > /dev/null) ]]
 then
   kill -9 $!
 fi
