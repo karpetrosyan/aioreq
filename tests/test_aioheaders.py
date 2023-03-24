@@ -2,6 +2,7 @@ import pytest
 
 from aioreq.headers import Accept
 from aioreq.headers import AuthenticationWWW
+from aioreq.headers import ContentType
 from aioreq.headers import MimeType
 from aioreq.headers import SetCookie
 from aioreq.urls import UriParser3986
@@ -130,3 +131,41 @@ class TestAccept:
     )
     def test_parse(self, value, expected):
         assert value == expected
+
+
+class TestContentType:
+    def test_full_content_type(self):
+        header_value = " application/html; charset='utf-8'"
+        content_type = ContentType.parse(header_value)
+        assert content_type.mime == MimeType.html
+        assert content_type.charset == "utf-8"
+
+    def test_case_insensitivity_content_type(self):
+        header_value = "   application/html; ChaRSET='Utf-8'"
+        content_type = ContentType.parse(header_value)
+        assert content_type.mime == MimeType.html
+        assert content_type.charset == "utf-8"
+
+    def test_single_quote_charset(self):
+        header_value = "   application/html; ChaRSET='Utf-8'"
+        content_type = ContentType.parse(header_value)
+        assert content_type.mime == MimeType.html
+        assert content_type.charset == "utf-8"
+
+    def test_double_quote_charset(self):
+        header_value = 'application/html; ChaRSET="Utf-8"'
+        content_type = ContentType.parse(header_value)
+        assert content_type.mime == MimeType.html
+        assert content_type.charset == "utf-8"
+
+    def test_unquote_charset(self):
+        header_value = "application/html; ChaRSET=UTF-8"
+        content_type = ContentType.parse(header_value)
+        assert content_type.mime == MimeType.html
+        assert content_type.charset == "utf-8"
+
+    def test_without_charset(self):
+        header_value = "application/html"
+        content_type = ContentType.parse(header_value)
+        assert content_type.mime == MimeType.html
+        assert content_type.charset is None

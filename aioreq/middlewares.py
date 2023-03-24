@@ -265,7 +265,7 @@ class CookiesMiddleWare(MiddleWare):
 
         if "set-cookie" in resp.headers:
             cookies = [
-                SetCookie().parse(cookie_value, request.url)
+                SetCookie.parse(cookie_value, request.url)
                 for cookie_value in resp.headers["set-cookie"]
             ]
             for cookie in cookies:

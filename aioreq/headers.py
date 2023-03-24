@@ -336,7 +336,9 @@ class SetCookie(ServerHeader):
 
         return cleaned_attrs
 
-    def parse(self, value: str, uri: Uri3986) -> Optional[Cookie6265]:  # type: ignore
+    @classmethod
+    def parse(cls, value: str, uri: Uri3986) -> Optional[Cookie6265]:  # type: ignore
+        self = cls()
         if ";" in value:
             name_value_pair = value.split(";")[0]
             unparsed_attributes = value[value.find(";") :]
@@ -394,3 +396,26 @@ class Cookie(BaseHeader):
         if cookie_string:
             cookie_string = cookie_string[:-2]
         return cookie_string
+
+
+class ContentType(ServerHeader):
+    def __init__(self, mime_type: str, charset: Optional[str]):
+        self.mime: MimeType = MimeType(mime_type)
+        self.charset = charset
+
+    @classmethod
+    def parse(cls, value):  # type: ignore
+        splited_content_type = value.lower().split(";")
+
+        if len(splited_content_type) == 2:
+            mime, charset = splited_content_type
+        else:
+            mime = splited_content_type[0]
+            charset = None
+
+        mime = mime.strip(" ")
+        if charset is None or "charset" not in charset:
+            charset = None
+        else:
+            charset = charset.split("=")[1].strip(" ").strip("'").strip('"')
+        return cls(mime_type=mime, charset=charset)

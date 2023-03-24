@@ -35,4 +35,4 @@ def test_header_or():
 
 def test_default_headers():
     cl = aioreq.Client()
-    cl.headers == DEFAULT_HEADERS
+    assert cl.headers._headers == DEFAULT_HEADERS

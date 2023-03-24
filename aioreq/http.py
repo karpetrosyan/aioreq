@@ -32,6 +32,7 @@ from aioreq.settings import REQUEST_RETRY_COUNT
 from aioreq.urls import Uri3986
 from aioreq.urls import parse_url
 
+from .headers import ContentType
 from .headers import Headers
 from .middlewares import MiddleWare
 from .middlewares import RedirectMiddleWare
@@ -258,8 +259,8 @@ class Response(BaseResponse):
         self._check_stream()
 
         if not encoding:
-            encoding = self.headers.get("Content-Encoding")
-        encoding = encoding or "ascii"
+            content_type = ContentType.parse(self.headers.get("Content-Type"))
+            encoding = content_type.charset or "utf-8"
         return self.content.decode(encoding)  # type: ignore[union-attr]
 
     @property
@@ -267,8 +268,8 @@ class Response(BaseResponse):
         self._check_stream()
 
         if not encoding:
-            encoding = self.headers.get("Content-Encoding")
-        encoding = encoding or "ascii"
+            content_type = ContentType.parse(self.headers.get("Content-Type"))
+            encoding = content_type.charset or "utf-8"
         return json.loads(self.content.decode(encoding))  # type: ignore[union-attr]
 
     async def iter_bytes(self, max_read: int) -> AsyncGenerator[bytes, None]:
