@@ -1,3 +1,5 @@
+# This repository doesnt supported at this time
+
 <p align="center">
     <img style="width:300px" src="https://raw.githubusercontent.com/karosis88/aioreq/b9a4fa392798c49f2eb533ffb60b8c5564524f72/.github/images/logo.svg"></img>
 </p>
