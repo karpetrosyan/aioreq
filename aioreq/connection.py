@@ -200,20 +200,15 @@ class Transport:
             status_line = (await self.reader.readuntil(b"\r\n")).decode()
             headers_line = (await self.reader.readuntil(b"\r\n\r\n")).decode()
             content_length = ResponseParser.search_content_length(headers_line)
-
+            
             if content_length is not None:
-                if stream:
-                    return (
-                        status_line,
-                        headers_line,
-                        ByteStreamReader(reader=self.reader, to_read=content_length),
-                    )
-                else:
-                    return (
-                        status_line,
-                        headers_line,
-                        await self.reader.readexactly(content_length),
-                    )
+                return (
+                    status_line,
+                    headers_line,
+                    ByteStreamReader(reader=self.reader, to_read=content_length)
+                    if stream
+                    else await self.reader.readexactly(content_length),
+                )
             elif ResponseParser.search_transfer_encoding(headers_line):
                 if stream:
                     return status_line, headers_line, ChunkedStreamReader(self.reader)
